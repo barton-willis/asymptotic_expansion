@@ -1,6 +1,6 @@
 ;;; Maxima code for finding asymptotic expansions of various functions, including 
-;;; erf, erfc, expintegral_e1, expintegral_ei, gamma, factorial, polylogarithm, and 
-;;; polygamma functions. 
+;;; bessel_j, erf, erfc, expintegral_e1, expintegral_ei, gamma, factorial, 
+;;; polylogarithm, and polygamma functions. 
 
 ;;; The purpose of this code is for computing limits. Specifically
 ;;; limit(e,x,pt) = limit(asymptotic-expansion(e,x,pt),x,pt) is supposed to be
@@ -41,7 +41,7 @@
 (defvar *tiny* (div 1 (expt 2 107)))
 
 ;; Insert a call to asymptotic-expansion into gruntz1. Additionally
-;; there is some assume stuff--I'm not sure that any of this is
+;; there is some assume stuff, but I'm not sure that any of this is
 ;; needed. Otherwise, this code is the same as the gruntz1 code in 
 ;; limit.lisp.
 
@@ -107,24 +107,7 @@
 (defun $asymptotic_expansion (e x pt n)
 	(asymptotic-expansion e x pt n))
 
-;; I'm not sure this is needed--ultimately it dispatches the CL function limit, but
-;; first it creates a supercontext, assumes the limit variable is larger than a
-;; magic number *big*, and conditions the limit expression using  asymptotic-expansion.
-
-;; I'm not sure that the call to $activate is needed--the user documentation is 
-;; clear when it is needed.
-(defun limit-toward-infinity (e x)	
-	(unwind-protect 
-		(let ((cntx ($supcontext)))
-			  (progn
-	  			  (mfuncall '$assume (ftake 'mgreaterp x *big*))
-				  (mfuncall '$activate cntx)
-		 	 	  (setq e ($expand e 0 0)) ;simplify in new context
-				  (setq e (asymptotic-expansion e x '$inf 1))
-				  (limit e x '$inf 'think))
-			   ($killcontext cntx))))
-
-;; For experimentation, lets collect all operators that use the default mapping of
+;; For experimentation, let us collect all operators that use the default mapping of
 ;; asymptotic-expansion. Currently running the testsuite, these functions are
 ;; {conjugate, floor, acos, asinh, atan, bessel_k, cos, gamma_incomplete,
 ;; log, sin, tan, ^}

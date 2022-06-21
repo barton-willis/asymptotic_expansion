@@ -30,18 +30,21 @@
 ;;; Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
 ;;; Boston, MA  02110-1301, USA.
 
-;; Consider appending code for {bessel_j, bessel_k,gamma_incomplete}
+;; Consider appending code for bessel_k.
 (in-package :maxima)
 
 ;; What special variables did I miss?
 (declare-top (special var val lhp?))
 
-;;;;
 
 (defvar *big* (expt 2 107))
 (defvar *tiny* (div 1 (expt 2 107)))
 
-;; This function is for internal use in $limit.
+;; Insert a call to asymptotic-expansion into gruntz1. Additionally
+;; there is some assume stuff--I'm not sure that any of this is
+;; needed. Otherwise, this code is the same as the gruntz1 code in 
+;; limit.lisp.
+
 (defun gruntz1 (exp var val &rest rest)
    (cond ((> (length rest) 1)
 	 (merror (intl:gettext "gruntz: too many arguments; expected just 3 or 4"))))
@@ -66,7 +69,7 @@
        (let ((cntx ($supcontext)))
 	   	    (unwind-protect
 		 	  (progn
-			      (mtell "before: exp = ~M ~%" exp)
+			      ;(mtell "before: exp = ~M ~%" exp)
 	    	      (mfuncall '$assume (ftake 'mlessp 0 'lim-epsilon)) ;0 < lim-epsilon
 	    	      (mfuncall '$assume (ftake 'mlessp 'lim-epsilon *tiny*)) ; lim-epsilon < *tiny*
 			      (mfuncall '$assume (ftake 'mlessp *big* 'prin-inf)) ; *big* < prin-inf
@@ -76,12 +79,11 @@
 				  (mfuncall '$activate cntx) ;not sure this is needed			
 				  (let ((val '$inf)) ;not sure about
 				     (setq exp ($expand exp 0 0)) ;simplify in new context
-					 (mtell "after: exp = ~M ~%" exp)	
+					 ;(mtell "after: exp = ~M ~%" exp)	
                      (setq exp (asymptotic-expansion exp newvar '$inf 1));pre-condition
-					 (mtell "after2: exp = ~M ~%" exp)
+					 ;(mtell "after2: exp = ~M ~%" exp)
 					 (limitinf exp newvar))) ;compute limit
             ($killcontext cntx)))))
-;;;;
 
 ;; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-expansion.

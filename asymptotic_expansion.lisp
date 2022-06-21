@@ -141,7 +141,7 @@
 ;; The first argument e is a CL list of the summand. The second argument is the 
 ;; limit variable, the third is the point, and the last is the truncation level.
 
-(defvar *zero-case* 0)
+(defvar *zero-case* 0) ;for expermentation only
 (defun mplus-asymptotic (e x pt n)
     (let ((ans))
 	    (setq ans (addn (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
@@ -166,7 +166,7 @@
 	(setq e (first e))
 	(cond ((eq '$inf (limit e x pt 'think))
 		(let ((s 0) (ds) (k 0))
-		  ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient--I'll fix that.
+		  ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient.
 		  (while (< k n)
 		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
 	 	 	(setq s (add s ds))
@@ -180,7 +180,7 @@
 	(let ((s 0) (ds) (k 0))
 	  (setq e (first e))
 	  (cond ((eq '$inf (limit e x pt 'think))
-	 	     ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient--I'll fix that.
+	 	     ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient.
 		     (while (< k n)
 	 	       (setq ds (div (mul (ftake 'mexpt -1 k) (ftake 'mfactorial k)) (ftake 'mexpt e k)))
 	  	   	   (setq s (add s ds))
@@ -194,8 +194,6 @@
 (defun gamma-asymptotic (e x pt n)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (first e))
-		;(mtell "n = ~M ~%" n)
-		;(setq n 2)
 		(setq e (asymptotic-expansion e x pt n))
 		(setq xxx (limit e x pt 'think))
 	    (cond ((eq '$inf xxx)
@@ -295,10 +293,10 @@
 ;; Need to include the cases: large a, fixed z; large a, fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i 
 
-;; This causes trouble with integrate(x*exp(-x^2)*sin(x),x,minf,inf). This
-;; is a test in rtest_limit_extra.  One cure for the test is to cancel the
-;; limit function for gamma_incomplete. But that causes other testsuite
-;; failures.
+;; The gamma-incomplete-asymptotic function causes trouble with 
+;; integrate(x*exp(-x^2)*sin(x),x,minf,inf). This is a test in rtest_limit_extra.  
+;; One cure for the test is to cancel the limit function for gamma_incomplete. 
+;; But that causes other testsuite failures.
 
 ;(defprop %gamma_incomplete nil simplim%function)
 (defun gamma-incomplete-asymptotic (e x pt n)

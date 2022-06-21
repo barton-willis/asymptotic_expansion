@@ -5,5 +5,5 @@ polygamma functions.
 
 The purpose of this code is for computing limits. Possibly the function `asymptotic-expansion` could be promoted to a user level function, but for now it isn't intended to be used that way.
 
-This code hooks into the limit code in two ways.  First it modifies the CL function `stirling0`  that is called the various functions in the limit code. Possibly the orginal intent was that `stirling0` would only apply the Stirling approximation, but over the years, it gained other duites. Second it modifies the CL function `gruntz1` to call the function  `asymptotic-expansion` before entering the main code for computing limits.
+This code hooks into the limit code in two ways.  First it modifies the CL function `stirling0`  that is called by various functions in the limit code. Possibly the orginal intent was that `stirling0` would only apply the Stirling approximation, but over the years, it gained other duites. Second it modifies the CL function `gruntz1` to call the function  `asymptotic-expansion` before entering the main code for computing limits.
 

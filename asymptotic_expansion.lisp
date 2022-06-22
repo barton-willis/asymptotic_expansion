@@ -132,7 +132,8 @@
 				(apply fn (list args x pt n)))
 	   	      (t 
 			    (push (caar e) *xxx*) ;collect unsupported function names
-			    (mfuncall '$map #'(lambda (q) (asymptotic-expansion q x pt n)) e)))))
+			    e))))
+			   ; (mfuncall '$map #'(lambda (q) (asymptotic-expansion q x pt n)) e)))))
 			
 ;; For a sum, map asymptotic-expansion onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -158,8 +159,17 @@
 ;; arguments. But this version does a post multiplication 
 ;; sratsimp. Maybe the sratsimp eliminates a bug?
 (defun mtimes-asymptotic (e x pt n)
-	(sratsimp (muln (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t)))
-;(setf (gethash 'mtimes *asymptotic-expansion-hash*) #'mtimes-asymptotic)
+	(muln (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
+(setf (gethash 'mtimes *asymptotic-expansion-hash*) #'mtimes-asymptotic)
+
+(defun mexpt-asymptotic (e x pt n)
+	(ftake 'mexpt (asymptotic-expansion (first e) x pt n)
+	              (asymptotic-expansion (second e) x pt n)))
+(setf (gethash 'mexpt *asymptotic-expansion-hash*) #'mexpt-asymptotic)
+
+(defun log-asymptotic (e x pt n)
+	(ftake '%log (asymptotic-expansion (first e) x pt n)))
+(setf (gethash '%log *asymptotic-expansion-hash*) #'log-asymptotic)
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (defun expintegral-ei-asymptotic (e x pt n)
@@ -203,8 +213,9 @@
 							   (ftake 'mexpt e (sub (mul 2 k) 1)))))
 		            (setq k (+ 1 k))					   
 		            (setq s (add s ds)))
-	            (mul ($ratdisrep ($taylor (ftake 'mexpt '$%e s) x '$inf n)) ;Taylor uneeded?
-	               	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
+	            (mul 
+				    (ftake 'mexpt '$%e s)
+				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
               ((and (integerp xxx) (< xxx 0)) ;pole case
@@ -216,7 +227,8 @@
     (gamma-asymptotic (list (add 1 (first e))) x pt n))
 (setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
 
-;; See the comment in specfun.lisp about the truncation value.
+;; For the case of noninteger s, see the comment in specfun.lisp about the 
+;; truncation value.
 
 ;; For positive integer order, see https://functions.wolfram.com/ZetaFunctionsandPolylogarithms/PolyLog/06/01/03/01/02/0003/
 ;; For negative integer order, see https://functions.wolfram.com/ZetaFunctionsandPolylogarithms/PolyLog/06/01/03/01/02/0001/
@@ -285,13 +297,20 @@
 
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-expansion-hash*.
+
+;; I think it would be better if this function didn't convert erf to erfc 
+;; functions.
 (defun erf-asymptotic (z x pt n)
-	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*))) 
-		(sub 1 (funcall fn z x pt n))))
+	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*)) (xxx))
+	     (setq xxx (limit (first z) x pt 'think))
+		 (cond ((eq '$inf xxx)
+				  (sub 1 (funcall fn z x pt n)))
+			   (t (ftake '%erf (first z))))))
+
 (setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z; large a, fixed z/a cases. 
-;; See http://dlmf.nist.gov/8.11.i 
+;; See http://dlmf.nist.gov/8.11.i  
 
 ;; The gamma-incomplete-asymptotic function causes trouble with 
 ;; integrate(x*exp(-x^2)*sin(x),x,minf,inf). This is a test in rtest_limit_extra.  

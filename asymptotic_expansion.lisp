@@ -30,7 +30,7 @@
 ;;; Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
 ;;; Boston, MA  02110-1301, USA.
 
-;; Consider appending code for bessel_k.
+;; Notes: Consider appending code for bessel_k.
 (in-package :maxima)
 
 ;; What special variables did I miss?
@@ -71,19 +71,21 @@
 		 	  (progn
 			      ;(mtell "before: exp = ~M ~%" exp)
 	    	      (mfuncall '$assume (ftake 'mlessp 0 'lim-epsilon)) ;0 < lim-epsilon
-	    	      (mfuncall '$assume (ftake 'mlessp 'lim-epsilon *tiny*)) ; lim-epsilon < *tiny*
-			      (mfuncall '$assume (ftake 'mlessp *big* 'prin-inf)) ; *big* < prin-inf
+	    	      (mfuncall '$assume (ftake 'mlessp 0 'epsilon)) ;0 < epsilon
+				  (mfuncall '$assume (ftake 'mlessp 'lim-epsilon *tiny*)) ; lim-epsilon < *tiny*
+			      (mfuncall '$assume (ftake 'mlessp 'epsilon *tiny*)) ; epsilon < *tiny*
+				  (mfuncall '$assume (ftake 'mlessp *big* 'prin-inf)) ; *big* < prin-inf
 			      (mfuncall '$assume (ftake 'mlessp 0 '$zeroa)) ; 0 < $zeroa
 				  (mfuncall '$assume (ftake 'mlessp '$zerob 0)) ; $zerob < 0
 				  (mfuncall '$assume (ftake 'mlessp *big* newvar)) ; *big* < newvar
 				  (mfuncall '$activate cntx) ;not sure this is needed			
-				  (let ((val '$inf)) ;not sure about
+				  (let ((val '$inf)) ;not sure about this
 				     (setq exp ($expand exp 0 0)) ;simplify in new context
 					 ;(mtell "after: exp = ~M ~%" exp)	
                      (setq exp (asymptotic-expansion exp newvar '$inf 1));pre-condition
 					 ;(mtell "after2: exp = ~M ~%" exp)
 					 (limitinf exp newvar))) ;compute limit
-            ($killcontext cntx)))))
+            ($killcontext cntx))))) ;forget facts
 
 ;; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-expansion.
@@ -107,17 +109,27 @@
 (defun $asymptotic_expansion (e x pt n)
 	(asymptotic-expansion e x pt n))
 
-;; For experimentation, let us collect all operators that use the default mapping of
-;; asymptotic-expansion. Currently running the testsuite, these functions are
-;; {conjugate, floor, acos, asinh, atan, bessel_k, cos, gamma_incomplete,
-;; log, sin, tan, ^}
-(defvar *xxx* nil) 
+;; For experimentation, let's collect all operators don't have a specialized 
+;; asymptotic expansion function. 
+(defvar *xxx* (make-hash-table))
+
+(defun $missing()
+	(maphash #'(lambda (a b) (mtell "~M ~M ~%" a b)) *xxx*))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
-;; functions with truncated asymptotic (Poincaré) expansions. 
+;; functions with truncated asymptotic (Poincaré) expansions. We walk through
+;; the expression tree and use hashtable look up to find operators with a
+;; specialized function for an asymptotic-expansion. When we find such an
+;; operator, dispatch the function from the hashtable.
+
 (defun asymptotic-expansion (e x pt n)
-	(let (($domain '$complex) (fn nil) (args nil) (lhp? nil))
-        ;; Unify dispatching a *asymptotic-expansion-hash* function on both 
+	(let ( ($gamma_expand nil) ;not sure about these option variables
+	       ($numer nil)
+		   ($float nil)
+		   ($domain '$complex)
+	       (fn nil) (args nil) (lhp? nil))
+	      
+        ;; Unify dispatching a *asymptotic-expansion-hash* function for both 
 		;; subscripted and nonsubscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
         (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
@@ -126,14 +138,17 @@
 	            ((and (consp e) (consp (car e)))
 			        (setq fn (gethash (caar e) *asymptotic-expansion-hash* nil))
                     (setq args (cdr e))))
-		;(print `(dispatching ,fn))			
 		(cond (($mapatom e) e)
 			  (fn
 				(apply fn (list args x pt n)))
 	   	      (t 
-			    (push (caar e) *xxx*) ;collect unsupported function names
+			    ;; For an arbitrary operator, likely it's OK to map 
+				;; asymptotic-expansion over the arguments. But I'm not
+				;; sure we win by doing so, and some of the limit code is
+				;; overly sensitive to syntactic changes to internal expressions.
+				;; So we'll just return e.
+				(setf (gethash (caar e) *xxx*) (+ 1 (gethash (caar e) *xxx* 0)))
 			    e))))
-			   ; (mfuncall '$map #'(lambda (q) (asymptotic-expansion q x pt n)) e)))))
 			
 ;; For a sum, map asymptotic-expansion onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -170,6 +185,16 @@
 (defun log-asymptotic (e x pt n)
 	(ftake '%log (asymptotic-expansion (first e) x pt n)))
 (setf (gethash '%log *asymptotic-expansion-hash*) #'log-asymptotic)
+
+(defvar *calls-to-mabs-asymptotic* nil)
+(defun mabs-asymptotic (e x pt n)
+   (setq e (car e))
+   (let ((xxx (limit e x pt 'think)))
+      (push xxx *calls-to-mabs-asymptotic*)
+      (cond ((eq xxx '$zeroa) 
+	         (asymptotic-expansion e x pt n))
+	        (t (ftake 'mabs e)))))
+(setf (gethash 'mabs *asymptotic-expansion-hash*) #'mabs-asymptotic)
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (defun expintegral-ei-asymptotic (e x pt n)
@@ -297,9 +322,6 @@
 
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-expansion-hash*.
-
-;; I think it would be better if this function didn't convert erf to erfc 
-;; functions.
 (defun erf-asymptotic (z x pt n)
 	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*)) (xxx))
 	     (setq xxx (limit (first z) x pt 'think))
@@ -317,20 +339,22 @@
 ;; One cure for the test is to cancel the limit function for gamma_incomplete. 
 ;; But that causes other testsuite failures.
 
-;(defprop %gamma_incomplete nil simplim%function)
 (defun gamma-incomplete-asymptotic (e x pt n)
 	(let ((a (first e)) (z (second e)) (s 0) (ds) (k 0) (xxx))
-		;; z--> infinity, a is freeof x
 		(setq xxx (limit z x pt 'think))
+		;(mtell "a = ~M ~% z = ~M ~% xxx = ~M ~%" a z xxx)
+		;; z--> inf or z --> -inf and a is freeof x
 		(cond ((and (or (eq '$inf xxx) (eq '$minf xxx)) (freeof x a))
 		         (while (< k n)
-				 	(setq ds (div (mul (ftake 'mexpt -1 k) (mfuncall '$pochhammer (sub 1 a) k))
+				 	(setq ds (div (mul (ftake 'mexpt -1 k) (ftake '$pochhammer (sub 1 a) k))
 								  (ftake 'mexpt z k)))
 				    (setq s (add s ds))
 				    (setq k (+ k 1)))
+				 (mtell "s = ~M ~%" s)
+				 ;; return z^(a-1)*exp(-z)*s
 				 (mul (ftake 'mexpt z (sub a 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
               (t (ftake '%gamma_incomplete a z)))))
-;(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
+(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 
 (defun bessel-j-asymptotic (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0))
@@ -355,3 +379,19 @@
 		   (add (mul cc (ftake '%cos ω)) (mul sc (ftake '%sin ω))))))
 		(t (ftake '%bessel_j v x)))))   
 (setf (gethash '%bessel_j *asymptotic-expansion-hash*) #'bessel-j-asymptotic)		
+
+(defun atan-asymptotic (e x pt n)
+    (setq e (car e))
+	(let ((xxx ($limit e x pt))) ;try $limit, not limit
+	  ;;; (mtell "e = ~M ~% xxx = ~M ~%" e xxx)
+	   (cond ((and (eq xxx '$inf))
+	          (unwind-protect 
+			    (progn
+           		   (mfuncall '$assume (ftake 'mlessp *big* x))
+	   		       ($ratdisrep ($taylor (ftake '%atan e) x '$inf n)))
+				(mfuncall '$forget (ftake 'mlessp *big* x))))   
+			 (t (ftake '%atan e)))))
+(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
+
+;;;(defun default-asymptotic (fn e x pt n)
+  

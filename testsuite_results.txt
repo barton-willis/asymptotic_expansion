@@ -1,0 +1,124 @@
+The following 3 problems passed but were expected to fail: (53 98 100)
+
+Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 98 100)
+7 tests failed out of 12,746 total tests.
+(TESTSUITE)
+took 366,138,000 microseconds (366.138000 seconds) to run.
+       5,443,238 microseconds (  5.443238 seconds, 1.49%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     328,203,125 microseconds (328.203120 seconds) were spent in user mode
+      14,828,125 microseconds ( 14.828125 seconds) were spent in system mode
+ 33,155,322,064 bytes of memory allocated.
+
+ ---remove mabs-asymptotic 
+
+ The following 2 problems passed but were expected to fail: (53 100)
+
+Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 100)
+7 tests failed out of 12,746 total tests.
+(TESTSUITE)
+took 365,041,000 microseconds (365.041000 seconds) to run.
+       5,883,574 microseconds (  5.883574 seconds, 1.61%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     330,328,125 microseconds (330.328120 seconds) were spent in user mode
+      14,500,000 microseconds ( 14.500000 seconds) were spent in system mode
+ 33,155,306,336 bytes of memory allocated.
+
+ --restore mabs-asymptotic & run share testsuite too.
+
+ Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+  C:/Users/Barton/maxima-git/code/share/solve_rec/rtest_simplify_sum.mac problem:
+    (55)
+  C:/Users/Barton/maxima-git/code/share/stringproc/rtest_md5sum.mac problem:
+    (2)
+  C:/Users/Barton/maxima-git/code/share/to_poly_solve/rtest_to_poly_solve.mac problem:
+    (210)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 98 100)
+  C:/Users/Barton/maxima-git/code/share/contrib/diffequations/tests/rtest_sym.mac problems:
+    (12 58)
+  C:/Users/Barton/maxima-git/code/share/vector/rtest_vect.mac problem:
+    (19)
+10 tests failed out of 17,372 total tests.
+(TESTSUITE)
+took 769,974,000 microseconds (769.974000 seconds) to run.
+      14,323,043 microseconds ( 14.323043 seconds, 1.86%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     711,187,500 microseconds (711.187500 seconds) were spent in user mode
+      28,593,750 microseconds ( 28.593750 seconds) were spent in system mode
+ 75,027,762,368 bytes of memory allocated.
+
+ ----with errcatch patch to gamma-upper-trans
+
+ The following 3 problems passed but were expected to fail: (53 98 100)
+
+Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 98 100)
+7 tests failed out of 12,746 total tests.
+(TESTSUITE)
+took 359,430,000 microseconds (359.430000 seconds) to run.
+       6,261,172 microseconds (  6.261172 seconds, 1.74%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     322,828,125 microseconds (322.828120 seconds) were spent in user mode
+      14,031,250 microseconds ( 14.031250 seconds) were spent in system mode
+ 33,294,957,872 bytes of memory allocated.
+
+----repeat---
+
+Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 98 100)
+7 tests failed out of 12,746 total tests.
+(TESTSUITE)
+took 339,318,000 microseconds (339.318000 seconds) to run.
+       5,379,531 microseconds (  5.379531 seconds, 1.59%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     304,859,375 microseconds (304.859370 seconds) were spent in user mode
+      12,437,500 microseconds ( 12.437500 seconds) were spent in system mode
+ 33,294,923,232 bytes of memory allocated.
+(%o0)                                done

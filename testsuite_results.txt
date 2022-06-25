@@ -122,3 +122,46 @@ During that period, and with 4 available CPU cores,
       12,437,500 microseconds ( 12.437500 seconds) were spent in system mode
  33,294,923,232 bytes of memory allocated.
 (%o0)                                done
+
+---Friday
+
+Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 98 100)
+7 tests failed out of 12,746 total tests.
+(TESTSUITE)
+took 349,933,000 microseconds (349.933000 seconds) to run.
+       5,371,334 microseconds (  5.371334 seconds, 1.53%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     309,000,000 microseconds (309.000000 seconds) were spent in user mode
+      15,390,625 microseconds ( 15.390625 seconds) were spent in system mode
+ 33,308,475,104 bytes of memory allocated.
+
+ --remove assumes from gruntz1
+
+ Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 98)
+7 tests failed out of 12,746 total tests.
+(TESTSUITE)
+took 362,648,000 microseconds (362.648000 seconds) to run.
+       5,824,708 microseconds (  5.824708 seconds, 1.61%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     324,234,375 microseconds (324.234370 seconds) were spent in user mode
+      14,781,250 microseconds ( 14.781250 seconds) were spent in system mode
+ 33,241,067,824 bytes of memory allocated.

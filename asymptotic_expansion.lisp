@@ -189,7 +189,7 @@
 (defvar *calls-to-mabs-asymptotic* nil)
 (defun mabs-asymptotic (e x pt n)
    (setq e (car e))
-   (let ((xxx (limit e x pt 'think)))
+   (let ((xxx ($limit e x pt)))
       (push xxx *calls-to-mabs-asymptotic*)
       (cond ((eq xxx '$zeroa) 
 	         (asymptotic-expansion e x pt n))
@@ -199,7 +199,7 @@
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (defun expintegral-ei-asymptotic (e x pt n)
 	(setq e (first e))
-	(cond ((eq '$inf (limit e x pt 'think))
+	(cond ((eq '$inf ($limit e x pt))
 		(let ((s 0) (ds) (k 0))
 		  ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient.
 		  (while (< k n)
@@ -214,7 +214,7 @@
 (defun expintegral-e1-asymptotic (e x pt n)
 	(let ((s 0) (ds) (k 0))
 	  (setq e (first e))
-	  (cond ((eq '$inf (limit e x pt 'think))
+	  (cond ((eq '$inf ($limit e x pt))
 	 	     ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient.
 		     (while (< k n)
 	 	       (setq ds (div (mul (ftake 'mexpt -1 k) (ftake 'mfactorial k)) (ftake 'mexpt e k)))
@@ -230,7 +230,7 @@
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (first e))
 		(setq e (asymptotic-expansion e x pt n))
-		(setq xxx (limit e x pt 'think))
+		(setq xxx ($limit e x pt))
 	    (cond ((eq '$inf xxx)
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
@@ -261,7 +261,7 @@
 (defun polylogarithm-asymptotic (e x pt n)
 	(let ((s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
 	   (setq z (asymptotic-expansion z x pt n))
-	   (setq xxx (limit z x pt 'think))
+	   (setq xxx ($limit z x pt))
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
 	           (while (<= k n)
@@ -294,7 +294,7 @@
 	(let ((s 0) (k 0) ($zerobern t) (ds) (xxx) (m) (z))
 		(setq m (cadr e))
 	    (setq z (caddr e))
-		(setq xxx (limit z x pt 'think))
+		(setq xxx ($limit z x pt))
 		(cond ((and (eq '$inf xxx) (freeof x m))
 				(while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
@@ -310,7 +310,7 @@
 (defun erfc-asymptotic (z x pt n)
 	(setq z (car z))
 	(let ((s 0) (ds (div 1 z)) (k 0) (zz (mul 2 z z)) (xxx))
-	  (setq xxx (limit z x pt 'think))
+	  (setq xxx ($limit z x pt))
 	  (cond ((eq '$inf xxx)
 			  (while (< k n)
 				 (setq s (add s ds))
@@ -324,7 +324,7 @@
 ;; look up the function in *asymptotic-expansion-hash*.
 (defun erf-asymptotic (z x pt n)
 	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*)) (xxx))
-	     (setq xxx (limit (first z) x pt 'think))
+	     (setq xxx ($limit (first z) x pt))
 		 (cond ((eq '$inf xxx)
 				  (sub 1 (funcall fn z x pt n)))
 			   (t (ftake '%erf (first z))))))
@@ -341,7 +341,7 @@
 
 (defun gamma-incomplete-asymptotic (e x pt n)
 	(let ((a (first e)) (z (second e)) (s 0) (ds) (k 0) (xxx))
-		(setq xxx (limit z x pt 'think))
+		(setq xxx ($limit z x pt))
 		;(mtell "a = ~M ~% z = ~M ~% xxx = ~M ~%" a z xxx)
 		;; z--> inf or z --> -inf and a is freeof x
 		(cond ((and (or (eq '$inf xxx) (eq '$minf xxx)) (freeof x a))
@@ -350,7 +350,6 @@
 								  (ftake 'mexpt z k)))
 				    (setq s (add s ds))
 				    (setq k (+ k 1)))
-				 (mtell "s = ~M ~%" s)
 				 ;; return z^(a-1)*exp(-z)*s
 				 (mul (ftake 'mexpt z (sub a 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
               (t (ftake '%gamma_incomplete a z)))))
@@ -358,7 +357,7 @@
 
 (defun bessel-j-asymptotic (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0))
-	    (cond ((eq '$inf (limit z x pt 'think))
+	    (cond ((eq '$inf ($limit z x pt))
 				(setq ω (add z (div (mul '$%pi v) -2) (div '$%pi -4)))
 				(setq a (sub (div 1 2) v))
 				(setq b (add (div 1 2) v))

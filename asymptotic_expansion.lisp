@@ -36,7 +36,6 @@
 ;; What special variables did I miss?
 (declare-top (special var val lhp?))
 
-
 (defvar *big* (expt 2 107))
 (defvar *tiny* (div 1 (expt 2 107)))
 
@@ -84,7 +83,7 @@
 					 ;(mtell "after: exp = ~M ~%" exp)	
                      (setq exp (asymptotic-expansion exp newvar '$inf 1));pre-condition
 					 ;(mtell "after2: exp = ~M ~%" exp)
-					 (limitinf exp newvar))) ;compute limit
+					 (limitinf exp newvar))) ;compute & return limit
             ($killcontext cntx))))) ;forget facts
 
 ;; Redefine the function stirling0. The function stirling0 does more than its
@@ -292,17 +291,25 @@
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
 (defun psi-asymptotic (e x pt n)
 	(let ((s 0) (k 0) ($zerobern t) (ds) (xxx) (m) (z))
-		(setq m (cadr e))
-	    (setq z (caddr e))
+		(setq m (car e))
+	    (setq z (cadr e))
 		(setq xxx ($limit z x pt))
-		(cond ((and (eq '$inf xxx) (freeof x m))
-				(while (< k n)
+		(mtell "m = ~M ~% z = ~M xxx = ~M ~%~%" m z xxx)
+		(cond ((and (eq '$inf xxx) (integerp m) (>= m 1))
+				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
 				                       (ftake 'mfactorial k)) 
-				                   (div ($bern k) (ftake 'mexpt z (add k m)))))
+				                  (div ($bern k) (ftake 'mexpt z (add k m)))))
 					(setq k (+ k 1))
 					(setq s (add s ds)))
-		        (mul (ftake 'mexpt -1 (add m 1))))
+		         (mul (ftake 'mexpt -1 (add m 1)) s))
+              ((and (eq '$inf xxx) (eql m 0))
+			  	;log(z)-sum(bern(k)/(k*z^k),k,1,n)
+			    (setq k 1)
+				(while (< k n)
+					(setq ds (div ($bern k) (mul k (ftake 'mexpt z k))))
+				    (setq s (add s ds)))
+				(sub (ftake '%log z) s))	
 			  (t (subfunmake '$psi (list m) (list z))))))		 
 (setf (gethash '$psi *asymptotic-expansion-hash*) #'psi-asymptotic)
 

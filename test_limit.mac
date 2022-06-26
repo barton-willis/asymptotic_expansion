@@ -1,0 +1,6 @@
+load("asymptotic_expansion.lisp");
+
+test_limit(aaa) := (
+   run_testsuite(display_all=aaa, 
+        tests=[rtest_limit, rtest_limit_extra]),
+   missing());

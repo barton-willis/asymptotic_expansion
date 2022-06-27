@@ -165,3 +165,53 @@ During that period, and with 4 available CPU cores,
      324,234,375 microseconds (324.234370 seconds) were spent in user mode
       14,781,250 microseconds ( 14.781250 seconds) were spent in system mode
  33,241,067,824 bytes of memory allocated.
+
+ --Saturday
+ Error summary:
+Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
+    (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 100)
+7 tests failed out of 12,750 total tests.
+(TESTSUITE)
+took 372,327,000 microseconds (372.327000 seconds) to run.
+       6,023,344 microseconds (  6.023344 seconds, 1.62%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     336,140,625 microseconds (336.140620 seconds) were spent in user mode
+      14,250,000 microseconds ( 14.250000 seconds) were spent in system mode
+ 34,228,191,680 bytes of memory allocated.
+
+ --6/27/2022
+
+ Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
+  C:/Users/Barton/maxima-git/code/share/solve_rec/rtest_simplify_sum.mac problem:
+    (55)
+  C:/Users/Barton/maxima-git/code/share/stringproc/rtest_md5sum.mac problem:
+    (2)
+  C:/Users/Barton/maxima-git/code/share/to_poly_solve/rtest_to_poly_solve.mac problem:
+    (210)
+Tests that were expected to fail but passed:
+  C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
+    (53 100 118 119)
+  C:/Users/Barton/maxima-git/code/share/contrib/diffequations/tests/rtest_sym.mac problems:
+    (12 58)
+  C:/Users/Barton/maxima-git/code/share/vector/rtest_vect.mac problem:
+    (19)
+8 tests failed out of 17,407 total tests.
+(TESTSUITE)
+took 869,379,000 microseconds (869.379000 seconds) to run.
+      14,094,429 microseconds ( 14.094429 seconds, 1.62%) of which was spent in GC.
+During that period, and with 4 available CPU cores,
+     794,281,250 microseconds (794.281250 seconds) were spent in user mode
+      30,781,250 microseconds ( 30.781250 seconds) were spent in system mode
+ 77,366,045,024 bytes of memory allocated.

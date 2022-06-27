@@ -101,7 +101,7 @@
 ;; for the function.
 (defvar *asymptotic-expansion-hash* (make-hash-table :test #'eq :size 16))
 
-;; Maybe not indented to be a user level function?
+;; Maybe not intended to be a user level function?
 (defun $asymptotic_expansion (e x pt n)
 	(asymptotic-expansion e x pt n))
 

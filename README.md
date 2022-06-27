@@ -19,3 +19,10 @@ Here is a sample of limits that fail with standard Maxima, but work with this pa
 (%o6) 2
 ```
 
+And here is a case where standard Maxima gives a limit nounform for the definite integral, but with this package we get an explicit result:
+
+```
+(%i4)	integrate(x^3/(exp(x)-1),x,0,inf);
+(%o4) (-(15*log(-1)^4+30*%pi^2*log(-1)^2+7*%pi^4)/60)-%pi^4/15
+
+```

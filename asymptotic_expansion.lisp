@@ -120,8 +120,8 @@
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with truncated asymptotic (Poincaré) expansions. We walk through
-;; the expression tree and use hashtable look up to find operators with a
-;; specialized function for an asymptotic-expansion. When we find such an
+;; the expression tree and use hashtable to find operators with a
+;; specialized function for an asymptotic expansion. When we find such an
 ;; operator, dispatch the function from the hashtable.
 
 ;; fff is only used to enumerate the used operators--eventually delete this stuff
@@ -132,7 +132,7 @@
 		  ($domain '$complex) ;extra not sure about this
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
-        ;; Unify dispatching a *asymptotic-expansion-hash* function for both 
+        ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
 		;; subscripted and nonsubscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
         (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))

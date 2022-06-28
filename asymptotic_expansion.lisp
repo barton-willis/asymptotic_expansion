@@ -175,7 +175,7 @@
 			(setq *zero-case* (+ 1 *zero-case*))
 			(setq n (+ 1 n))
 			(setq ans (mplus-asymptotic e x pt n)))
-        (if (zerop1 ans) (addn e t) ans))) ;when ans is still zero, sum e and return.
+        ans)) ;not sure what to do when ans is still zero.
 (setf (gethash 'mplus *asymptotic-expansion-hash*) #'mplus-asymptotic)
 
 ;; Return the product of the result of mapping asymptotic-expansion over the terms 
@@ -184,6 +184,10 @@
 	(muln (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
 (setf (gethash 'mtimes *asymptotic-expansion-hash*) #'mtimes-asymptotic)
 
+;; The general simplifier doesn't simplfy, for example,  4^x /(2^(2x)) to 1.
+;; This causes some bugs in evaluating limits. Here we sneak in a radcan on
+;; on (positive integer)^anything. I think this hack(?) eliminates several
+;; testsuite failures.
 (defun mexpt-asymptotic (e x pt n)
 	(let ((a (car e)) (b (cadr e)) (ans))
 		(setq a (asymptotic-expansion a x pt n))

@@ -14,13 +14,13 @@ Here is a sample of limits that fail with standard Maxima, but work with this pa
 
 ```
 (%i3)	limit(gamma(x)/gamma(1/x),x,0,plus);
-(%o3) 0
+(%o3)   0
 
 (%i4)	gruntz(atan2(x^2-2,x^3-2*x),x,sqrt(2),minus);
 (%o4) atan(1/sqrt(2))-%pi
 
 (%i6)	block([domain:'complex],limit((2^(2*x+1)+(2^x*x^100)^(3/2))/(4^x-100*2^x),x,inf));
-(%o6) 2
+(%o6)   2
 ```
 
 And here is a case where standard Maxima gives a limit nounform for the definite integral, but with this package we get an explicit result:

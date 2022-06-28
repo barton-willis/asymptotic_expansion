@@ -129,7 +129,8 @@
 	(let (($gamma_expand nil) ;not sure about these option variables
 	      ($numer nil)
 		  ($float nil)
-		  ($domain '$complex) ;extra not sure about this
+		  ;($domain '$complex) ;extra not sure about this
+		  ;($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
@@ -175,7 +176,7 @@
 			(setq *zero-case* (+ 1 *zero-case*))
 			(setq n (+ 1 n))
 			(setq ans (mplus-asymptotic e x pt n)))
-        ans)) ;not sure what to do when ans is still zero.
+         (if (zerop1 ans) (addn e t) ans))) ;when ans is still zero, sum e and return
 (setf (gethash 'mplus *asymptotic-expansion-hash*) #'mplus-asymptotic)
 
 ;; Return the product of the result of mapping asymptotic-expansion over the terms 
@@ -184,7 +185,7 @@
 	(muln (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
 (setf (gethash 'mtimes *asymptotic-expansion-hash*) #'mtimes-asymptotic)
 
-;; The general simplifier doesn't simplfy, for example,  4^x /(2^(2x)) to 1.
+;; The general simplifier doesn't simplify, for example, 4^x/(2^(2x)) to 1.
 ;; This causes some bugs in evaluating limits. Here we sneak in a radcan on
 ;; on (positive integer)^anything. I think this hack(?) eliminates several
 ;; testsuite failures.
@@ -356,7 +357,7 @@
 
 (setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
-;; Need to include the cases: large a, fixed z; large a, fixed z/a cases. 
+;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i  
 
 (defun gamma-incomplete-asymptotic (e x pt n)
@@ -421,8 +422,6 @@
 		   cc))))
 		(t (ftake '%bessel_k v x)))))   
 (setf (gethash '%bessel_k *asymptotic-expansion-hash*) #'bessel-k-asymptotic)	
-
-
 
 ;; Is this worthwhile? Does it fix any bugs? Does it allow more limits to be
 ;; evaluated?

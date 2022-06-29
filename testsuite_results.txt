@@ -1,57 +1,92 @@
 Redefine factosimp:
 
+Error summary:
 Error(s) found:
+  C:/Users/Barton/maxima-git/code/tests/rtest_zeta.mac problem:
+    (31)
+  C:/Users/Barton/maxima-git/code/tests/rtestint.mac problem:
+    (240)
+  C:/Users/Barton/maxima-git/code/tests/rtest_power.mac problem:
+    (62)
   C:/Users/Barton/maxima-git/code/tests/rtest_limit.mac problems:
     (225 226)
+  C:/Users/Barton/maxima-git/code/tests/rtest_trace.mac problems:
+    (85 86 87 88)
   C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
-    (131 209 216)
+    (131 209)
+  C:/Users/Barton/maxima-git/code/share/solve_rec/rtest_simplify_sum.mac problem:
+    (55)
+  C:/Users/Barton/maxima-git/code/share/stringproc/rtest_md5sum.mac problem:
+    (2)
+  C:/Users/Barton/maxima-git/code/share/to_poly_solve/rtest_to_poly_solve.mac problem:
+    (210)
 Tests that were expected to fail but passed:
   C:/Users/Barton/maxima-git/code/tests/rtest_limit_extra.mac problems:
     (53 81 90 91 100 103)
-5 tests failed out of 457 total tests.
+  C:/Users/Barton/maxima-git/code/share/contrib/diffequations/tests/rtest_sym.mac problems:
+    (12 58)
+  C:/Users/Barton/maxima-git/code/share/vector/rtest_vect.mac problem:
+    (19)
+14 tests failed out of 17,431 total tests.
 (TESTSUITE)
-took 17,080,000 microseconds (17.080000 seconds) to run.
-        247,755 microseconds ( 0.247755 seconds, 1.45%) of which was spent in GC.
+took 757,281,000 microseconds (757.281000 seconds) to run.
+      15,577,707 microseconds ( 15.577707 seconds, 2.06%) of which was spent in GC.
 During that period, and with 4 available CPU cores,
-     16,468,750 microseconds (16.468750 seconds) were spent in user mode
-        218,750 microseconds ( 0.218750 seconds) were spent in system mode
- 2,105,303,008 bytes of memory allocated.
- 
+     704,093,750 microseconds (704.093750 seconds) were spent in user mode
+      26,968,750 microseconds ( 26.968750 seconds) were spent in system mode
+ 76,840,207,792 bytes of memory allocated.
+(%o0)  
+                              done
+(%i1) missing();
 Missing operators:
-tan 108
+sum 171
+tan 607
+expintegral_chi 2
+atan 440
 max 3
-atan 134
-unit_step 7
-conjugate 9
+erfi 2
+unit_step 17
+conjugate 67
 limit 6
-signum 5
+signum 366
 atan2 37
 round 2
-tanh 4
-ceiling 11
-cos 839
+cos 3046
+zeta 5
+%if 6
+fresnel_c 2
+cosh 12
 atanh 12
-cosh 4
+erf_generalized 4
 min 3
-sinh 7
-asin 2
-derivative 9
+expintegral_si 2
+tanh 4
+sinh 13
+asin 32
+ceiling 34
 integrate 4
-floor 37
-sin 1044
-asinh 2
+derivative 9
+acos 16
+floor 135
+expintegral_shi 2
+sin 2878
+asinh 82
+fresnel_s 2
 
 Used operators:
-gamma 22
-log 1103
-^ 8015
-* 5559
+gamma 24
+log 4064
+^ 24009
+* 29258
 psi 5
-li 32
-abs 19
-gamma_incomplete 36
-erfc 3
-+ 3689
-factorial 32
-erf 5
+li 133
+abs 121
+gamma_incomplete 420
+bessel_j 1
+erfc 13
+bessel_k 1
++ 27718
+factorial 34
+erf 82
 expintegral_ei 15
+

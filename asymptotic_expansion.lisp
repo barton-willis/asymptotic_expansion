@@ -46,6 +46,8 @@
   		(setq e (simplify ($minfactorial e))))
   (asymptotic-expansion e var val 1))
 
+;; Define *big* and *tiny* to be "big" and "tiny" numbers, respectively. There
+;; is no particular logic behind the choice *big* = 2^107 and *tiny* = 1/2^107.
 (defvar *big* (expt 2 107))
 (defvar *tiny* (div 1 (expt 2 107)))
 
@@ -364,7 +366,6 @@
 		 (cond ((eq '$inf xxx)
 				  (sub 1 (funcall fn z x pt n)))
 			   (t (ftake '%erf (first z))))))
-
 (setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
@@ -419,8 +420,7 @@
 				(setq b (add (div 1 2) v))
 				(labels ((fn (k a b) ; (1/2-v)_k (1/2+v)_k / ((-2)^k k!)
 				     (div
-		   	 		 	(mul (ftake 'mexpt -1 k)
-						     (ftake '$pochhammer a k) 
+		   	 		 	(mul (ftake '$pochhammer a k) 
 				 			 (ftake '$pochhammer b k))
 						(mul (ftake 'mexpt -2 k) 
 							 (ftake 'mfactorial k)))))	 
@@ -428,7 +428,7 @@
 			(setq cc (add cc (div (fn k a b) (ftake 'mexpt z k))))
 			(incf k))
 		(mul 
-		   (ftake 'mexpt (div '$%pi  (mul 2 z)) (div 1 2)) ;sqrt(pi/(2z))
+		   (ftake 'mexpt (div '$%pi (mul 2 z)) (div 1 2)) ;sqrt(pi/(2z))
 		   (ftake 'mexpt '$%e (mul -1 z) ;exp(-z)
 		   cc))))
 		(t (ftake '%bessel_k v x)))))   

@@ -35,7 +35,7 @@
 ;; What special variables did I miss?
 (declare-top (special var val lhp?))
 
-;; The function factosimp is one the the last simplification-like functions
+;; The function factosimp is one of the last simplification-like functions
 ;; that is called before the main work of limit computation. Here we redefine
 ;; to additionally call asymptotic-expansion.
 (defun factosimp(e)

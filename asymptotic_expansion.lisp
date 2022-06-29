@@ -35,6 +35,17 @@
 ;; What special variables did I miss?
 (declare-top (special var val lhp?))
 
+;; The function factosimp is one the the last simplification-like functions
+;; that is called before the main work of limit computation. Here we redefine
+;; to additionally call asymptotic-expansion.
+(defun factosimp(e)
+  (when (involve e '(%gamma)) 
+  	(setq e ($makefact e)))
+
+  (when (involve e '(mfactorial))
+  		(setq e (simplify ($minfactorial e))))
+  (asymptotic-expansion e var val 1))
+
 (defvar *big* (expt 2 107))
 (defvar *tiny* (div 1 (expt 2 107)))
 
@@ -259,13 +270,12 @@
 				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
-              ((and (integerp xxx) (< xxx 0)) ;pole case
-			     ($ratdisrep ($taylor e x xxx n)))
 			  (t (ftake '%gamma e))))) ;give up			 
 (setf (gethash '%gamma *asymptotic-expansion-hash*) #'gamma-asymptotic)
 
 (defun mfactorial-asymptotic (e x pt n)
-    (gamma-asymptotic (list (add 1 (first e))) x pt n))
+	(let ((fn (gethash '%gamma *asymptotic-expansion-hash*)))
+       (funcall fn (list (add 1 (car e))) x pt n)))
 (setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
 
 ;; For the case of noninteger s, see the comment in specfun.lisp about the 

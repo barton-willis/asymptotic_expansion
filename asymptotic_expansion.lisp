@@ -35,17 +35,6 @@
 ;; What special variables did I miss?
 (declare-top (special var val lhp?))
 
-;; The function factosimp is one of the last simplification-like functions
-;; that is called before the main work of limit computation. Here we redefine
-;; to additionally call asymptotic-expansion.
-(defun factosimp(e)
-  (when (involve e '(%gamma)) 
-  	(setq e ($makefact e)))
-
-  (when (involve e '(mfactorial))
-  		(setq e (simplify ($minfactorial e))))
-  (asymptotic-expansion e var val 1))
-
 ;; Define *big* and *tiny* to be "big" and "tiny" numbers, respectively. There
 ;; is no particular logic behind the choice *big* = 2^107 and *tiny* = 1/2^107.
 (defvar *big* (expt 2 107))
@@ -64,7 +53,7 @@
 	(dir (car rest)))
 	(putprop newvar t 'internal); keep var from appearing in questions to user	
     (cond ((eq val '$inf)
-	   (setq newvar var))
+	   (setq exp (maxima-substitute newvar var exp)))
 	  ((eq val '$minf)
 	   (setq exp (maxima-substitute (m* -1 newvar) var exp)))
 	  ((eq val '$zeroa)
@@ -80,7 +69,6 @@
        (let ((cntx ($supcontext)))
 	   	    (unwind-protect
 		 	  (progn
-			      ;(mtell "before: exp = ~M ~%" exp)
 	    	      (mfuncall '$assume (ftake 'mlessp 0 'lim-epsilon)) ; 0 < lim-epsilon
 	    	      (mfuncall '$assume (ftake 'mlessp 0 'epsilon)) ; 0 < epsilon
 				  (mfuncall '$assume (ftake 'mlessp 'lim-epsilon *tiny*)) ; lim-epsilon < *tiny*
@@ -91,7 +79,7 @@
 				  (mfuncall '$assume (ftake 'mlessp *big* newvar)) ; *big* < newvar
 				  (mfuncall '$activate cntx) ;not sure this is needed			
 				  (let ((val '$inf)) ;not sure about locally setting val?
-				     (setq exp ($expand exp 0 0)) ;simplify in new context
+				     (setq exp (sratsimp exp)) ;simplify in new context
                      (setq exp (asymptotic-expansion exp newvar '$inf 1));pre-condition
 					 (limitinf exp newvar))) ;compute & return limit
             ($killcontext cntx))))) ;forget facts
@@ -373,6 +361,9 @@
 
 (defun gamma-incomplete-asymptotic (e x pt n)
 	(let ((a (first e)) (z (second e)) (s 0) (ds) (k 0) (xxx))
+	    (setq z (maxima-substitute '$zeroa 'epsilon z))
+		(setq z (maxima-substitute '$inf 'prin-inf z))
+		;(setq z ($limit z))
 		(setq xxx ($limit z x pt))
 		;(mtell "a = ~M ~% z = ~M ~% xxx = ~M ~%" a z xxx)
 		;; z--> inf or z --> -inf and a is freeof x

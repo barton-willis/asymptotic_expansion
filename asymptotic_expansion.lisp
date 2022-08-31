@@ -75,7 +75,9 @@
 			      (mfuncall '$assume (ftake 'mlessp 'epsilon *tiny*)) ; epsilon < *tiny*
 				  (mfuncall '$assume (ftake 'mlessp *big* 'prin-inf)) ; *big* < prin-inf
 			      (mfuncall '$assume (ftake 'mlessp 0 '$zeroa)) ; 0 < $zeroa
+				  (mfuncall '$assume (ftake 'mlessp '$zeroa *tiny*)) ; $zeroa < *tiny*
 				  (mfuncall '$assume (ftake 'mlessp '$zerob 0)) ; $zerob < 0
+				  (mfuncall '$assume (ftake 'mlessp (mul -1 *tiny*) '$zerob)) ; -*tiny* < $zerob
 				  (mfuncall '$assume (ftake 'mlessp *big* newvar)) ; *big* < newvar
 				  (mfuncall '$activate cntx) ;not sure this is needed			
 				  (let ((val '$inf)) ;not sure about locally setting val?
@@ -120,7 +122,7 @@
 	(maphash #'(lambda (a b) (mtell "~M ~M ~%" a b)) *used*))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
-;; functions with truncated asymptotic (Poincaré) expansions. We walk through
+;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
 ;; the expression tree and use hashtable to find operators with a
 ;; specialized function for an asymptotic expansion. When we find such an
 ;; operator, dispatch the function from the hashtable.
@@ -156,7 +158,7 @@
 				;; asymptotic-expansion over the arguments. But I'm not
 				;; sure we win by doing so. Plus some of the limit code is
 				;; overly sensitive to syntactic changes to internal expressions--
-				;; so let's not make syntatic changes that don't matter.
+				;; so let's not make syntactic changes that don't matter.
 				(setf (gethash (caar e) *xxx*) (+ 1 (gethash (caar e) *xxx* 0)))
 			    e))))
 			
@@ -208,8 +210,10 @@
 (defun mabs-asymptotic (e x pt n)
    (setq e (car e))
    (let ((xxx ($limit e x pt)))
-      (cond ((eq xxx '$zeroa) 
+      (cond ((eq t (mgrp xxx 0)) ;new!
 	         (asymptotic-expansion e x pt n))
+			((eq t (mgrp 0 xxx)) ;new!
+	         (asymptotic-expansion (mul -1 e) x pt n)) 
 	        (t (ftake 'mabs e)))))
 (setf (gethash 'mabs *asymptotic-expansion-hash*) #'mabs-asymptotic)
 

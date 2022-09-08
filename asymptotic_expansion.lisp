@@ -33,7 +33,8 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special var val lhp?))
+(declare-top (special var val lhp? taylored silent-taylor-flag
+   $taylordepth $taylor_logexpand $maxtaylororder $taylor_simplifer))
 
 ;; Define *big* and *tiny* to be "big" and "tiny" numbers, respectively. There
 ;; is no particular logic behind the choice *big* = 2^107 and *tiny* = 1/2^107.
@@ -79,10 +80,10 @@
 				  (mfuncall '$assume (ftake 'mlessp '$zerob 0)) ; $zerob < 0
 				  (mfuncall '$assume (ftake 'mlessp (mul -1 *tiny*) '$zerob)) ; -*tiny* < $zerob
 				  (mfuncall '$assume (ftake 'mlessp *big* newvar)) ; *big* < newvar
-				  (mfuncall '$activate cntx) ;not sure this is needed			
+				  (mfuncall '$activate cntx) ;not sure this is needed, but OK			
 				  (let ((val '$inf)) ;not sure about locally setting val?
 				     (setq exp (sratsimp exp)) ;simplify in new context
-                     (setq exp (asymptotic-expansion exp newvar '$inf 1));pre-condition
+                     (setq exp (asymptotic-expansion exp newvar '$inf 10));pre-condition
 					 (limitinf exp newvar))) ;compute & return limit
             ($killcontext cntx))))) ;forget facts
 
@@ -133,7 +134,8 @@
 	      ($numer nil)
 		  ($float nil)
 		  ;($domain '$complex) ;extra not sure about this
-		  ;($algebraic t)
+		  ;($m1pbranch t)
+		  ($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
@@ -202,8 +204,13 @@
 
 ;; Could we do better? Maybe  
 ;;   log(x^2+x) -> log(x^2) + 1/x-1/(2*x^2)+1/(3*x^3)
+(defvar *log-arg* nil)
 (defun log-asymptotic (e x pt n)
 	(ftake '%log (asymptotic-expansion (first e) x pt n)))
+;	(setq e (cadr e))
+ ;   (let ((xxx ($limit e x pt)))
+;	   (if (eq xxx '$inf) ($ratdisrep ($taylor (ftake '%log e) x '$inf n))
+;	      (ftake '%log e))))
 (setf (gethash '%log *asymptotic-expansion-hash*) #'log-asymptotic)
 
 ;; There are other cases: xxx is positive, for example.
@@ -442,6 +449,68 @@
 	   		       ($ratdisrep ($taylor (ftake '%atan e) x '$inf n)))
 				(mfuncall '$forget (ftake 'mlessp *big* x))))   
 			 (t (ftake '%atan e)))))
-;;(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
+(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
 
-  
+(defun conjugate-asymptotic (e x pt n)
+	(setq e (car e))
+   	(let ((xxx ($limit e x pt))) ;try $limit, not limit
+		(if (eq xxx '$inf)
+          (ftake '$conjugate (asymptotic-expansion (cadr e) x pt n))
+		  (ftake '$conjugate e))))
+(setf (gethash '$conjugate *asymptotic-expansion-hash*) #'conjugate-asymptotic)
+
+(defun asin-asymptotic (e x pt n)
+  (setq e (car e))
+  (let ((xxx ($limit e x pt))) ;try $limit, not limit
+	(setq e (ftake '%asin e))
+	(if (eq xxx '$inf)
+		($ratdisrep ($taylor e x '$inf n)) e)))
+(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
+
+(defun acos-asymptotic (e x pt n)
+  (setq e (car e))
+  (let ((xxx ($limit e x pt))) ;try $limit, not limit
+	(setq e (ftake '%acos e))
+	(if (eq xxx '$inf)
+		($ratdisrep ($taylor e x '$inf n)) e)))
+(setf (gethash '%acos *asymptotic-expansion-hash*) #'acos-asymptotic)
+
+(defun asinh-asymptotic (e x pt n)
+  (setq e (car e))
+  (let ((xxx ($limit e x pt))) ;try $limit, not limit
+	(setq e (ftake '%asinh e))
+	(if (eq xxx '$inf)
+		($ratdisrep ($taylor e x '$inf n)) e)))
+(setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
+
+
+;; initially, n needs to be one or greater.
+(defun my-taylor (e x pt n)
+	(let ((ee 0) 
+	      (silent-taylor-flag t) 
+	      ($taylordepth 8)
+		  ($taylor_logexpand nil)
+		  ($maxtaylororder t)
+		  ($taylor_simplifer #'sratsimp))
+		 (while (and (eq t (meqp ee 0)) (< n 107))
+			(setq ee (catch 'taylor-catch ($taylor e x pt n)))
+			(setq n (* 2 n)))
+		(if (eq t (meqp ee 0)) nil ee)))
+
+;; Previously when the taylor series failed, there was code for deciding
+;; whether to call limit1 or simplimit. The choice depended partially on
+;; *i*. I think all this logical is unnecessary--we can just call limit1.
+;; That makes *i* unused, but since *i* is special, we can't declare it ignored.
+
+;; There is no particular logic to initially asking for a $lhospitallim order
+;; taylor series, but it's a tradition and in the user documentation.
+(defun taylim (e x pt *i*)
+	(let ((et))
+	  (when (eq pt '$inf) 
+		 (setq e (asymptotic-expansion e x pt $lhospitallim)))
+	  (setq et (my-taylor e x (ridofab pt) 4))
+	  (cond (et 
+	         (let ((taylored t) (limit-using-taylor nil))
+			   (limit ($ratdisrep et) x pt 'think)))
+			(t (limit1 e x pt)))))
+		

@@ -377,8 +377,13 @@
 		;(setq z ($limit z))
 		(setq xxx ($limit z x pt))
 		;(mtell "a = ~M ~% z = ~M ~% xxx = ~M ~%" a z xxx)
-		;; z--> inf or z --> -inf and a is freeof x
-		(cond ((and (or (eq '$inf xxx) (eq '$minf xxx)) (freeof x a))
+		;;  z--> inf or z --> -inf and a is freeof x
+		;; This should be (and (or (eq '$inf xxx) (eq '$minf xxx))
+		;; But doing so exposes a bug in 
+		;;   integrate(x*sin(x)*exp(-x^2),x,minf,inf)
+		;; that is due to a noncontinuous antiderivative that Maxima
+		;; doesn't detect.
+		(cond ((and (or (eq '$inf xxx)) (freeof x a))
 		         (while (< k n)
 				 	(setq ds (div (mul (ftake 'mexpt -1 k) (ftake '$pochhammer (sub 1 a) k))
 								  (ftake 'mexpt z k)))

@@ -6,7 +6,7 @@ The purpose of this code is for computing limits. There are no functions in this
 
 This code hooks into the limit code in two ways:
 
-* It modifies the Common Lisp (CL) function `stirling0.`  This function is called by various functions in the limit code. Possibly the original intent was that `stirling0` would only apply the Stirling approximation for the gamma function, but over the years, it gained other duties. 
+* It modifies the Common Lisp (CL) function `stirling0.` This function is called by various functions in the limit code. Possibly the original intent was that `stirling0` would only apply the Stirling approximation for the gamma function, but over the years, it gained other duties. 
 
 * It modifies the CL function `gruntz1` to call the function `asymptotic-expansion` before entering the main code for computing limits. Additionally it makes some assumptions about the limit variable that may help the gruntz code determine the limit.
 
@@ -29,5 +29,13 @@ And here is a case where standard Maxima gives a limit nounform for the definite
 (%i4)	integrate(x^3/(exp(x)-1),x,0,inf);
 (%o4)   (-(15*log(-1)^4+30*%pi^2*log(-1)^2+7*%pi^4)/60)-%pi^4/15
 ```
+This package exposes the bug
+
+```
+(%i2)	load(asymptotic_expansion)$
+(%i3)	integrate(x*sin(x)*exp(-x^2),x,minf,inf);
+(%o3)	0
+```
+Without using the `asymptotic_expansion` package, Maxima is unable to determine the limits of the antiderivative. And that forces Maxima to try methods other than the fundamental theorem of calculus. With the `asymptotic_expansion` package, Maxima can find the limits of the antiderivative, but Maxima fails to notice that the antiderivative isn't valid on the entire real line. 
 
 I have not yet developed good tests for this code. Until I do, this code isn't ready for serious work.

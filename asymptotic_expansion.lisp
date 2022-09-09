@@ -483,32 +483,42 @@
 		($ratdisrep ($taylor e x '$inf n)) e)))
 (setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
 
+;; Dispatch Taylor, but recurse on the order until either the order 
+;; reaches 107 or the Taylor polynomial is nonzero. When Taylor either
+;; fails to find a nonzero Taylor polynomial, return nil.
 
-;; initially, n needs to be one or greater.
+;; This recursion on the order attempts to handle limits such as 
+;; tlimit(2^n/n^5, n, inf) correctly. Initially, the order n needs to be 
+;; one or greater. 
+
+;; We set up a reasonable environment for calling taylor. Maybe I went overboard.
 (defun my-taylor (e x pt n)
 	(let ((ee 0) 
 	      (silent-taylor-flag t) 
 	      ($taylordepth 8)
 		  ($taylor_logexpand nil)
 		  ($maxtaylororder t)
-		  ($taylor_simplifer #'sratsimp))
+		  ($taylor_truncate_polynomials nil)
+		  ($taylor_simplifier #'sratsimp))
+		 (setq n (max 1 n)) ;make sure n >= 1
 		 (while (and (eq t (meqp ee 0)) (< n 107))
 			(setq ee (catch 'taylor-catch ($taylor e x pt n)))
 			(setq n (* 2 n)))
 		(if (eq t (meqp ee 0)) nil ee)))
 
 ;; Previously when the taylor series failed, there was code for deciding
-;; whether to call limit1 or simplimit. The choice depended partially on
-;; *i*. I think all this logical is unnecessary--we can just call limit1.
-;; That makes *i* unused, but since *i* is special, we can't declare it ignored.
+;; whether to call limit1 or simplimit. The choice depended on *i* and the 
+;; main operator of the expression. I think all this logical is unnecessary.
+;; We can just call limit1. Doing so makes *i* unused, but since *i* is special, 
+;; it cannot be ignored.
 
-;; There is no particular logic to initially asking for a $lhospitallim order
+;; There is no reason for initially asking for a $lhospitallim order
 ;; taylor series, but it's a tradition and in the user documentation.
 (defun taylim (e x pt *i*)
-	(let ((et))
+	(let ((et) ($algebraic t))
 	  (when (eq pt '$inf) 
 		 (setq e (asymptotic-expansion e x pt $lhospitallim)))
-	  (setq et (my-taylor e x (ridofab pt) 4))
+	  (setq et (my-taylor e x (ridofab pt) $lhospitallim))
 	  (cond (et 
 	         (let ((taylored t) (limit-using-taylor nil))
 			   (limit ($ratdisrep et) x pt 'think)))

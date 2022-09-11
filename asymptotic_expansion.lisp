@@ -67,7 +67,7 @@
 	   (setq exp (maxima-substitute (m+ val (m// -1 newvar)) var exp)))
 	  (t (merror (intl:gettext "gruntz: direction must be 'plus' or 'minus'; found: ~M") dir)))
   
-       (let ((cntx ($supcontext)))
+       (let ((cntx ($supcontext)) (val '$inf)) ;not sure about locally setting val?
 	   	    (unwind-protect
 		 	  (progn
 	    	      (mfuncall '$assume (ftake 'mlessp 0 'lim-epsilon)) ; 0 < lim-epsilon
@@ -81,11 +81,10 @@
 				  (mfuncall '$assume (ftake 'mlessp (mul -1 *tiny*) '$zerob)) ; -*tiny* < $zerob
 				  (mfuncall '$assume (ftake 'mlessp *big* newvar)) ; *big* < newvar
 				  (mfuncall '$activate cntx) ;not sure this is needed, but OK			
-				  (let ((val '$inf)) ;not sure about locally setting val?
-				     (setq exp (sratsimp exp)) ;simplify in new context
-                     (setq exp (asymptotic-expansion exp newvar '$inf 10));pre-condition
-					 (limitinf exp newvar))) ;compute & return limit
-            ($killcontext cntx))))) ;forget facts
+				  (setq exp (sratsimp exp)) ;simplify in new context
+                  (setq exp (asymptotic-expansion exp newvar '$inf 1));pre-condition
+				  (limitinf exp newvar)) ;compute & return limit
+		    ($killcontext cntx))))) ;forget facts
 
 ;; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-expansion.
@@ -139,7 +138,7 @@
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
-		;; subscripted and nonsubscripted functions. For a subscripted
+		;; subscripted and non subscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
         (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
 		           (setq fff (subfunname e))
@@ -279,7 +278,7 @@
        (funcall fn (list (add 1 (car e))) x pt n)))
 (setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
 
-;; For the case of noninteger s, see the comment in specfun.lisp about the 
+;; For the case of non integer s, see the comment in specfun.lisp about the 
 ;; truncation value.
 
 ;; For positive integer order, see https://functions.wolfram.com/ZetaFunctionsandPolylogarithms/PolyLog/06/01/03/01/02/0003/
@@ -488,6 +487,16 @@
 		($ratdisrep ($taylor e x '$inf n)) e)))
 (setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
 
+;; The function conditional-radcan dispatches $radcan on every subexpression of 
+;; the form (positive integer)^X. The function extra-mexpt-simp checks if the
+;; input has the form (positive integer)^X and dispatches $radcan when it does.
+(defun extra-mexpt-simp (e)
+	(if (and (mexptp e) (integerp (cadr e)) (> (cadr e) 0)) 
+		($radcan e) e))
+
+(defun conditional-radcan (e)
+	(scanmap1 #'extra-mexpt-simp e))
+
 ;; Dispatch Taylor, but recurse on the order until either the order 
 ;; reaches 107 or the Taylor polynomial is nonzero. When Taylor either
 ;; fails to find a nonzero Taylor polynomial, return nil.
@@ -496,7 +505,8 @@
 ;; tlimit(2^n/n^5, n, inf) correctly. Initially, the order n needs to be 
 ;; one or greater. 
 
-;; We set up a reasonable environment for calling taylor. Maybe I went overboard.
+;; We set up a reasonable environment for calling taylor. Maybe I went
+;; overboard?
 (defun my-taylor (e x pt n)
 	(let ((ee 0) 
 	      (silent-taylor-flag t) 
@@ -504,7 +514,7 @@
 		  ($taylor_logexpand nil)
 		  ($maxtaylororder t)
 		  ($taylor_truncate_polynomials nil)
-		  ($taylor_simplifier #'sratsimp))
+		  ($taylor_simplifier #'conditional-radcan))
 		 (setq n (max 1 n)) ;make sure n >= 1
 		 (while (and (eq t (meqp ee 0)) (< n 107))
 			(setq ee (catch 'taylor-catch ($taylor e x pt n)))
@@ -518,9 +528,10 @@
 ;; it cannot be ignored.
 
 ;; There is no reason for initially asking for a $lhospitallim order
-;; taylor series, but it's a tradition and in the user documentation.
+;; taylor series, but it's a tradition and it's in the user documentation.
 (defun taylim (e x pt *i*)
 	(let ((et) ($algebraic t))
+	  (setq e (conditional-radcan e))
 	  (when (eq pt '$inf) 
 		 (setq e (asymptotic-expansion e x pt $lhospitallim)))
 	  (setq et (my-taylor e x (ridofab pt) $lhospitallim))

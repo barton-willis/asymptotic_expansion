@@ -507,7 +507,7 @@
 
 ;; We set up a reasonable environment for calling taylor. Maybe I went
 ;; overboard?
-(defun my-taylor (e x pt n)
+(defun tlimit-taylor (e x pt n)
 	(let ((ee 0) 
 	      (silent-taylor-flag t) 
 	      ($taylordepth 8)
@@ -530,11 +530,11 @@
 ;; There is no reason for initially asking for a $lhospitallim order
 ;; taylor series, but it's a tradition and it's in the user documentation.
 (defun taylim (e x pt *i*)
-	(let ((et) ($algebraic t))
+	(let ((et))
 	  (setq e (conditional-radcan e))
 	  (when (eq pt '$inf) 
 		 (setq e (asymptotic-expansion e x pt $lhospitallim)))
-	  (setq et (my-taylor e x (ridofab pt) $lhospitallim))
+	  (setq et (tlimit-taylor e x (ridofab pt) $lhospitallim))
 	  (cond (et 
 	         (let ((taylored t) (limit-using-taylor nil))
 			   (limit ($ratdisrep et) x pt 'think)))

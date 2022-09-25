@@ -197,9 +197,10 @@
 	(let ((a (car e)) (b (cadr e)) (ans))
 		(setq a (asymptotic-expansion a x pt n))
 		(setq b (asymptotic-expansion b x pt n))
-		(setq ans (ftake 'mexpt a b))
-		(if (and (integerp a) (> a 0)) ($radcan ans) ans)))
-(setf (gethash 'mexpt *asymptotic-expansion-hash*) #'mexpt-asymptotic)
+		(setq ans (conditional-radcan (ftake 'mexpt a b)))
+		ans))
+		;(or ($ratdisrep (tlimit-taylor ans x pt n)) ans)))
+   	(setf (gethash 'mexpt *asymptotic-expansion-hash*) #'mexpt-asymptotic)
 
 ;; Could we do better? Maybe  
 ;;   log(x^2+x) -> log(x^2) + 1/x-1/(2*x^2)+1/(3*x^3)
@@ -364,7 +365,7 @@
 		 (cond ((eq '$inf xxx)
 				  (sub 1 (funcall fn z x pt n)))
 			   (t (ftake '%erf (first z))))))
-(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
+;(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i  
@@ -502,21 +503,36 @@
 ;; fails to find a nonzero Taylor polynomial, return nil.
 
 ;; This recursion on the order attempts to handle limits such as 
-;; tlimit(2^n/n^5, n, inf) correctly. Initially, the order n needs to be 
-;; one or greater. 
+;; tlimit(2^n/n^5, n, inf) correctly. Initially, the order n needs to 
+;; be one or greater. 
 
 ;; We set up a reasonable environment for calling taylor. Maybe I went
 ;; overboard?
 (defun tlimit-taylor (e x pt n)
 	(let ((ee 0) 
+          ($domain '$complex)  ;I'm not a control freak--setting all these options
+          ($m1pbranch t)       ;helps locate bugs. 
+          ($algebraic t)       
+          ($ratsimpexpons t) ;Setting ratsimpexpons to true causes nasty bugs.
+          ($%emode t)
+          ($%enumer nil)
+          ($numer nil)
+          ($demoivre nil)
+          ($lognegint t)
+          ($logexpand nil)
+          ($logsimp t)
+          ($ratfac nil)
+          ($logarc nil) ;$logarc t causes some problems?
+          ($factor_max_degree_print_warning nil)
+          ($%e_to_numlog t)
 	      (silent-taylor-flag t) 
 	      ($taylordepth 8)
 		  ($taylor_logexpand nil)
 		  ($maxtaylororder t)
 		  ($taylor_truncate_polynomials nil)
-		  ($taylor_simplifier #'conditional-radcan))
-		 (setq n (max 1 n)) ;make sure n >= 1
-		 (while (and (eq t (meqp ee 0)) (< n 107))
+		  ($taylor_simplifier #'(lambda (q) (sratsimp (conditional-radcan q)))))
+	 	  (setq n (max 1 n)) ;make sure n >= 1
+		  (while (and (eq t (meqp ee 0)) (< n 107))
 			(setq ee (catch 'taylor-catch ($taylor e x pt n)))
 			(setq n (* 2 n)))
 		(if (eq t (meqp ee 0)) nil ee)))
@@ -540,3 +556,116 @@
 			   (limit ($ratdisrep et) x pt 'think)))
 			(t (limit1 e x pt)))))
 		
+(setf (get '%jacobi_ns 'recip) '%jacobi_sn)
+(setf (get '%jacobi_ds 'recip) '%jacobi_sd)
+(setf (get '%jacobi_dc 'recip) '%jacobi_cd)
+
+;; Convert
+;;  (a) hyperbolic trig functions that depend on x to exponential form
+;;  (b) %cot, %sec, %csc, %jacobi_ns, %jacobi_ds, and %jacobi_dc to their
+;;       reciprocal form
+;;  (c) X^Y --> exp(Y * log(X)) when both X & Y depend on x
+;;  (d) asec(x) --> acos(1/x) & similarly for acsc, acot,
+;;      asech, acsch, and acoth.
+;;  (e) binomial to gamma form
+;;  (f) Fibonacci to power form
+;;  (g) (positive integer)^X --> conditional-radcan((positive integer)^X
+
+(defun function-transform (e x)
+  (let ((fn) (gn))
+	(cond (($mapatom e) e)
+	      ((mplusp e); when X depends on x,  do cos(X)^2 + sin(X)^2 --> 1
+		    (pythagorean-cos-sin-simp e x))
+		  (t
+		    (setq fn (mop e))
+			(setq gn (if (symbolp fn) (get fn 'recip) nil))
+            ;; Exponentialize all hyperbolic trig functions
+            (cond ((and (member fn (list '%cosh '%sech '%sinh '%csch '%tanh '%coth))
+				        (not (freeof x e)))
+				    ($exponentialize e))
+		   
+		    ;; do X^Y --> exp(Y log(X)) when both X & Y depend on x
+			((and (eq fn 'mexptp) 
+		          (not (freeof x (cadr e)))
+	              (not (freeof x (caddr e))))
+	          (ftake 'mexpt '$%e (mul (caddr e) (ftake '%log (cadr e)))))
+			
+			 ;; conditional radcan
+			((eq fn 'mexpt) (extra-mexpt-simp e))
+			;; Do cot --> 1/tan, sec --> 1/cos, ...
+			((and gn (member fn (list '%cot '%sec '%csc '%jacobi_ns '%jacobi_ds '%jacobi_dc))
+					(not (freeof x e)))
+				   (div 1 (simplifya (cons (list gn) (margs e)) t)))
+            ;; acsc(x) --> asin(1/x)
+            ((and (eq fn '%acsc) (not (freeof x (cadr e))))
+				    (ftake '%asin (div 1 (cadr e))))
+			;; asec(x)--> acos(1/x)
+			((and (eq fn '%asec) (not (freeof x (cadr e))))
+				    (ftake '%acos (div 1 (cadr e))))
+            ;; acot(x) --> atan(1/x)
+			((and (eq fn '%acot) (not (freeof x (cadr e))))
+				    (ftake '%atan (div 1 (cadr e))))
+            ;; acsch(x) --> asinh(1/x)
+			((and (eq fn '%acsch) (not (freeof x (cadr e))))
+				    (ftake '%asinh (div 1 (cadr e))))
+            ;; asech(x) --> acosh(1/x)
+			((and (eq fn '%asech) (not (freeof x (cadr e))))
+				    (ftake '%acosh (div 1 (cadr e))))
+            ;; acoth(x) --> atanh(1/x)
+			((and (eq fn '%acoth) (not (freeof x (cadr e))))
+				    (ftake '%atanh (div 1 (cadr e))))
+			;; factorial to gamma
+			;((and (eq fn 'mfactorial) (not (freeof x (cadr e))))
+			;	($makegamma e))
+
+			;; convert binomial to gamma form
+			((and (eq fn '%binomial) (not (freeof x (cdr e))))
+				($makegamma e))
+
+            ;; convert Fibonacci to power form
+            ((and (eq fn '$fib) (not (freeof x (cadr e))))
+			   ($fibtophi e))
+   
+            ;; give up
+			(t e))))))
+	
+(defun tansc (e &optional (x var))
+  (setq e ($expand e 0 0)) ;simplify in new context
+  (setq e (mfuncall '$scanmap #'(lambda (q) (function-transform q x)) e '$bottomup)))
+
+;; True iff the operator of e is %cos.
+(defun cosine-p (e)
+  (and (consp e) (consp (car e)) (eq '%cos (caar e))))
+
+;; Gather the non-atomic subexpressions of e that satisfy the predicate fn
+(defun my-gather-args (e fn)
+   (cond (($mapatom e) nil)
+		  ((funcall fn e) (cdr e))
+		  (t 
+		    (reduce #'append (mapcar #'(lambda (q) (my-gather-args q fn)) (cdr e))))))
+		
+;; Replace cos(X)^2 + sin(X)^2 by 1 when X depends on x.
+ (defun pythagorean-cos-sin-simp (e x)
+	(let ((ccc nil) (z) (ee))
+	  (cond (($mapatom e) e)
+	        ((mplusp e)
+	            (setq ccc (my-gather-args e 
+				    #'(lambda (q) (and (cosine-p q) (not (freeof x q))))))
+	   	        (dolist (g ccc)
+				    (print g)
+			        (setq z (gensym))
+			        (setq ee (maxima-substitute z (power (ftake '%cos g) 2) e))
+			        (setq ee (maxima-substitute (sub 1 z) (power (ftake '%sin g) 2) ee))
+			        (setq ee (sratsimp ee))
+			        (when (freeof z ee)
+			            (setq e ee)))
+				e)
+			;; maybe this isn't needed, but I think it's not wrong.
+			((eq 'mqapply (caar e))
+			  (subftake (caar (second e))
+			     (mapcar #'(lambda (q) (pythagorean-cos-sin-simp q x)) (subfunsubs e))
+			     (mapcar #'(lambda (q) (pythagorean-cos-sin-simp q x)) (subfunargs e)))) 
+			;; map pythagorean-cos-sin-simp over the args
+			(t 
+			 (simplifya (cons (list (caar e)) 
+			  (mapcar #'(lambda (q) (pythagorean-cos-sin-simp q x)) (cdr e))) t)))))

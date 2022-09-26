@@ -365,7 +365,7 @@
 		 (cond ((eq '$inf xxx)
 				  (sub 1 (funcall fn z x pt n)))
 			   (t (ftake '%erf (first z))))))
-;(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
+(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i  
@@ -628,10 +628,29 @@
    
             ;; give up
 			(t e))))))
-	
-(defun tansc (e &optional (x var))
+
+;; First, dispatch trigreduce. Second convert all trigonometric functions to 
+;; cos, sin, cosh, and sinh functions.
+(defun trig-to-cos-sin (e)
+  (let (($opsubst t))
+    (setq e ($trigreduce e))
+    (setq e ($substitute #'(lambda (q) (div (ftake '%sin q) (ftake '%cos q))) '%tan e))
+    (setq e ($substitute #'(lambda (q) (div (ftake '%cos q) (ftake '%sin q))) '%cot e))
+    (setq e ($substitute #'(lambda (q) (div 1 (ftake '%cos q))) '%sec e))
+    (setq e ($substitute #'(lambda (q) (div 1 (ftake '%sin q))) '%csc e))
+    (setq e ($substitute #'(lambda (q) (div (ftake '%sinh q) (ftake '%cosh q))) '%tanh e))
+    (setq e ($substitute #'(lambda (q) (div (ftake '%cosh q) (ftake '%sinh q))) '%coth e))
+    (setq e ($substitute #'(lambda (q) (div 1 (ftake '%cosh q))) '%sech e))
+    (setq e ($substitute #'(lambda (q) (div 1 (ftake '%sinh q))) '%csch e))
+    (sratsimp e)))
+		
+(defun limit-simplify (e x pt)
   (setq e ($expand e 0 0)) ;simplify in new context
-  (setq e (mfuncall '$scanmap #'(lambda (q) (function-transform q x)) e '$bottomup)))
+  (setq e (mfuncall '$scanmap #'(lambda (q) (function-transform q x)) e '$bottomup))
+  (setq e (factosimp e))
+  (when (or (eq '$minf val) (eq '$inf val))
+	(setq e (asymptotic-expansion e x pt 1)))
+  e)
 
 ;; True iff the operator of e is %cos.
 (defun cosine-p (e)

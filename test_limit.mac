@@ -1,6 +1,16 @@
-load("asymptotic_expansion.lisp");
+
+/* load("asymptotic_expansion.lisp");*/
+load("limit.lisp");
+load("mylimit.lisp");
+/*load("my-infsimp"); */
+/* load(altsimpx); */
+
+/* If there are updates to known failures in testsuite, this will 
+   refresh these lists. */
+load("testsuite.lisp");
+
 
 test_limit(aaa) := (
-   run_testsuite(display_all=aaa, 
-        tests=[rtest_limit, rtest_limit_extra]),
-   missing());
+   run_testsuite(display_all=aaa, display_known_bugs=true,
+       tests=[rtest_limitx]),
+   report());

@@ -46,7 +46,7 @@
 ;; needed. Otherwise, this code is the same as the gruntz1 code in 
 ;; limit.lisp.
 
-(defun gruntz1 (exp var val &rest rest)
+(defun gruntz1-xxxx (exp var val &rest rest)
    (cond ((> (length rest) 1)
 	 (merror (intl:gettext "gruntz: too many arguments; expected just 3 or 4"))))
   (let (($logexpand t) ; gruntz needs $logexpand T
@@ -217,7 +217,9 @@
 (defun mabs-asymptotic (e x pt n)
    (setq e (car e))
    (let ((xxx ($limit e x pt)))
-      (cond ((eq t (mgrp xxx 0)) ;new!
+      (cond ((eq xxx '$ind)
+	         (ftake 'mabs e))	  
+	        ((eq t (mgrp xxx 0)) ;new!
 	         (asymptotic-expansion e x pt n))
 			((eq t (mgrp 0 xxx)) ;new!
 	         (asymptotic-expansion (mul -1 e) x pt n)) 
@@ -353,25 +355,31 @@
 				 (setq s (add s ds))
 				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) zz))
 				 (setq k (+ k 1)))
-			 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
+			  (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
+		    ((eq '$minf xxx)
+			  (while (< k n)
+				 (setq s (add s ds))
+				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) zz))
+				 (setq k (+ k 1)))
+				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
 		  (t (ftake '%erfc z)))))		
-(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
+;(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
 
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-expansion-hash*.
 (defun erf-asymptotic (z x pt n)
 	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*)) (xxx))
 	     (setq xxx ($limit (first z) x pt))
-		 (cond ((eq '$inf xxx)
+		 (cond ((or (eq '$inf xxx) (eq '$minf xxx))
 				  (sub 1 (funcall fn z x pt n)))
 			   (t (ftake '%erf (first z))))))
-(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
+;(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i  
 
 (defun gamma-incomplete-asymptotic (e x pt n)
-	(let ((a (first e)) (z (second e)) (s 0) (ds) (k 0) (xxx))
+	(let ((aaa (first e)) (z (second e)) (s 0) (ds) (k 0) (xxx))
 	    (setq z (maxima-substitute '$zeroa 'epsilon z))
 		(setq z (maxima-substitute '$inf 'prin-inf z))
 		;(setq z ($limit z))
@@ -383,16 +391,16 @@
 		;;   integrate(x*sin(x)*exp(-x^2),x,minf,inf)
 		;; that is due to a noncontinuous antiderivative that Maxima
 		;; doesn't detect.
-		(cond ((and (or (eq '$inf xxx)) (freeof x a))
+		(cond ((and (or (eq '$minf xxx) (eq '$inf xxx)) (freeof x aaa))
 		         (while (< k n)
-				 	(setq ds (div (mul (ftake 'mexpt -1 k) (ftake '$pochhammer (sub 1 a) k))
+				 	(setq ds (div (mul (ftake 'mexpt -1 k) (ftake '$pochhammer (sub 1 aaa) k))
 								  (ftake 'mexpt z k)))
 				    (setq s (add s ds))
 				    (setq k (+ k 1)))
 				 ;; return z^(a-1)*exp(-z)*s
-				 (mul (ftake 'mexpt z (sub a 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
-              (t (ftake '%gamma_incomplete a z)))))
-(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
+				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
+              (t (ftake '%gamma_incomplete aaa z)))))
+;(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (defun bessel-j-asymptotic (e x pt n)
@@ -470,7 +478,7 @@
 	(setq e (ftake '%asin e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
+;(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
 
 (defun acos-asymptotic (e x pt n)
   (setq e (car e))
@@ -488,6 +496,20 @@
 		($ratdisrep ($taylor e x '$inf n)) e)))
 (setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
 
+(defvar *zztop* nil)
+(defun sin-asymptotic (e x pt n)
+	(setq e (car e))
+	(let ((xxx (limit-catch e x pt)))
+	
+	 (mtell "e = ~M ; x = ~M ; pt = ~M ; xxx = ~M ~%" e x pt xxx)
+	(cond ((and nil (eql 0 (ridofab xxx)) (not (eq e 'epsilon)))
+	         (setq xxx ($taylor e x (ridofab pt) n))
+			 (mtell "xxx = ~M ~% " xxx)
+	        ($ratdisrep (ftake '%sin ($taylor e x (ridofab pt) n))))
+         (t
+	        (push (ftake 'mlist e x pt xxx) *zztop*)
+	        (ftake '%sin e)))))
+;(setf (gethash '%sin *asymptotic-expansion-hash*) #'sin-asymptotic)
 ;; The function conditional-radcan dispatches $radcan on every subexpression of 
 ;; the form (positive integer)^X. The function extra-mexpt-simp checks if the
 ;; input has the form (positive integer)^X and dispatches $radcan when it does.
@@ -498,93 +520,25 @@
 (defun conditional-radcan (e)
 	(scanmap1 #'extra-mexpt-simp e))
 
-;; Dispatch Taylor, but recurse on the order until either the order 
-;; reaches 107 or the Taylor polynomial is nonzero. When Taylor either
-;; fails to find a nonzero Taylor polynomial, return nil.
-
-;; This recursion on the order attempts to handle limits such as 
-;; tlimit(2^n/n^5, n, inf) correctly. Initially, the order n needs to 
-;; be one or greater. 
-
-;; We set up a reasonable environment for calling taylor. Maybe I went
-;; overboard?
-(defun tlimit-taylor (e x pt n)
-	(let ((ee 0) 
-          ($domain '$complex)  ;I'm not a control freak--setting all these options
-          ($m1pbranch t)       ;helps locate bugs. 
-          ($algebraic t)       
-          ($ratsimpexpons t) ;Setting ratsimpexpons to true causes nasty bugs.
-          ($%emode t)
-          ($%enumer nil)
-          ($numer nil)
-          ($demoivre nil)
-          ($lognegint t)
-          ($logexpand nil)
-          ($logsimp t)
-          ($ratfac nil)
-          ($logarc nil) ;$logarc t causes some problems?
-          ($factor_max_degree_print_warning nil)
-          ($%e_to_numlog t)
-	      (silent-taylor-flag t) 
-	      ($taylordepth 8)
-		  ($taylor_logexpand nil)
-		  ($maxtaylororder t)
-		  ($taylor_truncate_polynomials nil)
-		  ($taylor_simplifier #'(lambda (q) (sratsimp (conditional-radcan q)))))
-	 	  (setq n (max 1 n)) ;make sure n >= 1
-		  (while (and (eq t (meqp ee 0)) (< n 107))
-			(setq ee (catch 'taylor-catch ($taylor e x pt n)))
-			(setq n (* 2 n)))
-		(if (eq t (meqp ee 0)) nil ee)))
-
-;; Previously when the taylor series failed, there was code for deciding
-;; whether to call limit1 or simplimit. The choice depended on *i* and the 
-;; main operator of the expression. I think all this logical is unnecessary.
-;; We can just call limit1. Doing so makes *i* unused, but since *i* is special, 
-;; it cannot be ignored.
-
-;; There is no reason for initially asking for a $lhospitallim order
-;; taylor series, but it's a tradition and it's in the user documentation.
-(defun taylim (e x pt *i*)
-	(let ((et))
-	  (setq e (conditional-radcan e))
-	  (when (eq pt '$inf) 
-		 (setq e (asymptotic-expansion e x pt $lhospitallim)))
-	  (setq et (tlimit-taylor e x (ridofab pt) $lhospitallim))
-	  (cond (et 
-	         (let ((taylored t) (limit-using-taylor nil))
-			   (limit ($ratdisrep et) x pt 'think)))
-			(t (limit1 e x pt)))))
-		
-(setf (get '%jacobi_ns 'recip) '%jacobi_sn)
-(setf (get '%jacobi_ds 'recip) '%jacobi_sd)
-(setf (get '%jacobi_dc 'recip) '%jacobi_cd)
-
-;; Convert
-;;  (a) hyperbolic trig functions that depend on x to exponential form
-;;  (b) %cot, %sec, %csc, %jacobi_ns, %jacobi_ds, and %jacobi_dc to their
-;;       reciprocal form
-;;  (c) X^Y --> exp(Y * log(X)) when both X & Y depend on x
-;;  (d) asec(x) --> acos(1/x) & similarly for acsc, acot,
-;;      asech, acsch, and acoth.
-;;  (e) binomial to gamma form
-;;  (f) Fibonacci to power form
-;;  (g) (positive integer)^X --> conditional-radcan((positive integer)^X
-
 (defun function-transform (e x)
   (let ((fn) (gn))
-	(cond (($mapatom e) e)
+	(cond (($subvarp e) e) ;return e
+	      ((extended-real-p e) e) ;we don't want to call sign on ind, so catch this
+		  (($mapatom e) ;if e declared zero, return 0; otherwise e
+		    (if (eq '$zero ($csign e)) 0 e))
 	      ((mplusp e); when X depends on x,  do cos(X)^2 + sin(X)^2 --> 1
 		    (pythagorean-cos-sin-simp e x))
 		  (t
 		    (setq fn (mop e))
 			(setq gn (if (symbolp fn) (get fn 'recip) nil))
-            ;; Exponentialize all hyperbolic trig functions
-            (cond ((and (member fn (list '%cosh '%sech '%sinh '%csch '%tanh '%coth))
-				        (not (freeof x e)))
-				    ($exponentialize e))
+           
+            (cond 
+			 ;; exponentialize hyperbolic trig functions when they depend on x
+			((and (member fn (list '%cosh '%sech '%sinh '%csch '%tanh '%coth))
+				  (not (freeof x e)))
+				($exponentialize e))
 		   
-		    ;; do X^Y --> exp(Y log(X)) when both X & Y depend on x
+		   	 ;; do X^Y --> exp(Y log(X)) when both X & Y depend on x
 			((and (eq fn 'mexptp) 
 		          (not (freeof x (cadr e)))
 	              (not (freeof x (caddr e))))
@@ -614,26 +568,23 @@
             ;; acoth(x) --> atanh(1/x)
 			((and (eq fn '%acoth) (not (freeof x (cadr e))))
 				    (ftake '%atanh (div 1 (cadr e))))
-			;; factorial to gamma
-			;((and (eq fn 'mfactorial) (not (freeof x (cadr e))))
-			;	($makegamma e))
-
-			;; convert binomial to gamma form
+            ;; gamma to factorial
+			((and (eq fn '%gamma) (not (freeof x (cadr e))))
+				($makefact e))
+			;; convert binomial coefficient to gamma form
 			((and (eq fn '%binomial) (not (freeof x (cdr e))))
 				($makegamma e))
-
             ;; convert Fibonacci to power form
             ((and (eq fn '$fib) (not (freeof x (cadr e))))
 			   ($fibtophi e))
-   
-            ;; give up
+            ;; No more simplifications--give up
 			(t e))))))
 
 ;; First, dispatch trigreduce. Second convert all trigonometric functions to 
 ;; cos, sin, cosh, and sinh functions.
 (defun trig-to-cos-sin (e)
   (let (($opsubst t))
-    (setq e ($trigreduce e))
+    ;(setq e ($trigreduce e))
     (setq e ($substitute #'(lambda (q) (div (ftake '%sin q) (ftake '%cos q))) '%tan e))
     (setq e ($substitute #'(lambda (q) (div (ftake '%cos q) (ftake '%sin q))) '%cot e))
     (setq e ($substitute #'(lambda (q) (div 1 (ftake '%cos q))) '%sec e))
@@ -644,14 +595,13 @@
     (setq e ($substitute #'(lambda (q) (div 1 (ftake '%sinh q))) '%csch e))
     (sratsimp e)))
 		
-(defun limit-simplify (e x pt)
-  (setq e ($expand e 0 0)) ;simplify in new context
-  (setq e (mfuncall '$scanmap #'(lambda (q) (function-transform q x)) e '$bottomup))
-  (setq e (factosimp e))
-  (when (or (eq '$minf val) (eq '$inf val))
-	(setq e (asymptotic-expansion e x pt 1)))
-  e)
-
+(defun limit-simplify(e x pt)
+	;(let (($algebraic t))
+	  ;; causes trouble (setq e (trig-to-cos-sin e))
+  	  (setq e ($expand e 0 0)) ;simplify in new context
+	  (setq e ($minfactorial e))
+	  (mfuncall '$scanmap #'(lambda (q) (function-transform q x)) e '$bottomup));)
+   
 ;; True iff the operator of e is %cos.
 (defun cosine-p (e)
   (and (consp e) (consp (car e)) (eq '%cos (caar e))))
@@ -671,7 +621,6 @@
 	            (setq ccc (my-gather-args e 
 				    #'(lambda (q) (and (cosine-p q) (not (freeof x q))))))
 	   	        (dolist (g ccc)
-				    (print g)
 			        (setq z (gensym))
 			        (setq ee (maxima-substitute z (power (ftake '%cos g) 2) e))
 			        (setq ee (maxima-substitute (sub 1 z) (power (ftake '%sin g) 2) ee))
@@ -688,3 +637,302 @@
 			(t 
 			 (simplifya (cons (list (caar e)) 
 			  (mapcar #'(lambda (q) (pythagorean-cos-sin-simp q x)) (cdr e))) t)))))
+;;;;
+
+;; Return true iff e is an symbol & and extended real. The seven extended reals 
+;; are minf, zerob, zeroa, ind, inf, infinity, and und. Maybe this could be extended 
+;; to include epsilon and prin-inf.
+(defun extended-real-p (e)
+  (member e (list '$minf '$zerob '$zeroa '$ind '$inf '$infinity '$und)))
+
+;; We use a hashtable to represent the addition table of the extended real numbers.
+;; Arguably the hashtable isn't the most compact way to to this, but this scheme 
+;; makes it easy to extend and modify. 
+
+;; Since limit ((x,y)-> (0+, 0-) (x+y) = 0, we use 0+ + 0- = 0.
+;; Similarly for all other cases involving the limit points 
+;; zerob & zeroa, we conclude that for addition zeroa and zerob
+;; should be treated the same as zero. Thus this addition table
+;; doesn't include zeroa and zerob.
+(defvar *extended-real-add-table* (make-hash-table :test #'equal))
+
+(mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
+   (list (list '$minf '$minf '$minf)
+         (list '$minf '$inf '$und)
+         (list '$minf '$infinity '$und)
+         (list '$minf '$und '$und)
+         (list '$minf '$ind '$minf)
+         
+         (list '$inf '$inf '$inf)
+         (list '$inf '$infinity '$und)
+         (list '$inf '$und '$und)
+         (list '$inf '$ind '$inf)
+
+         (list '$infinity '$infinity '$und)
+         (list '$infinity '$zerob '$infinity)
+         (list '$infinity '$zeroa '$infinity)
+         (list '$infinity '$und '$und)
+         (list '$infinity '$ind '$infinity)
+
+         (list '$ind '$ind '$ind)
+         (list '$ind '$und '$und)
+
+         (list '$und '$und '$und)))
+
+;; Add extended reals a & b. When (a,b) isn't a key in the hashtable, return
+;; $und. The table is symmetric, so we look for both (a,b) and if that fails,
+;; we look for (b,a).
+(defun add-extended-real(a b)
+  (gethash (list a b) *extended-real-add-table* 
+    (gethash (list b a) *extended-real-add-table* '$und)))
+
+;; Add an expression x to a list of infinities l. This code effectively 
+;; converts zeroa & zerob to 0. Maybe that should be revisited. Arguably
+;; x + minf --> minf is wrong because if x = inf it's wrong. Again, that
+;; could be revisited.
+(defun add-expr-infinities (x l) 
+  ;; Add the members of this list of extended reals l.
+  (setq l (cond ((null l) 0)
+                ((null (cdr l)) (car l))
+                (t (reduce #'add-extended-real l))))
+
+  (cond ((eql l 0) x)          ;x + 0 = x
+        ((eq l '$inf) '$inf)   ;x + inf = inf
+        ((eq l '$minf) '$minf) ;x + minf = minf
+        ((eq l '$infinity) '$infinity) ;x + infinity = infinity
+        ((eq l '$ind) '$ind) ; x + ind = ind
+        ((eq l '$und) '$und) ;x + und = und
+        ;; Give up and return a nounform. But this shouldn't happen!
+        (t (list (get 'mplus 'msimpind) (sort (list x l) '$orderlessp)))))
+
+;; Add a list of expressions, including extended reals. When the optional
+;; argument flag is true, dispatch infsimp on each list member before adding.
+(defun addn-extended (l &optional (flag t))
+  (setq l (mapcar #'ridofab l)) ;convert zerob/a to zero.
+
+  (when flag
+    (setq l (mapcar #'my-infsimp l)))
+
+  (let ((xterms nil) (rterms 0))
+    (dolist (lk l)
+      (if (extended-real-p lk) (push lk xterms) (setq rterms (add lk rterms))))
+    (add-expr-infinities rterms xterms)))      
+
+;;We use a hashtable to represent the multiplication table for extended 
+;; real numbers. The table is symmetric, so we only list its "upper" half.
+(defvar *extended-real-mult-table* (make-hash-table :test #'equal))
+(mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
+   (list (list '$minf '$minf '$inf)
+         (list '$minf '$inf '$minf)
+         (list '$minf '$infinity '$infinity)
+         (list '$minf '$und '$und)
+         (list '$minf '$ind '$und)
+         
+         (list '$inf '$inf '$inf)
+         (list '$inf '$infinity '$infinity)
+         (list '$inf '$und '$und)
+         (list '$inf '$ind '$und)
+
+         (list '$infinity '$infinity '$infinity)
+         (list '$infinity '$und '$und)
+         (list '$infinity '$ind '$und)
+
+         (list '$ind '$ind '$ind)
+         (list '$ind '$und '$und)
+
+         (list '$und '$und '$und)))
+
+;; Multiply extended reals a & b. When (a,b) isn't a key in the hashtable, return
+;; $und. The table is symmetric, so we look for both (a,b) and if that fails,
+;; we look for (b,a). Maybe zeroa/b*ind could be 0? This code misses this case
+(defun mult-extended-real (a b)
+  (gethash (list a b) *extended-real-mult-table* 
+	    (gethash (list b a) *extended-real-mult-table* '$und)))
+
+(defun muln-extended (l &optional (flag t))
+  (when flag
+    (setq l (mapcar #'my-infsimp l)))
+
+  (let ((xterms nil) (rterms 1))
+    (dolist (lk l)
+      (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
+    (mult-expr-infinities rterms xterms)))      
+
+(defmfun $askcsign (e)
+  (let ((ans (errcatch ($csign e))))
+    (if ans (car ans) '$complex)))
+    
+;; Return a*b without dispatching the simplifier on the product. But we do
+;; properly sort the argument list. Ahh should the sort predicate be great
+;; or '$orderlessp?
+(defun nounform-mult (a b)
+  (list (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
+
+(defun mult-expr-infinities (x l) 
+  (let ((sgn))
+    (setq sgn ($askcsign x))  ;set ans to the complex sign of x
+
+    (setq l (cond ((null l) 1)
+                  ((null (cdr l)) (car l))
+                  (t (reduce #'mult-extended-real l))))
+    (setq l (ridofab l)); not sure   
+    (cond ((eq l '$minf)
+             (cond ((eq sgn '$neg) '$inf)
+                   ((eq sgn '$pos) '$minf)
+                   ((eq sgn '$zero) '$und)
+                   ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
+                   (t (nounform-mult x l))))
+
+          ((eql l 1) x) ;X*1 = X
+          ((eql l 0) 0) ;X*0 = 0
+
+          ((eq l '$inf)
+             (cond ((eq sgn '$neg) '$minf)
+                   ((eq sgn '$zero) '$und)
+                   ((eq sgn '$pos) '$inf)
+                   ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
+                   (t (nounform-mult x l))))
+          ((eq l '$ind) 
+            (if (eq sgn '$zero) 0 '$ind))
+          ((eq l '$infinity) ;0*infinity = und & X*infinity = infinity.
+            (if (eq sgn '$zero) '$und '$infinity))
+          ((eq l '$und) '$und)
+          (t (nounform-mult x l)))))
+
+(defun muln-extended (l &optional (flag t))
+    (when flag
+      (setq l (mapcar #'my-infsimp l)))
+    (let ((xterms nil) (rterms 1))
+    (dolist (lk l)
+      (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
+    (mult-expr-infinities rterms xterms)))        
+
+(defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
+
+(mapcar #'(lambda (a) 
+  (setf (gethash (list (first a) (second a)) *extended-real-mexpt-table*) (third a)))
+   (list 
+   (list '$minf '$minf 0) 
+   (list '$minf '$zerob '$und) 
+   (list '$minf '$zeroa '$und) 
+   (list '$minf '$ind '$und) 
+   (list '$minf '$inf '$infinity) 
+   (list '$minf '$infinity '$infinity)
+   (list '$minf '$und '$und)
+
+   (list '$zerob '$minf '$und) 
+   (list '$zerob '$zerob '$und) 
+   (list '$zerob '$zeroa '$und) 
+   (list '$zerob '$ind '$ind) 
+   (list '$zerob '$inf 0) 
+   (list '$zerob '$infinity 0) 
+   (list '$zerob '$und '$und) 
+   
+   (list '$zeroa '$minf '$und) 
+   (list '$zeroa '$zerob '$und) 
+   (list '$zeroa '$zeroa '$und) 
+   (list '$zeroa '$ind '$ind) 
+   (list '$zeroa '$inf 0) 
+   (list '$zeroa '$infinity 0)
+   (list '$zeroa '$und '$und) 
+   
+   (list '$ind '$minf '$und) 
+   (list '$ind '$zerob '$und) 
+   (list '$ind '$zeroa '$und) 
+   (list '$ind '$ind '$und) 
+   (list '$ind '$inf '$und) 
+   (list '$ind '$infinity '$und) 
+   (list '$ind '$und '$und) 
+
+   (list '$inf '$minf 0) 
+   (list '$inf '$zerob '$und) 
+   (list '$inf '$zeroa '$und) 
+   (list '$inf '$ind '$und) 
+   (list '$inf '$inf '$inf) 
+   (list '$inf '$infinity '$infinity)
+   (list '$inf '$und '$und)
+
+   (list '$infinity '$minf '$infinity)
+   (list '$infinity '$zerob 1) 
+   (list '$infinity '$zeroa 1) 
+   (list '$infinity '$ind '$und) 
+   (list '$infinity '$inf '$infinity) 
+   (list '$infinity '$infinity '$infinity)
+   (list '$infinity '$und '$und) 
+
+   (list '$und '$minf '$und) 
+   (list '$und '$zerob '$und) 
+   (list '$und '$zeroa '$und) 
+   (list '$und '$ind '$und) 
+   (list '$und '$inf '$und) 
+   (list '$und '$infinity '$und) 
+   (list '$und '$und '$und)))
+
+(defun mexpt-extended (a b)
+  (setq a (my-infsimp a))
+  (setq b (my-infsimp b))
+  (let ((amag ($cabs a)))
+
+  (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
+
+        ((eq b '$inf)
+          (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
+                ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
+                ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = inf
+                (t (ftake 'mexpt a b))))
+
+        ;; inf^pos = inf.
+        ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf)
+        ;; inf^neg = 0. 
+        ((and (eq a '$inf) (eq t (mgrp 0 b)))  0)
+        ;; minf^integer
+        ((and (eq a '$minf) (integerp b) (> b 0))
+          (if ($evenp b) '$inf '$minf))
+        ((and (eq a '$minf) (integerp b) (< b 0)) 0)  
+        ;;(x>1)^minf = 0
+        ((and (eq b '$minf) (eq t (mgrp a 1))) 0)
+        ;; (0 < x < 1)^minf = inf
+        ((and (eq b '$minf) (eq t (mgrp 0 a)) (eq t (mgrp a 1))) '$inf)
+        (t (ftake 'mexpt a b)))))
+
+;; functions only intended for testing
+(defun $infsimp (e)
+  (my-infsimp e))
+
+(defun $mul (&rest a)
+   (muln-extended a t))
+
+(defun $add (&rest a)
+   (addn-extended a t))
+
+(defvar *extended-real-eval* (make-hash-table :test #'equal))
+
+(defun log-of-extended-real (e)
+  (setq e (my-infsimp (car e)))
+  (mtell "e = ~M ~%" e)
+  (cond ((eq e '$minf) '$infinity)
+        ((eq e '$zerob) '$infinity)
+        ((eq e '$zeroa) '$minf)
+        ((eq e '$ind) '$und)
+        ((eq e '$und) '$und)
+        ((eq e '$inf) '$inf)
+        ((eq e '$infinity) '$infinity)
+        (t (ftake '%log e))))
+(setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
+
+(defun my-infsimp (e)
+  (let ((fn (if (and (consp e) (consp (car e))) (gethash (caar e) *extended-real-eval*) nil)))
+  (cond (($mapatom e) e)
+        ((mbagp e) ;map my-infsimp over lists & such
+          (simplifya (cons (list (caar e)) (mapcar #'my-infsimp (cdr e))) t))
+        ((mplusp e)
+          (addn-extended (cdr e) t))
+        ((mtimesp e)
+          (muln-extended (cdr e) t))
+        ((mexptp e)
+          (mexpt-extended (my-infsimp (second e)) (my-infsimp (third e))))
+        (fn (funcall fn (cdr e)))
+        ;; not sure about this--subscripted functions?
+      (t (simplifya (cons (list (caar e)) (mapcar #'infsimp (cdr e))) t)))))
+
+	

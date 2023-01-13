@@ -39,3 +39,5 @@ This package exposes the bug
 Without using the `asymptotic_expansion` package, Maxima is unable to determine the limits of the antiderivative. And that forces Maxima to try methods other than the fundamental theorem of calculus. With the `asymptotic_expansion` package, Maxima can find the limits of the antiderivative, but Maxima fails to notice that the antiderivative isn't valid on the entire real line. 
 
 I have not yet developed good tests for this code. Until I do, this code isn't ready for serious work.
+
+Additionally, the file `simplimexpt` is a new implementation of the function that computes the limit of an exponential function.

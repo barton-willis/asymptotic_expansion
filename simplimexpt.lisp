@@ -199,7 +199,6 @@
 
 (defvar *d* nil)
 (defvar *new* 0)
-(defvar *yikes* nil)
 
 (defun simplimexpt (a b al bl)
 	(simplim%mexpt (list '(mexpt) a b) var val al bl))
@@ -208,7 +207,7 @@
     (incf *x* 1)
 	(let* ((a (cadr e))
 		   (b (caddr e)) ;e = a^b
-		   (bb nil) (bre nil) (bim nil) (preserve-direction t))
+		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (preserve-direction t))
 
 		;; When both a & b depend on x, use a^b = exp(b log(a)).
 		;; We also re-do the limits of a & b.
@@ -236,43 +235,18 @@
 		  (setq bim (limit (cdr bb) x pt 'think))) ;imaginary part of limit of b
 
 		;; When al=0 dispatch zero-fixup. This is an effort to decide if
-		;; the limit is could be either zerob, or zeroa instead of 0. 
+		;; the limit could be either zerob, or zeroa instead of 0. 
 		;; This conversion causes a number of semantic testsuite failures.
 		;; If the check is only done when bl < 0, these failures don't happen.
 		(when (eql al 0) ;(eq t (mgrp 0 bl)))
 			(setq al (zero-fixup a x pt)))
-	
-		;; Unfortunate fixups--infsimp converts zeroa & zerob to zero, but I
-		;; want to preserve directions.	Really this should be wrapped into a 
-		;; function. Better limit should be fixed to not return things such
-		;; as -1*inf.
-		(let ((bls bl) (als al))
-        (setq bl ($substitute '$minf (mul -1 '$inf) bl))
-		(setq al ($substitute '$minf (mul -1 '$inf) al))
-		(setq bl ($substitute '$zerob (mul -1 '$zeroa) bl))
-		(setq al ($substitute '$zerob (mul -1 '$zeroa) al))
-		(setq bl ($substitute '$zeroa (mul -1 '$zerob) bl))
-		(setq al ($substitute '$zeroa (mul -1 '$zerob) al))
-		(setq bl ($substitute '$zeroa (mul 2 '$zeroa) bl))
-		(setq al ($substitute '$zeroa (mul 2 '$zeroa) al))
-		(when (not (alike1 bl bls))
-		   (push (ftake 'mlist b bl bls x pt) *yikes*))
-		(when (not (alike1 al als))
-		   (push (ftake 'mlist a al als x pt) *yikes*)))  
-
+	    
 		(cond 
 		    ;; Hashtable look up for the limit. This handles the determinate 
 			;; cases for extended^extended. Currently, the testsuite only
 			;; tests the cases ($zeroa $inf), ($infinity $inf), and
 			;; ($infinity $inf)) 			
 			((gethash (list al bl) *extended-real-mexpt-table-xxx* nil))
-
-			;; grumble-grumble: these limits should be fixed elsewhere:
-			((and (eq al '$minf) (eql bl -1)) '$zerob)
-			((and (eq al '$minf) ($featurep bl '$odd) (eq t (mgrp 0 bl))) '$zerob)
-			((and (eq al '$minf) ($featurep bl '$even) (eq t (mgrp 0 bl))) '$zeroa)
-            ((and (eq al '$%e) (or (eq bl (mul -1 '$inf)) (eq bl '$minf))) '$zeroa)
-            ((and (alike1 al (sub '$zeroa -1)) (eql bl 2)) (sub 1 '$zeroa))
 
 	        ;; Special case 0^(negative real). Previously, we made sure that 
 			;; Maxima is unable to determine that al could be either zerob or 
@@ -285,10 +259,44 @@
 				(let ((var x) (val pt) (lhcount 0) (ans))
 				  (setq ans (catch 'lhospital (bylog b a)))
 				  (or ans (throw 'limit nil))))
+			
+			;; Special case: al in (-infty,0).
+			((and (not (extended-real-p bl)) 
+			      (not (extended-real-p al)) 
+			      (eq t (mgrp 0 al)))
+			  ;(mtell "Top: a = ~M ~%" a)
+			  ;; Toward the limit point, we need to know the sign of the 
+			  ;; imaginary part of a. 
+			  (setq a (risplit a))
+			  (setq re (car a))
+			  (setq im (cdr a))
+			  (setq im (zero-fixup im x pt))
+			  ;(mtell "im = ~M ; re = ~M ; bl = ~M  ~%" im re bl)
+			  (cond ((eq im '$zerob)
+			         ;; (x - %i 0^(+))^bl  --> |x|^bl exp(-%i %pi bl)
+			         (mul (ftake 'mexpt (ftake 'mabs re) bl)
+					      (let (($demoivre t)) 
+						         (ftake 'mexpt '$%e (mul -1 '$%i '$%pi bl)))))
+					;; (x + %i 0^(+))^integer  --> (x)^integer
+					((and (eql im 0) (or t (eq '$yes (ask-integer bl '$integer))))
+					  (ftake 'mexpt al bl))
+                    ;; (x + %i 0^(+))^bl  --> |x|^bl exp(%i %pi bl)
+					((or (eq im '$zeroa) (eql im 0))
+			         (mul (ftake 'mexpt (ftake 'mabs re) bl)
+					      (let (($demoivre t)) 
+					         (ftake 'mexpt '$%e (mul '$%i '$%pi bl)))))
+					;; give up
+					(t 
+					  (mtell "giving up ~%")
+					(throw 'limit nil))))	  
+
 
    			;; OK to use limit(a^b,x,pt) = limit(a,x,pt)^limit(b,x,pt).
+
 			;; For limits such as limit(x^x,x,3/4), it would be nicer
 			;; to get (3/4)^(3/4) instead of %e^((3*log(3/4))/4).
+
+			;; This is wrong when al in (-minf,0) and bl isn't an integer
 			((and al bl (not (extended-real-p al)) (not (extended-real-p bl)))
 			    (ftake 'mexpt (ridofab al) (ridofab bl)))
 

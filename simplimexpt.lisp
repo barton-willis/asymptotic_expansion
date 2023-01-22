@@ -209,6 +209,8 @@
 		;; If the check is only done when bl < 0, these failures don't happen.
 		(when (eql al 0) ;(eq t (mgrp 0 bl)))
 			(setq al (zero-fixup a x pt)))
+		(when (eql bl 0)
+			(setq bl (zero-fixup b x pt)))
 	    
 		(cond 
 		    ;; Hashtable look up for the limit. This handles the determinate 
@@ -235,14 +237,12 @@
 			((and (not (extended-real-p bl)) 
 			      (not (extended-real-p al)) 
 			      (eq t (mgrp 0 al)))
-			  (mtell "Top: a = ~M ~%" a)
 			  ;; Toward the limit point, we need to know the sign of the 
 			  ;; imaginary part of a. 
 			  (setq a (risplit a))
 			  (setq re (car a))
 			  (setq im (cdr a))
 			  (setq im (zero-fixup im x pt))
-			  (mtell "im = ~M ; re = ~M ; bl = ~M  ~%" im re bl)
 			  (cond ((eq im '$zerob)
 			         ;; (x - %i 0^(+))^bl  --> |x|^bl exp(-%i %pi bl)
 			         (mul (ftake 'mexpt (ftake 'mabs re) bl)
@@ -258,8 +258,7 @@
 					         (ftake 'mexpt '$%e (mul '$%i '$%pi bl)))))
 					;; give up
 					(t 
-					  (mtell "giving up ~%")
-					(throw 'limit nil))))	  
+					 (throw 'limit nil))))	  
    			;; OK to use limit(a^b,x,pt) = limit(a,x,pt)^limit(b,x,pt).
 
 			;; For limits such as limit(x^x,x,3/4), it would be nicer
@@ -279,7 +278,7 @@
 			      (not (extended-real-p a))
 			      (eq t (mnqp a 0)) 
 				  (not (extended-real-p bl)))			  
-				(incf *new* 1)
+				;(incf *new* 1)
 			  '$ind)
 
             ;; When bl is an extended real, dispatch mexpt-a^extended

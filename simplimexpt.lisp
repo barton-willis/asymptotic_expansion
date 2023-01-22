@@ -1,6 +1,6 @@
-;; Re-implementation of the function simplimexpt. The intent is for this 
-;; code to be more easily fixed or extended, possibly more efficient, 
-;; and more comphrensive than the standard function.
+;; This is a re-implementation of the function simplimexpt. The intent is for this 
+;; code to be more easily fixed or extended, possibly more efficient, and more 
+;; comphrensive than the standard function.
 
 ;; Differences: The standard simplimexpt has a reference to the special variable 
 ;; loginprod?, but; this code doesn't. Also, the standard simplimexpt has several 
@@ -9,51 +9,20 @@
 
 ;; Standard simplimexpt is about 110 lines of code, but this is about three times 
 ;; longer. Maybe I didn't leverage some other code that would make my code shorter.
-;; The hashtable consumes lots of lines of code, but it's conceptionally simple and
-;; easy to modify.
 
 (in-package :maxima)
 	
 (declare-top (special var val lhcount lhp? *behavior-count-now*))
 
-;; Dispatch Taylor, but recurse on the order until either the order 
-;; reaches 128 or the Taylor polynomial is nonzero. When 
-;; Taylor either fails to find a nonzero Taylor polynomial, return nil.
-
-;; We set up a reasonable environment for calling taylor. 
-
-(defun tlimit-taylor (e x pt n)
-	(let ((ee 0) 
-	      (silent-taylor-flag t) 
-	      ($taylordepth 8)
-		  ($taylor_logexpand nil)
-		  ($maxtayorder t)
-		  ($taylor_truncate_polynomials nil)
-		  ($taylor_simplifier #'sratsimp))
-
-        (setq ee ($ratdisrep (catch 'taylor-catch ($taylor e x pt n))))
-		(cond ((and ee (not (alike1 ee 0))) 
-		        ee)
-              ((and ee (< n 128))
-			    (tlimit-taylor e x pt (* 2 (max 1 n))))
-			  (t nil))))
-
 ;; When limit(e,x,pt) = 0, we dispatch behavior to attempt to decide
-;; if the limit is zerob, zeroa, or 0. 
-
-;; If the call to taylor is needed, surely that functionality should be
-;; wrapped into behavior.
+;; if the limit is zerob, zeroa, or 0. The function behavior misses 
+;; some cases that it might. At one time this code caught a few more
+;; cases by dispatching taylor. But let's not do that
 (defun zero-fixup (e x pt)
-   (let ((ee) (*behavior-count-now* 0))
-     (when (eq pt '$inf)
-  	    (setq ee (resimplify ($ratdisrep (tlimit-taylor e x pt 1))))
-	    (when ee
-	      (setq e ee)))
-
-   (let ((dir (behavior e x pt)))
+   (let ((*behavior-count-now* 0) (dir (behavior e x pt)))
 	(cond ((eql dir -1) '$zerob)
 		  ((eql dir 1) '$zeroa)
-		  (t 0)))))
+		  (t 0))))
 
 ;; Return true iff a^b is 0^0, inf^0, or 1^inf, where by zero
 ;; we mean either zerob, 0, or zeroa; and by inf, we mean either
@@ -64,14 +33,14 @@
 	    (and (eq t (meqp 1 a)) (infinityp b)))) ;1^inf
 
 ;; Return
-;; pos-real-inside if 0 < x < 1
-;; inside if |e| < 1
-;; one if e = 1
-;; zero if e = 0
-;; on id |e| = 1
-;; pos-real-outside if real(e) > 1 & imag(e)=0
-;; outside if |e| > 1
-;; nil if all other tests fail.
+;;  (a) pos-real-inside if 0 < x < 1
+;;  (b) inside if |e| < 1
+;;  (c) one if e = 1
+;;  (d) zero if e = 0
+;;  (e) on id |e| = 1
+;;  (f) pos-real-outside if real(e) > 1 & imag(e)=0
+;;  (g) outside if |e| > 1
+;;  (h) nil if all other tests fail
 (defun inside-outside-unit-circle (e)
 	(setq e (risplit e))
 	(let* ((re (car e)) (im (cdr e)) (x (add (mul re re) (mul im im))))
@@ -250,8 +219,10 @@
 
 	        ;; Special case 0^(negative real). Previously, we made sure that 
 			;; Maxima is unable to determine that al could be either zerob or 
-			;; zeroa, so we return infinity for this case.
-			((and (eql al 0) (eq t (mgrp 0 bl))) '$infinity)
+			;; zeroa. I don't think returning infinity is correct here, so we
+			;; give up.
+			((and (eql al 0) (eq t (mgrp 0 bl))) 
+			  (throw 'limit nil))
 
 			;; For an indeterminate form, dispatch bylog
 			((mexpt-indeterminate-form-p al bl)
@@ -264,14 +235,14 @@
 			((and (not (extended-real-p bl)) 
 			      (not (extended-real-p al)) 
 			      (eq t (mgrp 0 al)))
-			  ;(mtell "Top: a = ~M ~%" a)
+			  (mtell "Top: a = ~M ~%" a)
 			  ;; Toward the limit point, we need to know the sign of the 
 			  ;; imaginary part of a. 
 			  (setq a (risplit a))
 			  (setq re (car a))
 			  (setq im (cdr a))
 			  (setq im (zero-fixup im x pt))
-			  ;(mtell "im = ~M ; re = ~M ; bl = ~M  ~%" im re bl)
+			  (mtell "im = ~M ; re = ~M ; bl = ~M  ~%" im re bl)
 			  (cond ((eq im '$zerob)
 			         ;; (x - %i 0^(+))^bl  --> |x|^bl exp(-%i %pi bl)
 			         (mul (ftake 'mexpt (ftake 'mabs re) bl)
@@ -289,8 +260,6 @@
 					(t 
 					  (mtell "giving up ~%")
 					(throw 'limit nil))))	  
-
-
    			;; OK to use limit(a^b,x,pt) = limit(a,x,pt)^limit(b,x,pt).
 
 			;; For limits such as limit(x^x,x,3/4), it would be nicer

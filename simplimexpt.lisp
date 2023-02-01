@@ -12,12 +12,13 @@
 
 (in-package :maxima)
 	
-(declare-top (special var val lhcount lhp? *behavior-count-now*))
+(declare-top (special limit-assumptions var val lhcount lhp? *behavior-count-now*))
 
 ;; When limit(e,x,pt) = 0, we dispatch behavior to attempt to decide
 ;; if the limit is zerob, zeroa, or 0. The function behavior misses 
 ;; some cases that it might. At one time this code caught a few more
-;; cases by dispatching taylor. But let's not do that
+;; cases by dispatching taylor, but if that is a good idea, it should
+;; be blended into behavior, not this code.
 (defun zero-fixup (e x pt)
    (let ((*behavior-count-now* 0) (dir (behavior e x pt)))
 	(cond ((eql dir -1) '$zerob)
@@ -43,10 +44,16 @@
 ;;  (h) nil if all other tests fail
 (defun inside-outside-unit-circle (e)
 	(setq e (risplit e))
+	(mtell "Top of inside-outside-unit-circle ~%")
+
+	(mtell "limit-facts = ~M  ~%" (cons '(mlist) limit-assumptions))
+	(mtell "facts = ~M  ~%" ($facts))
 	(let* ((re (car e)) (im (cdr e)) (x (add (mul re re) (mul im im))))
+	   ; (setq x (ftake 'mexpt x (div 1 2)))
+	    (mtell "re = ~M ; im = ~M ; x = ~M ~%" re im x)
 		(cond ((and (eql im 0) (eq t (mgrp re 0)) (eq t (mgrp 1 re)))
-		       'pos-real-inside)		
-		((eq t (mgrp 1 x)) 'inside)
+		       'pos-real-inside)
+		      ((eq t (mgrp 1 x)) 'inside)
 			  ((and (eq t (meqp im 0)) (eq t (meqp re 1))) 'one)
 			  ((and (eq t (meqp 0 re)) (eq t (meqp 0 im))) 'zero)
 			  ((eq t (meqp 1 x)) 'on)
@@ -54,18 +61,22 @@
 			  ((eq t (mgrp x 1)) 'outside)
 			  (t nil))))
 
+(defvar *abcd* nil)
 (defun mexpt-x^inf (x) ;return x^inf
-    (let ((q (inside-outside-unit-circle (ridofab x))))
+    (let ((q (inside-outside-unit-circle x)))
+	      (mtell "x = ~M ; q = ~M ~%" x q)
+	      (push (ftake 'mlist x q) *abcd*)
           (cond ((eq q 'zero) 0) ;0^inf = 0
-		        ((eq q 'pos-real-inside) '$zeroa)
-		        ((eq q 'inside) 0)
-				((eq q 'zero) 0) ;0^inf = 0
-				((eq q 'one) 1) ;1^inf = 1
+		        ((eq q 'pos-real-inside) '$zeroa) ;(0 < x < 1)^inf = zeroa
+		        ((eq q 'inside) 0) ;(|x| < 1)^inf = 0
+				((eq q 'one) (throw 'limit t)) ;1^inf is indeterminate
 				((eq q 'on) '$ind) ; (|x|=1 & x =/= 1)^inf = ind
 				((eq q 'pos-real-outside) '$inf) ;(x > 1)^inf = inf
 				((eq q 'outside) '$infinity) ; (|x| > 1)^inf = infinity
-				(t '$infinity))))
+				(t (throw 'limit nil))))) ;should this throw an error?
 
+;; The testsuite barely tests this function--it's called exactly twice.
+;; This function needs more testing.
 (defun mexpt-x^infinity (x) ;return x^infinity
     (let ((q (inside-outside-unit-circle (ridofab x))))
           (cond ((eq q 'inside) 0) ; (|x|<1)^infinity = 0
@@ -77,14 +88,17 @@
 				((eq q 'outside) '$infinity) ; (|x| > 1)^infinity = infinity
 				(t '$infinity))))
 
+;; The testsuite barely tests this function--it's called exactly once.
 (defun mexpt-x^minf (x) ;return x^minf
-  (let ((q (mexpt-x^inf x)))
-	(cond ((eql q 0) '$infinty)
-	      ((eql q 1) 1)
-		  ((eq q '$ind) '$ind)
-		  ((eq q '$inf) 0)
-		  ((eq q '$infinity) 0)
-		  (t (throw 'limit nil )))))
+  (let ((q (inside-outside-unit-circle (ridofab x))))
+	(cond ((eq q 'pos-real-inside) '$inf) ; (0<x<1)^minf = inf
+	      ((eq q 'inside) '$infinity) ;(|x| < 1)^minf = $infinity
+		  ((eq q 'one) (throw 'limit nil)) ;(1^minf) is indeterminate--throw
+		  ((eq q 'zero) '$infinity) ; 0^minf = $infinity
+		  ((eq q 'on) '$ind) ; |x|^minf = ind
+		  ((eq q 'pos-real-outside) 0) ;(1 < x)^minf = 0
+		  ((eq q 'outside) 0) ; (|x|>1)^minf = 0
+		  (t (throw 'limit nil))))) ; give up
 
 ;; Return a^b, where b is an extended real and a isn't an extended real.
 (defun mexpt-a^extended (a b)
@@ -161,22 +175,22 @@
 	   (list '$infinity '$inf '$infinity) 
 	   (list '$infinity '$infinity '$infinity)))
 
-(defvar *x* 0)
 (defvar *c* nil)
-(defvar *ind* nil)
+(defvar *xxx* nil)
 ;; Redefine simplimexpt--simply call the new simplim%expt function.
-
-(defvar *d* nil)
-(defvar *new* 0)
-
 (defun simplimexpt (a b al bl)
 	(simplim%mexpt (list '(mexpt) a b) var val al bl))
 
+(defvar *zzz* nil)
 (defun simplim%mexpt (e x pt &optional (al nil) (bl nil))
-    (incf *x* 1)
+    (mtell "Top of simplim%mexpt; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
 	(let* ((a (cadr e))
 		   (b (caddr e)) ;e = a^b
 		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (preserve-direction t))
+
+
+        ;(setq a (extra-simp a))
+		;(setq b (extra-simp b))
 
 		;; When both a & b depend on x, use a^b = exp(b log(a)).
 		;; We also re-do the limits of a & b.
@@ -203,32 +217,32 @@
 		  (setq bre (limit (car bb) x pt 'think)) ;real part of limit of b
 		  (setq bim (limit (cdr bb) x pt 'think))) ;imaginary part of limit of b
 
-		;; When al=0 dispatch zero-fixup. This is an effort to decide if
-		;; the limit could be either zerob, or zeroa instead of 0. 
-		;; This conversion causes a number of semantic testsuite failures.
+		;; When dispatch zero-fixup on limits that are zero. This is an effort to 
+		;; decide if the limit could be either zerob or zeroa instead of 0. 
+		;; This conversion causes several minor semantic testsuite failures.
 		;; If the check is only done when bl < 0, these failures don't happen.
 		(when (eql al 0) ;(eq t (mgrp 0 bl)))
 			(setq al (zero-fixup a x pt)))
 		(when (eql bl 0)
 			(setq bl (zero-fixup b x pt)))
-	    
+
+		(when (eql al 0)
+		  (push (ftake 'mlist bl (mgrp 0 bl)) *zzz*))
 		(cond 
 		    ;; Hashtable look up for the limit. This handles the determinate 
-			;; cases for extended^extended. Currently, the testsuite only
-			;; tests the cases ($zeroa $inf), ($infinity $inf), and
-			;; ($infinity $inf)) 			
+			;; cases for extended^extended, but it does _not_ handle the 
+			;; indeterminate cases 0^0, 1^inf, or inf^0.
 			((gethash (list al bl) *extended-real-mexpt-table-xxx* nil))
 
-	        ;; Special case 0^(negative real). Previously, we made sure that 
+	        ;; Special case 0^(negative real). We've made sure that 
 			;; Maxima is unable to determine that al could be either zerob or 
-			;; zeroa. I don't think returning infinity is correct here, so we
-			;; give up.
+			;; zeroa, so we give up. Maybe here we should check the real part
+			;; of bl, not just bl
 			((and (eql al 0) (eq t (mgrp 0 bl))) 
 			  (throw 'limit nil))
 
-			;; For an indeterminate form, dispatch bylog
+			;; For an indeterminate form, dispatch bylog.
 			((mexpt-indeterminate-form-p al bl)
-		        (push (ftake 'mlist a b al bl x pt) *ind*)
 				(let ((var x) (val pt) (lhcount 0) (ans))
 				  (setq ans (catch 'lhospital (bylog b a)))
 				  (or ans (throw 'limit nil))))
@@ -258,13 +272,9 @@
 					         (ftake 'mexpt '$%e (mul '$%i '$%pi bl)))))
 					;; give up
 					(t 
-					 (throw 'limit nil))))	  
+					 (throw 'limit nil))))	
+
    			;; OK to use limit(a^b,x,pt) = limit(a,x,pt)^limit(b,x,pt).
-
-			;; For limits such as limit(x^x,x,3/4), it would be nicer
-			;; to get (3/4)^(3/4) instead of %e^((3*log(3/4))/4).
-
-			;; This is wrong when al in (-minf,0) and bl isn't an integer
 			((and al bl (not (extended-real-p al)) (not (extended-real-p bl)))
 			    (ftake 'mexpt (ridofab al) (ridofab bl)))
 
@@ -273,12 +283,12 @@
 			        (or (eq bim '$inf) (eq bim '$minf))
 			        (not (extended-real-p bre)))
 			    '$ind)
+
             ;; (nonvanishing ind)^real = ind
-			((and (eq al '$ind) ; (ind =\= 0)^real
+			((and (eq al '$ind) ; (ind =/= 0)^real
 			      (not (extended-real-p a))
 			      (eq t (mnqp a 0)) 
 				  (not (extended-real-p bl)))			  
-				;(incf *new* 1)
 			  '$ind)
 
             ;; When bl is an extended real, dispatch mexpt-a^extended

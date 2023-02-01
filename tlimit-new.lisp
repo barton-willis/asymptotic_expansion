@@ -77,11 +77,6 @@
 			    (tlimit-taylor e x pt (* 2 (max 1 n))))
 			  (t nil))))
 
-;; Previously when the taylor series failed, there was code for deciding
-;; whether to call limit1 or simplimit. The choice depended on *i* and the 
-;; main operator of the expression. Is this logic unnecessary? Can we
-;; can just call limit1. 
-
 (defun taylim (e x pt *i*)
 	(let ((et nil) ($numer nil))
 	  ;;(setq e (conditional-radcan e))
@@ -91,17 +86,15 @@
 	     (setq et (errcatch (tlimit-taylor e x (ridofab pt) $lhospitallim)))
 		 (setq et (car et)))
 
-	
-	;;  (mtell "e = ~M ; et = ~M ~%" e et)
-
 	  (cond (et 
 	         (let ((taylored t))
 			    (setq et (simplify ($ratdisrep et)))
 				(limit et x pt 'think)))
 			(t 
 			  (let ((limit-using-taylor nil))
-			  ;; not sure about the logic behind choosing a 
-			  ;; limit method...
+			  ;; I'm not sure about the logic behind choosing a limit method.
+			  ;; Can we simply call limit? This logic was taken from Maxima's
+			  ;; source code
 			  (mtell "Taylor failed on ~M ~M ~M ~%" e x pt)
 			  (cond ((eq *i* t)
 			           (limit1 e x pt))

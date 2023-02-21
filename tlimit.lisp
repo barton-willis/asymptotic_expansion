@@ -91,8 +91,6 @@
 	(let ((et nil))
 	  (when (tlimp e) 
 		 (setq e (asymptotic-expansion e x pt 1))
-		 ;(setq e (sratsimp e))
-		 ;(mtell "e = ~M ~%" e)
 	     (setq et (tlimit-taylor e x (ridofab pt) $lhospitallim)))
 	  
 	  (when (null et)

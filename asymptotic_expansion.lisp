@@ -447,14 +447,3 @@
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
 (setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
-
-(defun sin-asymptotic (e x pt n)
-	(setq e (car e))
-	(let ((xxx (limit-catch e x pt)))
-	(cond ((and (eql 0 (ridofab xxx)) (not (eq e 'epsilon)))
-	         (setq xxx ($taylor e x (ridofab pt) n))
-	        ($ratdisrep (ftake '%sin ($taylor e x (ridofab pt) n))))
-         (t
-	        (ftake '%sin e)))))
-(setf (gethash '%sin *asymptotic-expansion-hash*) #'sin-asymptotic)
-

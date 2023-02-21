@@ -80,10 +80,13 @@
 
 ;; The upper level call to sratsimp was a *failed* effort to eliminate an asksign for 
 ;; integrate(erf(x+a)-erf(x-a),x,minf,inf). This is test is in rtestint.mac. For
-;; now, I changed the test to 
+;; now, I changed this test to 
 ;;
 ;; block([ans], assume(a>0), ans : integrate(erf(x+a)-erf(x-a), x, minf, inf),
 ;;      forget(a>0),ans);
+;;
+;; But regardless of the sign of a, the value of this integral is 4a, so I consider 
+;; the need for an assume to be a bug.
 
 ;; For code development, let's collect the expressions that taylor fails to do.
 ;; They include erf and gamma incomplete functions toward infinity, li[n] toward

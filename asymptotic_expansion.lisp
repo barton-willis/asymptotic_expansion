@@ -88,7 +88,7 @@
 	      ($numer nil)
 		  ($float nil)
 		  ;($domain '$complex) ;extra not sure about this
-		  ;($m1pbranch t)
+		  ;($m1pbranch t) ;not sure about this
 		  ($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
@@ -281,7 +281,6 @@
 		(setq m (car e))
 	    (setq z (cadr e))
 		(setq xxx ($limit z x pt))
-		;(mtell "m = ~M ~% z = ~M xxx = ~M ~%~%" m z xxx)
 		(cond ((and (eq '$inf xxx) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
@@ -339,7 +338,6 @@
 		(setq z (maxima-substitute '$inf 'prin-inf z))
 		;(setq z ($limit z))
 		(setq xxx ($limit z x pt))
-		;(mtell "a = ~M ~% z = ~M ~% xxx = ~M ~%" a z xxx)
 		;;  z--> inf or z --> -inf and a is freeof x
 		;; This should be (and (or (eq '$inf xxx) (eq '$minf xxx))
 		;; But doing so exposes a bug in 
@@ -409,7 +407,6 @@
 (defun atan-asymptotic (e x pt n)
     (setq e (car e))
 	(let ((xxx ($limit e x pt))) ;try $limit, not limit
-	  ;;; (mtell "e = ~M ~% xxx = ~M ~%" e xxx)
 	   (cond ((and (eq xxx '$inf))
 	          (unwind-protect 
 			    (progn
@@ -454,11 +451,8 @@
 (defun sin-asymptotic (e x pt n)
 	(setq e (car e))
 	(let ((xxx (limit-catch e x pt)))
-	
-	 (mtell "e = ~M ; x = ~M ; pt = ~M ; xxx = ~M ~%" e x pt xxx)
-	(cond ((and nil (eql 0 (ridofab xxx)) (not (eq e 'epsilon)))
+	(cond ((and (eql 0 (ridofab xxx)) (not (eq e 'epsilon)))
 	         (setq xxx ($taylor e x (ridofab pt) n))
-			 (mtell "xxx = ~M ~% " xxx)
 	        ($ratdisrep (ftake '%sin ($taylor e x (ridofab pt) n))))
          (t
 	        (ftake '%sin e)))))

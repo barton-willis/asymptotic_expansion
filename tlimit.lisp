@@ -79,12 +79,16 @@
 ;; integrate((log(1-x)*log(1+x))/(1+x),x,0,1). Maybe this is a bug in stirling0.
 
 ;; The upper level call to sratsimp was a *failed* effort to eliminate an asksign for 
-;; integrate(erf(x+a)-erf(x-a),x,minf,inf).
+;; integrate(erf(x+a)-erf(x-a),x,minf,inf). This is test is in rtestint.mac. For
+;; now, I changed the test to 
+;;
+;; block([ans], assume(a>0), ans : integrate(erf(x+a)-erf(x-a), x, minf, inf),
+;;      forget(a>0),ans);
 
 ;; For code development, let's collect the expressions that taylor fails to do.
 ;; They include erf and gamma incomplete functions toward infinity, li[n] toward
 ;; minus infinity, and  some cases such as limit(-sin(x),x,inf). The most common
-;; expressions are the incomplete gamma. Running the testsuite  and the share
+;; expressions are the incomplete gamma. Running the testsuite and the share
 ;; tests, we get 140 Taylor failures--most involve the incomplete gamma function.
 (defvar *failed* nil)
 (defun taylim (e x pt flag)

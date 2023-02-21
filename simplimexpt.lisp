@@ -44,9 +44,6 @@
 ;;  (h) nil if all other tests fail
 (defun inside-outside-unit-circle (e)
 	(setq e (risplit e))
-	(mtell "Top of inside-outside-unit-circle ~%")
-
-	(mtell "limit-facts = ~M  ~%" (cons '(mlist) limit-assumptions))
 	(mtell "facts = ~M  ~%" ($facts))
 	(let* ((re (car e)) (im (cdr e)) (x (add (mul re re) (mul im im))))
 	   ; (setq x (ftake 'mexpt x (div 1 2)))
@@ -98,7 +95,7 @@
 		  ((eq q 'on) '$ind) ; |x|^minf = ind
 		  ((eq q 'pos-real-outside) 0) ;(1 < x)^minf = 0
 		  ((eq q 'outside) 0) ; (|x|>1)^minf = 0
-		  (t (throw 'limit nil))))) ; give up
+		  (t 'inside))));;;  (throw 'limit t))))) ; give up
 
 ;; Return a^b, where b is an extended real and a isn't an extended real.
 (defun mexpt-a^extended (a b)
@@ -110,7 +107,8 @@
 			(if (eq t (mgrp a 0)) '$ind '$und))
 		  ((eq b '$und) '$und) ;are you sure? 
           ((eq b '$inf) ;a^inf 
-			 (mexpt-x^inf a))
+		    (mtell "At a:  (mgrp a 1) = ~M  (mgrp 1 a) = ~M ~%"  (mgrp a 1)  (mgrp 1 a))
+		    (mexpt-x^inf a))
 		  ((eq b '$infinity)
 			(mexpt-x^infinity a))
 		  (t (throw 'limit nil))))
@@ -156,8 +154,8 @@
 ;; We use a hashtable to represent unambiguous cases of extended^extended, where
 ;; extended in {minf,zerob, zeroa, ind, inf, infinity, und}. The ambiguous cases
 ;; are zeroa^zeroa, zeroa^zerob, zerob^zeroa, and zerob^zerob.
-(defvar *extended-real-mexpt-table-xxx* (make-hash-table :test #'equal))
-(mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mexpt-table-xxx*) (third a)))
+(defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
+(mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mexpt-table*) (third a)))
    (list 
        (list '$minf '$minf 0) 
 	   (list '$minf '$inf '$infinity) 
@@ -177,13 +175,13 @@
 
 (defvar *c* nil)
 (defvar *xxx* nil)
-;; Redefine simplimexpt--simply call the new simplim%expt function.
-(defun simplimexpt (a b al bl)
+;; Redefine simplimexpt--call the new simplim%expt function.
+(defun simplimexpt-999 (a b al bl)
 	(simplim%mexpt (list '(mexpt) a b) var val al bl))
 
 (defvar *zzz* nil)
 (defun simplim%mexpt (e x pt &optional (al nil) (bl nil))
-    (mtell "Top of simplim%mexpt; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
+   
 	(let* ((a (cadr e))
 		   (b (caddr e)) ;e = a^b
 		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (preserve-direction t))
@@ -228,11 +226,12 @@
 
 		(when (eql al 0)
 		  (push (ftake 'mlist bl (mgrp 0 bl)) *zzz*))
+
 		(cond 
 		    ;; Hashtable look up for the limit. This handles the determinate 
 			;; cases for extended^extended, but it does _not_ handle the 
 			;; indeterminate cases 0^0, 1^inf, or inf^0.
-			((gethash (list al bl) *extended-real-mexpt-table-xxx* nil))
+			((gethash (list al bl) *extended-real-mexpt-table* nil))
 
 	        ;; Special case 0^(negative real). We've made sure that 
 			;; Maxima is unable to determine that al could be either zerob or 
@@ -292,12 +291,14 @@
 			  '$ind)
 
             ;; When bl is an extended real, dispatch mexpt-a^extended
-			((extended-real-p bl) (mexpt-a^extended al bl))
+			((extended-real-p bl) 
+			(mexpt-a^extended al bl))
 
 			;; When al is an extended real, dispatch mexpt-extended^b
-			((extended-real-p al) (mexpt-extended^b al bl))
+			;((extended-real-p al) (mexpt-extended^b al bl))
 			;; Give up--shouldn't happen	 
 			(t 
 			    (push (ftake 'mlist al bl) *c*)
 			    (throw 'limit nil)))))
-(setf (get 'mexpt 'simplim%function) 'simplim%mexpt)
+;(setf (get 'mexpt 'simplim%function) 'simplim%mexpt)
+

@@ -66,7 +66,42 @@
 ;; For experimentation, let's collect all operators don't have a specialized 
 ;; asymptotic expansion function in a hashtable *xxx*. The function $missing
 ;; prints a report on these missing operators. Similarly collect the operators
-;; that are used. Eventually remove this code.
+;; that are used. Eventually remove this code. 
+
+#|
+Currently, running the testsuite (including share), the result is
+
+Missing operators: 
+tan 625 
+signum 8 
+atan2 2 
+cos 2597 
+cosh 4 
+derivative 6 
+floor 16 
+sin 2783 
+
+Used operators: 
+gamma 6 
+log 2496 
+atan 214 
+conjugate 2 
+mexpt 13619 
+mtimes 10702 
+psi 6 
+li 103 
+gamma_incomplete 307 
+bessel_j 1 
+bessel_k 1 
+mplus 4689 
+! 71 
+erf 39 
+expintegral_ei 12 
+asinh 8 
+
+
+|#
+
 (defvar *xxx* (make-hash-table))
 (defvar *used* (make-hash-table))
 

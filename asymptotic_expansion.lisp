@@ -33,7 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special var val lhp? taylored silent-taylor-flag
+(declare-top (special var val lhp? taylored silent-taylor-flag limit
    $taylordepth $taylor_logexpand $maxtaylororder $taylor_simplifer))
 
 ; Define *big* and *tiny* to be "big" and "tiny" numbers, respectively. There
@@ -60,7 +60,7 @@
 (defvar *asymptotic-expansion-hash* (make-hash-table :test #'eq :size 16))
 
 ;; Maybe not intended to be a user level function?
-(defun $asymptotic_expansion (e x pt n)
+(defmfun $asymptotic_expansion (e x pt n)
 	(asymptotic-expansion e x pt n))
 
 ;; For experimentation, let's collect all operators don't have a specialized 
@@ -122,8 +122,8 @@ asinh 8
 	(let (($gamma_expand nil) ;not sure about these option variables
 	      ($numer nil)
 		  ($float nil)
-		  ;($domain '$complex) ;extra not sure about this
-		  ;($m1pbranch t) ;not sure about this
+		  ($domain '$complex) ;extra not sure about this
+		  ($m1pbranch t) ;not sure about this
 		  ($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
@@ -187,10 +187,11 @@ asinh 8
 	(let ((a (car e)) (b (cadr e)) (ans))
 		(setq a (asymptotic-expansion a x pt n))
 		(setq b (asymptotic-expansion b x pt n))
+		(mtell "a = ~M ; b = ~M ~%" a b)
 		(setq ans (extra-simp (ftake 'mexpt a b)))
 		ans))
 		;(or ($ratdisrep (tlimit-taylor ans x pt n)) ans)))
-(setf (gethash 'mexpt *asymptotic-expansion-hash*) #'mexpt-asymptotic)
+(setf (gethash 'mexpt *asymptotic-expansion-hash*) 'mexpt-asymptotic)
 
 ;; Could we do better? Maybe  
 ;;   log(x^2+x) -> log(x^2) + 1/x-1/(2*x^2)+1/(3*x^3)
@@ -250,7 +251,9 @@ asinh 8
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (first e))
 		(setq e (asymptotic-expansion e x pt n))
-		(setq xxx ($limit e x pt))
+
+		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
+		(mtell "xxx = ~M ~%" xxx)
 	    (cond ((eq '$inf xxx)
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
@@ -263,15 +266,19 @@ asinh 8
 				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
+			  ((zerop2 xxx)
+			  	(setq e (ftake '%gamma e))
+				;(mtell "e = ~M ; x = ~M ; e = ~M ~%" e x (tlimit-taylor e x 0 2))
+			    ($ratdisrep (tlimit-taylor e x 0 2)))
 			  (t (ftake '%gamma e))))) ;give up			 
-(setf (gethash '%gamma *asymptotic-expansion-hash*) #'gamma-asymptotic)
+(setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
 
 (defun mfactorial-asymptotic (e x pt n)
 	(let ((fn (gethash '%gamma *asymptotic-expansion-hash*)))
        (funcall fn (list (add 1 (car e))) x pt n)))
 (setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
 
-;; For the case of non integer s, see the comment in specfun.lisp about the 
+;; For the case of non integer s, see the comment in specfn.lisp about the 
 ;; truncation value.
 
 ;; For positive integer order, see https://functions.wolfram.com/ZetaFunctionsandPolylogarithms/PolyLog/06/01/03/01/02/0003/

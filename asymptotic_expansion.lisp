@@ -122,9 +122,9 @@ asinh 8
 	(let (($gamma_expand nil) ;not sure about these option variables
 	      ($numer nil)
 		  ($float nil)
-		  ($domain '$complex) ;extra not sure about this
-		  ($m1pbranch t) ;not sure about this
-		  ($algebraic t)
+		  ;($domain '$complex) ;extra not sure about this
+		  ;($m1pbranch t) ;not sure about this
+		  ;($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
@@ -187,7 +187,7 @@ asinh 8
 	(let ((a (car e)) (b (cadr e)) (ans))
 		(setq a (asymptotic-expansion a x pt n))
 		(setq b (asymptotic-expansion b x pt n))
-		(mtell "a = ~M ; b = ~M ~%" a b)
+		;(mtell "a = ~M ; b = ~M ~%" a b)
 		(setq ans (extra-simp (ftake 'mexpt a b)))
 		ans))
 		;(or ($ratdisrep (tlimit-taylor ans x pt n)) ans)))
@@ -253,7 +253,7 @@ asinh 8
 		(setq e (asymptotic-expansion e x pt n))
 
 		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
-		(mtell "xxx = ~M ~%" xxx)
+		;(mtell "gamma = ~M ~%" xxx)
 	    (cond ((eq '$inf xxx)
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
@@ -266,10 +266,10 @@ asinh 8
 				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
-			  ((zerop2 xxx)
-			  	(setq e (ftake '%gamma e))
-				;(mtell "e = ~M ; x = ~M ; e = ~M ~%" e x (tlimit-taylor e x 0 2))
-			    ($ratdisrep (tlimit-taylor e x 0 2)))
+			 ; ((zerop2 xxx)
+			  ;	(setq e (ftake '%gamma e))
+			;	;(mtell "e = ~M ; x = ~M ; e = ~M ~%" e x (tlimit-taylor e x pt 2))
+			  ;  ($ratdisrep (tlimit-taylor e x pt 2)))
 			  (t (ftake '%gamma e))))) ;give up			 
 (setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
 

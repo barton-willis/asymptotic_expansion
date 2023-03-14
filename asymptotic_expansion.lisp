@@ -122,6 +122,7 @@ asinh 8
 	(let (($gamma_expand nil) ;not sure about these option variables
 	      ($numer nil)
 		  ($float nil)
+		  ($taylor_logexpand t)
 		  ;($domain '$complex) ;extra not sure about this
 		  ;($m1pbranch t) ;not sure about this
 		  ;($algebraic t)
@@ -342,10 +343,12 @@ asinh 8
 (setf (gethash '$psi *asymptotic-expansion-hash*) #'psi-asymptotic)
 
 ;; See http://dlmf.nist.gov/7.11.E2. Missing the z --> -inf case.
+;; Running the testsuite, this causes an asksign 
 (defun erfc-asymptotic (z x pt n)
 	(setq z (car z))
 	(let ((s 0) (ds (div 1 z)) (k 0) (zz (mul 2 z z)) (xxx))
 	  (setq xxx ($limit z x pt))
+	  ;(setq xxx (limit z x pt 'think))
 	  (cond ((eq '$inf xxx)
 			  (while (< k n)
 				 (setq s (add s ds))
@@ -359,17 +362,21 @@ asinh 8
 				 (setq k (+ k 1)))
 				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
 		  (t (ftake '%erfc z)))))		
-(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
+;(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
 
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-expansion-hash*.
+
+;; Running the testsuite, this causes an asksign on integrate( erf(x+a)-erf(x-a), x, minf, inf)
+;; (in rtestint).  For now, let's turn this off
 (defun erf-asymptotic (z x pt n)
 	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*)) (xxx))
-	     (setq xxx ($limit (first z) x pt))
+	    (setq z (first z))
+	     (setq xxx ($limit z x pt))
 		 (cond ((or (eq '$inf xxx) (eq '$minf xxx))
-				  (sub 1 (funcall fn z x pt n)))
-			   (t (ftake '%erf (first z))))))
-(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
+				  (sub 1 (funcall fn (list z) x pt n)))
+			   (t (ftake '%erf z)))))
+;(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i  
@@ -395,7 +402,7 @@ asinh 8
 				 ;; return z^(a-1)*exp(-z)*s
 				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
               (t (ftake '%gamma_incomplete aaa z)))))
-(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
+;(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (defun bessel-j-asymptotic (e x pt n)

@@ -168,7 +168,7 @@ asinh 8
         ;(setq ans (sratsimp ans)) ;needed or unneeded?
         (while (and (< n 8) (zerop1 (sratsimp ans))) ;magic number 8.
 			(mtell "Caught a zero case! ~%") ;untested!
-			(setq *zero-case* (+ 1 *zero-case*))
+			(incf *zero-case* 1)
 			(incf n)
 			(setq ans (mplus-asymptotic e x pt n)))
          (if (zerop1 ans) (addn e t) ans))) ;when ans is still zero, sum e and return
@@ -463,7 +463,7 @@ asinh 8
 	   		       ($ratdisrep ($taylor (ftake '%atan e) x '$inf n)))
 				(mfuncall '$forget (ftake 'mlessp *big* x))))   
 			 (t (ftake '%atan e)))))
-(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
+;(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
 
 (defun conjugate-asymptotic (e x pt n)
 	(setq e (car e))
@@ -471,7 +471,7 @@ asinh 8
 		(if (eq xxx '$inf)
           (ftake '$conjugate (asymptotic-expansion (cadr e) x pt n))
 		  (ftake '$conjugate e))))
-(setf (gethash '$conjugate *asymptotic-expansion-hash*) #'conjugate-asymptotic)
+;(setf (gethash '$conjugate *asymptotic-expansion-hash*) #'conjugate-asymptotic)
 
 (defun asin-asymptotic (e x pt n)
   (setq e (car e))
@@ -479,7 +479,7 @@ asinh 8
 	(setq e (ftake '%asin e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
+;(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
 
 (defun acos-asymptotic (e x pt n)
   (setq e (car e))
@@ -487,7 +487,7 @@ asinh 8
 	(setq e (ftake '%acos e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-(setf (gethash '%acos *asymptotic-expansion-hash*) #'acos-asymptotic)
+;(setf (gethash '%acos *asymptotic-expansion-hash*) #'acos-asymptotic)
 
 (defun asinh-asymptotic (e x pt n)
   (setq e (car e))
@@ -495,4 +495,4 @@ asinh 8
 	(setq e (ftake '%asinh e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-(setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
+;(setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)

@@ -166,10 +166,10 @@ asinh 8
     (let ((ans))
 	    (setq ans (addn (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
         ;(setq ans (sratsimp ans)) ;needed or unneeded?
-        (while (and (zerop1 (sratsimp ans)) (< n 8)) ;magic number 8.
+        (while (and (< n 8) (zerop1 (sratsimp ans))) ;magic number 8.
 			(mtell "Caught a zero case! ~%") ;untested!
 			(setq *zero-case* (+ 1 *zero-case*))
-			(setq n (+ 1 n))
+			(incf n)
 			(setq ans (mplus-asymptotic e x pt n)))
          (if (zerop1 ans) (addn e t) ans))) ;when ans is still zero, sum e and return
 (setf (gethash 'mplus *asymptotic-expansion-hash*) #'mplus-asymptotic)

@@ -123,9 +123,9 @@ asinh 8
 	      ($numer nil)
 		  ($float nil)
 		  ($taylor_logexpand t)
-		  ;($domain '$complex) ;extra not sure about this
-		  ;($m1pbranch t) ;not sure about this
-		  ;($algebraic t)
+		  ($domain '$complex) ;extra not sure about this
+		  ($m1pbranch t) ;not sure about this
+		  ($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 

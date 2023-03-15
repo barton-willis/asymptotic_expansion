@@ -16,8 +16,6 @@
 
 (load-macsyma-macros rzmac)
 
-(mfuncall '$load "asymptotic_expansion.lisp")
-
 ;; TOP LEVEL FUNCTION(S): $TLIMIT $TLDEFINT
 
 (defmfun $tlimit (&rest args)
@@ -50,19 +48,17 @@
 ;; these option variables is overly removes the users ability to adjust these
 ;; option variables.
 
-;; There is no good reason for defaulting the taylor order to lhospitallim, but 
-;; this is documented (user documentation). 
+;; I know of no compelling reason for defaulting the taylor order to 
+;; lhospitallim, but this is documented (user documentation). 
 (defun tlimit-taylor (e x pt n)
 	(let ((ee 0) 
 	      (silent-taylor-flag t) 
 	      ($taylordepth 8)
-		  ($taylor_logexpand nil)
-		  ($maxtayorder t)
-		  ($taylor_truncate_polynomials nil)
-		  ($taylor_simplifier #'sratsimp))
+		  ($taylor_logexpand t)
+		  ($taylor_simplifier #'extra-simp))
         (setq ee ($ratdisrep (catch 'taylor-catch ($taylor e x pt n))))
 		(cond ((and ee (not (alike1 ee 0))) ee)
-			  ;; When taylor returns zero and n is less than16 x lhospitallim, 
+			  ;; When taylor returns zero and n is less than 16 x lhospitallim, 
 			  ;; declare a do-over--otherwise return nil.
               ((and ee (< n (* 16 $lhospitallim)))
 			    (tlimit-taylor e x pt (* 2 (max 1 n))))
@@ -75,31 +71,18 @@
 ;; this change orphans the last argument of taylim.
 
 ;; The call to stirling0 fixes the bug limit(gamma(x)/gamma(1/x),x,0,plus),
-;; but it *causes* a bug (limit nounform instead of limit value) for 
-;; integrate((log(1-x)*log(1+x))/(1+x),x,0,1). Maybe this is a bug in stirling0.
+;; but it causes a bug integrate((log(1-x)*log(1+x))/(1+x),x,0,1) --> limit 
+;; nounform.
 
-;; The upper level call to sratsimp was a *failed* effort to eliminate an asksign for 
-;; integrate(erf(x+a)-erf(x-a),x,minf,inf). This is test is in rtestint.mac. For
-;; now, I changed this test to 
-;;
-;; block([ans], assume(a>0), ans : integrate(erf(x+a)-erf(x-a), x, minf, inf),
-;;      forget(a>0),ans);
-;;
-;; But regardless of the sign of a, the value of this integral is 4a, so I consider 
-;; the need for an assume to be a bug.
-
-;; For code development, let's collect the expressions that taylor fails to do.
-;; They include erf and gamma incomplete functions toward infinity, li[n] toward
-;; minus infinity, and  some cases such as limit(-sin(x),x,inf). The most common
-;; expressions are the incomplete gamma. Running the testsuite and the share
-;; tests, we get 140 Taylor failures--most involve the incomplete gamma function.
 (defvar *failed* nil)
-(defun taylim (e x pt flag)
+(defun taylim (e x pt flag) 
 	(let ((et nil))
-	  (when (tlimp e) 
-		 (setq e (asymptotic-expansion e x pt 1))
+	  (when (tlimp e)
+	     (mtell "before:  ~M ~%" e) 
+		 (setq e (stirling0 e))
+		 (mtell "after:  ~M ~%" e) 
 	     (setq et (tlimit-taylor e x (ridofab pt) $lhospitallim)))
-	  
+	
 	  (when (null et)
 	  	(push (ftake 'mlist e x pt) *failed*))
 

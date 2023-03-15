@@ -252,10 +252,11 @@ asinh 8
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (first e))
 		(setq e (asymptotic-expansion e x pt n))
-
-		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
-		;(mtell "gamma = ~M ~%" xxx)
-	    (cond ((eq '$inf xxx)
+		;(mtell "top of gamma-asymptotic; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
+		;(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
+		(setq xxx ($limit e x pt))
+		;; Need to check if this is OK for infinity & minf
+	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)
@@ -267,10 +268,9 @@ asinh 8
 				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
-			 ; ((zerop2 xxx)
-			  ;	(setq e (ftake '%gamma e))
-			;	;(mtell "e = ~M ; x = ~M ; e = ~M ~%" e x (tlimit-taylor e x pt 2))
-			  ;  ($ratdisrep (tlimit-taylor e x pt 2)))
+			  ((zerop2 xxx)
+			  	(setq e (ftake '%gamma e))
+			    ($ratdisrep (tlimit-taylor e x (ridofab pt) n)))
 			  (t (ftake '%gamma e))))) ;give up			 
 (setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
 

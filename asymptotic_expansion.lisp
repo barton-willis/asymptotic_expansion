@@ -249,8 +249,9 @@ asinh 8
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (defun gamma-asymptotic (e x pt n)
+    (mtell "Top: e = ~M ; pt = ~M ~%" (sratsimp (car e)) pt)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
-	    (setq e (first e))
+	    (setq e (sratsimp (first e)))
 		(setq e (asymptotic-expansion e x pt n))
 		;(mtell "top of gamma-asymptotic; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
 		;(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
@@ -362,7 +363,7 @@ asinh 8
 				 (setq k (+ k 1)))
 				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
 		  (t (ftake '%erfc z)))))		
-;(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
+(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
 
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-expansion-hash*.
@@ -376,7 +377,7 @@ asinh 8
 		 (cond ((or (eq '$inf xxx) (eq '$minf xxx))
 				  (sub 1 (funcall fn (list z) x pt n)))
 			   (t (ftake '%erf z)))))
-;(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
+(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i  
@@ -402,7 +403,7 @@ asinh 8
 				 ;; return z^(a-1)*exp(-z)*s
 				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
               (t (ftake '%gamma_incomplete aaa z)))))
-;(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
+(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (defun bessel-j-asymptotic (e x pt n)
@@ -463,7 +464,7 @@ asinh 8
 	   		       ($ratdisrep ($taylor (ftake '%atan e) x '$inf n)))
 				(mfuncall '$forget (ftake 'mlessp *big* x))))   
 			 (t (ftake '%atan e)))))
-;(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
+(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
 
 (defun conjugate-asymptotic (e x pt n)
 	(setq e (car e))
@@ -471,7 +472,7 @@ asinh 8
 		(if (eq xxx '$inf)
           (ftake '$conjugate (asymptotic-expansion (cadr e) x pt n))
 		  (ftake '$conjugate e))))
-;(setf (gethash '$conjugate *asymptotic-expansion-hash*) #'conjugate-asymptotic)
+(setf (gethash '$conjugate *asymptotic-expansion-hash*) #'conjugate-asymptotic)
 
 (defun asin-asymptotic (e x pt n)
   (setq e (car e))
@@ -479,7 +480,7 @@ asinh 8
 	(setq e (ftake '%asin e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
+(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
 
 (defun acos-asymptotic (e x pt n)
   (setq e (car e))
@@ -487,7 +488,7 @@ asinh 8
 	(setq e (ftake '%acos e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%acos *asymptotic-expansion-hash*) #'acos-asymptotic)
+(setf (gethash '%acos *asymptotic-expansion-hash*) #'acos-asymptotic)
 
 (defun asinh-asymptotic (e x pt n)
   (setq e (car e))
@@ -495,4 +496,4 @@ asinh 8
 	(setq e (ftake '%asinh e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
+(setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)

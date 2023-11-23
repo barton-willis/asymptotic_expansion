@@ -1,7 +1,6 @@
 # Asymptotic expansions
 
-This is Maxima code (written in Common Lisp) for finding asymptotic expansions of
-some special functions. The purpose of this code is for computing limits. There are no user-level functions in this code.
+This is Maxima code (written in Common Lisp) for finding asymptotic expansions. There are no user-level functions in this code--the sole purpose of this code is for computing limits. 
 
 At one time, this package fixed several testsuite bugs. Most (likely all) of these
 fixes were blended into Maxima. As of November 2023, using this package

@@ -46,8 +46,8 @@
 
 ;; The identifiers var and val look too similar to me--I'm going to use x for
 ;; the limit variable and pt for the limit point.
-(defun stirling0 (e &optional (x var) (pt val) (n 1))
-	(asymptotic-expansion e x pt n))
+;(defun stirling0 (e &optional (x var) (pt val) (n 1))
+;	(asymptotic-expansion e x pt n))
 
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
@@ -242,13 +242,12 @@ asinh 8
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (defun gamma-asymptotic (e x pt n)
-    (mtell "Top: e = ~M ; pt = ~M ~%" (sratsimp (car e)) pt)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
-	    (setq e (sratsimp (first e)))
-		(setq e (asymptotic-expansion e x pt n))
-		(mtell "top of gamma-asymptotic; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
+	    (setq e (sratsimp (car e)))
+		;(setq e (asymptotic-expansion e x pt n))
+		(when (eql pt 0)
+			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
-		;(setq xxx ($limit e x pt))
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
 			    (while (<= k n)
@@ -262,7 +261,8 @@ asinh 8
 				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
-			  ((zerop2 xxx)
+
+			  ((or (eq xxx '$zeroa) (zerop2 xxx))
 			  	(setq e (ftake '%gamma e))
 			    ($ratdisrep (tlimit-taylor e x (ridofab pt) n)))
 			  (t (ftake '%gamma e))))) ;give up			 

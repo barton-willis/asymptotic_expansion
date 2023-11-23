@@ -63,7 +63,7 @@
 (defmfun $asymptotic_expansion (e x pt n)
 	(asymptotic-expansion e x pt n))
 
-;; For experimentation, let's collect all operators don't have a specialized 
+;; For experimentation, let's collect all operators that don't have a specialized 
 ;; asymptotic expansion function in a hashtable *xxx*. The function $missing
 ;; prints a report on these missing operators. Similarly collect the operators
 ;; that are used. Eventually remove this code. 
@@ -180,19 +180,12 @@ asinh 8
 	(muln (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
 (setf (gethash 'mtimes *asymptotic-expansion-hash*) #'mtimes-asymptotic)
 
-;; The general simplifier doesn't simplify, for example, 4^x/(2^(2x)) to 1.
-;; This causes some bugs in evaluating limits. Here we sneak in a radcan on
-;; on (positive integer)^anything. I think this hack(?) eliminates several
-;; testsuite failures.
+;; Map asymptotic-expansion onto the arguments of mexpt.
 (defun mexpt-asymptotic (e x pt n)
-	(let ((a (car e)) (b (cadr e)) (ans))
-		(setq a (asymptotic-expansion a x pt n))
-		(setq b (asymptotic-expansion b x pt n))
-		;(mtell "a = ~M ; b = ~M ~%" a b)
-		(setq ans (extra-simp (ftake 'mexpt a b)))
-		ans))
-		;(or ($ratdisrep (tlimit-taylor ans x pt n)) ans)))
-(setf (gethash 'mexpt *asymptotic-expansion-hash*) 'mexpt-asymptotic)
+	(ftake 'mexpt 
+		    (asymptotic-expansion (car e) x pt n)
+			(asymptotic-expansion (cadr e) x pt n)))
+(setf (gethash 'mexpt *asymptotic-expansion-hash*) #'mexpt-asymptotic)
 
 ;; Could we do better? Maybe  
 ;;   log(x^2+x) -> log(x^2) + 1/x-1/(2*x^2)+1/(3*x^3)
@@ -253,9 +246,9 @@ asinh 8
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (sratsimp (first e)))
 		(setq e (asymptotic-expansion e x pt n))
-		;(mtell "top of gamma-asymptotic; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
-		;(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
-		(setq xxx ($limit e x pt))
+		(mtell "top of gamma-asymptotic; e = ~M ; x = ~M ; pt = ~M ~%" e x pt)
+		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
+		;(setq xxx ($limit e x pt))
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
 			    (while (<= k n)
@@ -276,6 +269,7 @@ asinh 8
 (setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
 
 (defun mfactorial-asymptotic (e x pt n)
+   ;  (mtell "Top: e = ~M ; pt = ~M ~%" (sratsimp (car e)) pt)
 	(let ((fn (gethash '%gamma *asymptotic-expansion-hash*)))
        (funcall fn (list (add 1 (car e))) x pt n)))
 (setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
@@ -289,9 +283,12 @@ asinh 8
 ;; Maybe I should paste this code into li-asymptotic-expansion. But I don't think
 ;; that Maxima routes the minf case through li-asymptotic-expansion...
 (defun polylogarithm-asymptotic (e x pt n)
-	(let ((s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
+	(let (($numer nil) (s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
+	   (mtell "Top: e = ~M ~%" e)
 	   (setq z (asymptotic-expansion z x pt n))
+	   (mtell "z = ~M ~%" z)
 	   (setq xxx ($limit z x pt))
+	   (mtell "xxx = ~M ~%" xxx)
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
 	           (while (<= k n)
@@ -317,7 +314,7 @@ asinh 8
 			   (setq nn (min (mfuncall '$floor (div s 2)) n))
 	           (li-asymptotic-expansion nn s z))
 			(t (subfunmake '$li (list s) (list z))))))
-(setf (gethash '$li *asymptotic-expansion-hash*) #'polylogarithm-asymptotic)
+(setf (gethash '$li *asymptotic-expansion-hash*) 'polylogarithm-asymptotic)
 
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
 (defun psi-asymptotic (e x pt n)
@@ -394,14 +391,17 @@ asinh 8
 		;;   integrate(x*sin(x)*exp(-x^2),x,minf,inf)
 		;; that is due to a discontinuous antiderivative that Maxima
 		;; doesn't detect.
-		(cond ((and (or (eq '$minf xxx) (eq '$inf xxx)) (freeof x aaa))
+		(cond ((and nil (eq '$inf xxx) (freeof x aaa))
 		         (while (< k n)
 				 	(setq ds (div (mul (ftake 'mexpt -1 k) (ftake '$pochhammer (sub 1 aaa) k))
 								  (ftake 'mexpt z k)))
 				    (setq s (add s ds))
 				    (setq k (+ k 1)))
 				 ;; return z^(a-1)*exp(-z)*s
-				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s))	
+				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s))
+
+		      ((eql 0 xxx)  
+				(add (mul -1 '$%gamma) (mul -1 (ftake '%log z))))
               (t (ftake '%gamma_incomplete aaa z)))))
 (setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 

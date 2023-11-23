@@ -7,7 +7,7 @@
 ;;; an identity. Possibly asymptotic-expansion could be promoted to a user level 
 ;;; function, but for now it isn't intended to be a user level function.
 
-;;; Copyright (C) 2022 Barton Willis
+;;; Copyright (C) 2022, 2023 Barton Willis
 ;;; Department of Mathematics 
 ;;; University of Nebraska at Kearney
 ;;; Kearney NE 68847
@@ -46,8 +46,8 @@
 
 ;; The identifiers var and val look too similar to me--I'm going to use x for
 ;; the limit variable and pt for the limit point.
-;(defun stirling0 (e &optional (x var) (pt val) (n 1))
-;	(asymptotic-expansion e x pt n))
+(defun stirling0 (e &optional (x var) (pt val) (n 1))
+	(asymptotic-expansion e x pt n))
 
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 

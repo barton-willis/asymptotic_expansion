@@ -8,7 +8,7 @@ This code hooks into the limit code in two ways:
 
 * It modifies the Common Lisp (CL) function `stirling0.` This function is called by various functions in the limit code. Possibly the original intent was that `stirling0` would only apply the Stirling approximation for the gamma function, but over the years, it gained other duties. 
 
-* It modifies the CL function `gruntz1` to call the function `asymptotic-expansion` before entering the main code for computing limits. Additionally it makes some assumptions about the limit variable that may help the gruntz code determine the limit.
+* It modifies the CL function `gruntz1` to call the function `asymptotic-expansion` before entering the main code for computing limits. Additionally, it makes some assumptions about the limit variable that may help the gruntz code determine the limit.
 
 Here is a sample of limits that fail with standard Maxima, but work with this package:
 

@@ -497,3 +497,4 @@ asinh 8
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
 (setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
+

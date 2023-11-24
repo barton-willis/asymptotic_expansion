@@ -242,7 +242,8 @@
                 ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
                 ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = inf
                 (t (ftake 'mexpt a b))))
-
+        ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^positive integer = $ind
+          '$ind)
         ;; inf^pos = inf.
         ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf)
         ;; inf^neg = 0. 

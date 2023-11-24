@@ -300,5 +300,5 @@
 			(t 
 			    (push (ftake 'mlist al bl) *c*)
 			    (throw 'limit nil)))))
-;(setf (get 'mexpt 'simplim%function) 'simplim%mexpt)
+(setf (get 'mexpt 'simplim%function) 'simplim%mexpt)
 

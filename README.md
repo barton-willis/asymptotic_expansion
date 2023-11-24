@@ -11,6 +11,9 @@ At one time, the package `asymptotic_expansion` fixed several testsuite bugs. Mo
 
 At one time, this code modified the CL function `gruntz1` to call the function `asymptotic-expansion` before entering the main code for computing limits.
 
-Additionally, the file `simplimexpt` is a new implementation of the function that computes the limit of an exponential function. And `my-infsimp` is an unpolished
-effort at a new implementation of the function `simpinf.` Finally, `continuous_p`
-is a function that attempts to determine if an expression is continuous.
+The file `simplimexpt`  is new implementation of the function that computes the limit of an exponential function. It is not a part of the asymptotic expansion package. 
+Running the testsite with `simplimexpt` fixes a bugs 80, 106, and 108 in
+rtest_limit_extra. But it also causes dozens of testsuite failures plus several 
+calls to asksign.
+
+The file `my-infsimp` is an unpolished effort at a new implementation of the function `simpinf.` It is not a part of the asymptotic expansion package and the testsuite stalls when this file has been loaded. Finally `continuous_p` is a function that attempts to determine if an expression is continuous; neither it is a part of the asymptotic expansion package.

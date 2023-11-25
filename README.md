@@ -18,7 +18,8 @@ asymptotic expansion package; these files are:
 55 failures are syntatic, not semantic failures) plus one
 test that triggers multiple calls to asksign.
 
-* `my-infsimp` is an unpolished effort at a new implementation of the function `simpinf.` The testsuite stalls when this file has been loaded. 
+* `my-infsimp` is an unpolished effort at a new implementation of the function `simpinf.` Running `rtest_limit_extra` using `my-infsimp` results in four fewer
+testsuite failures than without. But the testsuite stalls during `rtestsum` when this file has been loaded. 
 
 * `continuous_p` is a function that attempts to determine if an expression is continuous.
 

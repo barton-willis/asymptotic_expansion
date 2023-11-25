@@ -14,7 +14,9 @@ At one time, this code modified the CL function `gruntz1` to call the function `
 Additionally, this repository has three related files that are not a part of the
 asymptotic expansion package; these files are:
 
-* `simplimexpt` is new implementation of the function that computes the limit of an exponential function. Running the testsite with `simplimexpt` fixes several rtest_limit_extra failures. But it also causes dozens of testsuite failures plus multiple at calls to asksign.
+* `simplimexpt` is new implementation of the function that computes the limit of an exponential function. Running the testsite with `simplimexpt` fixes seven rtest_limit_extra failures, and it also causes 55 testsuite failures (some of these
+55 failures are syntatic, not semantic failures) plus one
+test that triggers multiple calls to asksign.
 
 * `my-infsimp` is an unpolished effort at a new implementation of the function `simpinf.` The testsuite stalls when this file has been loaded. 
 

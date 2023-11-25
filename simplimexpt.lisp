@@ -44,10 +44,8 @@
 ;;  (h) nil if all other tests fail
 (defun inside-outside-unit-circle (e)
 	(setq e (risplit e))
-	(mtell "facts = ~M  ~%" ($facts))
 	(let* ((re (car e)) (im (cdr e)) (x (add (mul re re) (mul im im))))
 	   ; (setq x (ftake 'mexpt x (div 1 2)))
-	    (mtell "re = ~M ; im = ~M ; x = ~M ~%" re im x)
 		(cond ((and (eql im 0) (eq t (mgrp re 0)) (eq t (mgrp 1 re)))
 		       'pos-real-inside)
 		      ((eq t (mgrp 1 x)) 'inside)
@@ -61,7 +59,6 @@
 (defvar *abcd* nil)
 (defun mexpt-x^inf (x) ;return x^inf
     (let ((q (inside-outside-unit-circle x)))
-	      (mtell "x = ~M ; q = ~M ~%" x q)
 	      (push (ftake 'mlist x q) *abcd*)
           (cond ((eq q 'zero) 0) ;0^inf = 0
 		        ((eq q 'pos-real-inside) '$zeroa) ;(0 < x < 1)^inf = zeroa
@@ -107,7 +104,6 @@
 			(if (eq t (mgrp a 0)) '$ind '$und))
 		  ((eq b '$und) '$und) ;are you sure? 
           ((eq b '$inf) ;a^inf 
-		    (mtell "At a:  (mgrp a 1) = ~M  (mgrp 1 a) = ~M ~%"  (mgrp a 1)  (mgrp 1 a))
 		    (mexpt-x^inf a))
 		  ((eq b '$infinity)
 			(mexpt-x^infinity a))

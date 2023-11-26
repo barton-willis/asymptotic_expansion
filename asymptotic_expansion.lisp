@@ -71,34 +71,30 @@
 #|
 Currently, running the testsuite (including share), the result is
 
-Missing operators: 
-tan 625 
-signum 8 
-atan2 2 
-cos 2597 
-cosh 4 
-derivative 6 
-floor 16 
-sin 2783 
+Missing operators:
+tan 1618
+cos 14436
+derivative 6
+floor 32
+sin 16970
 
-Used operators: 
-gamma 6 
-log 2496 
-atan 214 
-conjugate 2 
-mexpt 13619 
-mtimes 10702 
-psi 6 
-li 103 
-gamma_incomplete 307 
-bessel_j 1 
-bessel_k 1 
-mplus 4689 
-! 71 
-erf 39 
-expintegral_ei 12 
-asinh 8 
-
+Used operators:
+log 1767
+atan 166
+conjugate 2
+^ 32490
+* 21094
+psi 2
+li 94
+abs 864
+gamma_incomplete 427
+bessel_j 1
+bessel_k 1
++ 7548
+factorial 38
+erf 27
+expintegral_ei 12
+asinh 8
 
 |#
 
@@ -123,9 +119,9 @@ asinh 8
 	      ($numer nil)
 		  ($float nil)
 		  ($taylor_logexpand t)
-		  ($domain '$complex) ;extra not sure about this
-		  ($m1pbranch t) ;not sure about this
-		  ($algebraic t)
+		  ;($domain '$complex) ;extra not sure about this
+		  ;($m1pbranch t) ;not sure about this
+		  ;($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
 	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 

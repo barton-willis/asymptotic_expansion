@@ -18,7 +18,11 @@ asymptotic expansion package; these files are:
 55 failures are syntatic, not semantic failures) plus one
 test that triggers multiple calls to asksign.
 
-* `my-infsimp` is an effort at a new implementation of the function `simpinf.` The testsuite stalls during `rtestsum` when this file has been loaded, but 
+* `my-infsimp` is an effort at a new implementation of the function `simpinf.` 
+The function `simpinf` does extended real arithmetic; for example, it should
+simplify `ind + 1`  to `ind.`
+
+The testsuite stalls during `rtestsum` when this file has been loaded, but 
 removing one test from `rtestsum` allows the entire testsuite to finish. Doing so,
 fixes `rtest_limit_extra` failures 111, 125, 267, and 317. Additionally, it causes
 seven testsuite failures, but for some of these, the expected results are

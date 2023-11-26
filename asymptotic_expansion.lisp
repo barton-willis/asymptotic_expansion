@@ -167,7 +167,6 @@ asinh 8
 	    (setq ans (addn (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e) t))
         ;(setq ans (sratsimp ans)) ;needed or unneeded?
         (while (and (< n 8) (zerop1 (sratsimp ans))) ;magic number 8.
-			(mtell "Caught a zero case! ~%") ;untested!
 			(incf *zero-case* 1)
 			(incf n)
 			(setq ans (mplus-asymptotic e x pt n)))
@@ -269,7 +268,6 @@ asinh 8
 (setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
 
 (defun mfactorial-asymptotic (e x pt n)
-   ;  (mtell "Top: e = ~M ; pt = ~M ~%" (sratsimp (car e)) pt)
 	(let ((fn (gethash '%gamma *asymptotic-expansion-hash*)))
        (funcall fn (list (add 1 (car e))) x pt n)))
 (setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
@@ -284,11 +282,8 @@ asinh 8
 ;; that Maxima routes the minf case through li-asymptotic-expansion...
 (defun polylogarithm-asymptotic (e x pt n)
 	(let (($numer nil) (s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
-	   (mtell "Top: e = ~M ~%" e)
 	   (setq z (asymptotic-expansion z x pt n))
-	   (mtell "z = ~M ~%" z)
 	   (setq xxx ($limit z x pt))
-	   (mtell "xxx = ~M ~%" xxx)
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
 	           (while (<= k n)

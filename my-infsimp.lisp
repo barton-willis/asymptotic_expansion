@@ -1,8 +1,7 @@
 (in-package :maxima)
 
 ;; Return true iff e is an symbol & and extended real. The seven extended reals 
-;; are minf, zerob, zeroa, ind, inf, infinity, and und. Maybe this could be extended 
-;; to include epsilon and prin-inf.
+;; are minf, zerob, zeroa, ind, inf, infinity, and und. 
 (defun extended-real-p (e)
   (member e (list '$minf '$zerob '$zeroa '$ind '$inf '$infinity '$und)))
 
@@ -13,18 +12,21 @@
 ;; Since limit ((x,y)-> (0+, 0-) (x+y) = 0, we use 0+ + 0- = 0.
 ;; Similarly for all other cases involving the limit points 
 ;; zerob & zeroa, we conclude that for addition zeroa and zerob
-;; should be treated the same as zero. Thus this addition table
-;; doesn't include zeroa and zerob.
+;; should be treated the same as zero. 
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
    (list (list '$minf '$minf '$minf)
+         (list '$minf '$zerob '$minf)
+         (list '$minf '$zeroa '$minf)
          (list '$minf '$inf '$und)
          (list '$minf '$infinity '$und)
          (list '$minf '$und '$und)
          (list '$minf '$ind '$minf)
          
          (list '$inf '$inf '$inf)
+         (list '$inf '$zerob '$inf)
+         (list '$inf '$zeroa '$inf)
          (list '$inf '$infinity '$und)
          (list '$inf '$und '$und)
          (list '$inf '$ind '$inf)
@@ -36,6 +38,8 @@
          (list '$infinity '$ind '$infinity)
 
          (list '$ind '$ind '$ind)
+         (list '$ind '$zerob '$ind)
+         (list '$ind '$zeroa '$ind)
          (list '$ind '$und '$und)
 
          (list '$und '$und '$und)))
@@ -88,6 +92,10 @@
          (list '$minf '$infinity '$infinity)
          (list '$minf '$und '$und)
          (list '$minf '$ind '$und)
+
+         (list '$zerob '$zerob '$zeroa)
+         (list '$zerob '$zeroa '$zerob)
+         (list '$zeroa '$zeroa '$zeroa)
          
          (list '$inf '$inf '$inf)
          (list '$inf '$infinity '$infinity)

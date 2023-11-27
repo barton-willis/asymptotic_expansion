@@ -14,10 +14,10 @@ At one time, this code modified the CL function `gruntz1` to call the function `
 Additionally, this repository has three related files that are not a part of the
 asymptotic expansion package; these files are:
 
-* `simplimexpt` is new implementation of the function that computes the limit of an exponential function. Running the testsite with `simplimexpt` fixes seven rtest_limit_extra failures and it causes 55 testsuite failures (some of these 55 failures are syntatic, not semantic failures) plus one test that triggers multiple calls to asksign.
+* `simplimexpt` is new implementation of the function that computes the limit of an exponential function. Running the testsite with `simplimexpt` fixes seven rtest_limit_extra failures and it causes 55 testsuite failures (some of these 55 are syntatic not semantic failures) plus one test that triggers multiple calls to asksign.
 
 * `my-infsimp` is an effort at a new implementation of the function `simpinf.` The function `simpinf` does extended real arithmetic; for example, it 
-simplifies `ind + 1` to `ind.` The testsuite stalls running`rtestsum` when this file has been loaded, but removing one test from `rtestsum` allows the testsuite to finish. Doing so, fixes four `rtest_limit_extra` failures 111, 125, 267, and 317. Additionally, it causes seven testsuite failures, but for some of these, the expected results are sub optional and the result using `my-infsimp` are better.
+simplifies `ind + 1` to `ind.` The testsuite stalls running `rtestsum` when this file has been loaded, but removing one test from `rtestsum` allows the testsuite to finish. Doing so, fixes `rtest_limit_extra` failures 111, 125, 267, and 317. Additionally, it causes seven testsuite failures.
 
 * `continuous_p` is a function that attempts to determine if an expression is continuous.
 

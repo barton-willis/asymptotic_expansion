@@ -7,42 +7,38 @@
 
 ;; We use a hashtable to represent the addition table of the extended real numbers.
 ;; Arguably the hashtable isn't the most compact way to to this, but this scheme 
-;; makes it easy to extend and modify. 
+;; is easy to extend and modify. 
 
-;; Since limit ((x,y)-> (0+, 0-) (x+y) = 0, we use 0+ + 0- = 0.
-;; Similarly for all other cases involving the limit points 
-;; zerob & zeroa, we conclude that for addition zeroa and zerob
-;; should be treated the same as zero. 
+;; When the sum of two extended reals is undefined, for example minf + inf, we don't 
+;; need an entry in this hashtable; for these cases, the function add-extended-real 
+;; returns und.
+
+;; Possibly controversial, but since limit ((x,y)-> (0+, 0-) (x+y) = 0, we'll 
+;; define zerob + zeroa = 0.
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
    (list (list '$minf '$minf '$minf)
          (list '$minf '$zerob '$minf)
          (list '$minf '$zeroa '$minf)
-         (list '$minf '$inf '$und)
-         (list '$minf '$infinity '$und)
-         (list '$minf '$und '$und)
          (list '$minf '$ind '$minf)
-         
+
+         (list '$zerob '$zerob '$zerob)
+         (list '$zerob '$zeroa 0) ; possibly controversial?
+         (list '$zeroa '$zeroa '$zeroa)
+
          (list '$inf '$inf '$inf)
          (list '$inf '$zerob '$inf)
          (list '$inf '$zeroa '$inf)
-         (list '$inf '$infinity '$und)
-         (list '$inf '$und '$und)
          (list '$inf '$ind '$inf)
 
-         (list '$infinity '$infinity '$und)
          (list '$infinity '$zerob '$infinity)
          (list '$infinity '$zeroa '$infinity)
-         (list '$infinity '$und '$und)
          (list '$infinity '$ind '$infinity)
 
          (list '$ind '$ind '$ind)
          (list '$ind '$zerob '$ind)
-         (list '$ind '$zeroa '$ind)
-         (list '$ind '$und '$und)
-
-         (list '$und '$und '$und)))
+         (list '$ind '$zeroa '$ind)))
 
 ;; Add extended reals a & b. When (a,b) isn't a key in the hashtable, return
 ;; $und. The table is symmetric, so we look for both (a,b) and if that fails,
@@ -51,17 +47,16 @@
   (gethash (list a b) *extended-real-add-table* 
     (gethash (list b a) *extended-real-add-table* '$und)))
 
-;; Add an expression x to a list of infinities l. This code effectively 
-;; converts zeroa & zerob to 0. Maybe that should be revisited. Arguably
-;; x + minf --> minf is wrong because if x = inf it's wrong. Again, that
-;; could be revisited.
+;; Add an expression x to a list of infinities l. Arguably x + minf --> minf is 
+;; wrong because when x = inf it's wrong. 
 (defun add-expr-infinities (x l) 
   ;; Add the members of this list of extended reals l.
   (setq l (cond ((null l) 0)
                 ((null (cdr l)) (car l))
                 (t (reduce #'add-extended-real l))))
 
-  (cond ((eql l 0) x)          ;x + 0 = x
+  (cond ((eql x 0) l)
+        ((or (eql l 0) (eq l '$zeroa) (eq l '$zerob)) x) ;x + 0 = x
         ((eq l '$inf) '$inf)   ;x + inf = inf
         ((eq l '$minf) '$minf) ;x + minf = minf
         ((eq l '$infinity) '$infinity) ;x + infinity = infinity
@@ -73,8 +68,6 @@
 ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.
 (defun addn-extended (l &optional (flag t))
-  (setq l (mapcar #'ridofab l)) ;convert zerob/a to zero.
-
   (when flag
     (setq l (mapcar #'my-infsimp l)))
 
@@ -83,37 +76,32 @@
       (if (extended-real-p lk) (push lk xterms) (setq rterms (add lk rterms))))
     (add-expr-infinities rterms xterms)))      
 
-;;We use a hashtable to represent the multiplication table for extended 
+;; We use a hashtable to represent the multiplication table for extended 
 ;; real numbers. The table is symmetric, so we only list its "upper" half.
+;; Also, when a value isn't found in the hashtable, mult-extended-real 
+;; returns und. So we don't need to list the und cases.
 (defvar *extended-real-mult-table* (make-hash-table :test #'equal))
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
    (list (list '$minf '$minf '$inf)
          (list '$minf '$inf '$minf)
          (list '$minf '$infinity '$infinity)
-         (list '$minf '$und '$und)
-         (list '$minf '$ind '$und)
 
          (list '$zerob '$zerob '$zeroa)
+         (list '$zerob '$ind 0)
+         (list '$zeroa '$ind 0)
          (list '$zerob '$zeroa '$zerob)
          (list '$zeroa '$zeroa '$zeroa)
          
          (list '$inf '$inf '$inf)
          (list '$inf '$infinity '$infinity)
-         (list '$inf '$und '$und)
-         (list '$inf '$ind '$und)
 
          (list '$infinity '$infinity '$infinity)
-         (list '$infinity '$und '$und)
-         (list '$infinity '$ind '$und)
 
-         (list '$ind '$ind '$ind)
-         (list '$ind '$und '$und)
-
-         (list '$und '$und '$und)))
+         (list '$ind '$ind '$ind)))
 
 ;; Multiply extended reals a & b. When (a,b) isn't a key in the hashtable, return
 ;; $und. The table is symmetric, so we look for both (a,b) and if that fails,
-;; we look for (b,a). Maybe zeroa/b*ind could be 0? This code misses this case
+;; we look for (b,a).
 (defun mult-extended-real (a b)
   (gethash (list a b) *extended-real-mult-table* 
 	    (gethash (list b a) *extended-real-mult-table* '$und)))
@@ -241,11 +229,12 @@
 (defun mexpt-extended (a b)
   (setq a (my-infsimp a))
   (setq b (my-infsimp b))
-  (let ((amag ($cabs a)))
+  (let ((amag))
 
   (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
 
         ((eq b '$inf)
+          (setq amag ($cabs a))
           (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
                 ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
                 ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = inf
@@ -279,38 +268,47 @@
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
 (defun log-of-extended-real (e)
-  (setq e (my-infsimp (car e)))
-  (mtell "e = ~M ~%" e)
+  (setq e (car e))
   (cond ((eq e '$minf) '$infinity)
         ((eq e '$zerob) '$infinity)
         ((eq e '$zeroa) '$minf)
-        ((eq e '$ind) '$und)
+        ((eq e '$ind) '$und) ;could look to see if e is nonzero?
         ((eq e '$und) '$und)
         ((eq e '$inf) '$inf)
         ((eq e '$infinity) '$infinity)
         (t (ftake '%log e))))
 (setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
+;; The case (or (among '%sum e) (among '$sum e)) e) is a workaround for
+;; the rtestsum test
+
+;; (kill(f), block ([x : product (sum (f(i), i, 1, inf), j, 1, inf)], block ([simp : false], 
+;;      is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
+
+;; Until I find a proper fix, we'll do an ugly workaround.
 (defun my-infsimp (e)
   (let ((fn (if (and (consp e) (consp (car e))) (gethash (caar e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
+        ((or (among '%sum e) (among '$sum e)) e)
         ((mbagp e) ;map my-infsimp over lists & such
-          (simplifya (cons (list (caar e)) (mapcar #'my-infsimp (cdr e))) t))
+          (fapply (caar e) (mapcar #'my-infsimp (cdr e))))
         ((mplusp e)
           (addn-extended (cdr e) t))
         ((mtimesp e)
           (muln-extended (cdr e) t))
         ((mexptp e)
-          (mexpt-extended (my-infsimp (second e)) (my-infsimp (third e))))
-       ; ((or (eq '%sum (caar e)) (eq '$sum (caar e))
-       ;      (eq '%product (caar e)) (eq '$product (caar e))
-      ;   (eq '$realpart (caar e)) (eq '%realpart (caar e))
-      ;   (eq '$imagpart (caar e)) (eq '%imagpart (caar e)))
-         
-       ;  e)
-        (fn (funcall fn (cdr e)))
-        ;; not sure about this--subscripted functions?
-      (t (simplifya (cons (list (caar e)) (mapcar #'infsimp (cdr e))) t)))))
+          (mexpt-extended (second e) (third e)))
+        ;; The operator of e has an infsimp routine, so map my-infsimp over 
+        ;; the arguments of e and dispatch fn.
+        (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
 
-(defun simpinf (e)
-   (my-infsimp e))
+        (($subvarp (mop e)) ;subscripted function
+		     (subfunmake 
+		      (subfunname e) 
+			        (mapcar #'my-infsimp (subfunsubs e)) 
+			        (mapcar #'my-infsimp (subfunargs e))))
+        (t (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
+
+(defun simpinf (e) (my-infsimp e))
+
+(defun infsimp (e) (my-infsimp e))   

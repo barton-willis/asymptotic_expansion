@@ -265,7 +265,10 @@
         
         ((and (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
           '$zeroa)
-          
+
+        ((and (eq a '$zerob) (integerp b))
+         (my-infsimp (mul (power -1 b) (power '$zeroa b))))
+
         (t (ftake 'mexpt a b)))))
 
 ;; functions only intended for testing

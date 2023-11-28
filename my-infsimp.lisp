@@ -295,6 +295,46 @@
         (t (ftake '%log e))))
 (setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
+;; The general simplifier handles signum(minf and inf), but we'll define
+;; signum for each of the seven extended real numbers. Maybe 
+;; signum(infinity) = ind is OK. 
+(defun signum-of-extended-real (e)
+  (setq e (car e))
+  (cond ((eq e '$minf) -1) ;signum(minf) = -1
+        ((eq e '$zerob) -1)
+        ((eq e '$zeroa) 1)
+        ((eq e '$ind) '$ind)
+        ((eq e '$und) '$und)
+        ((eq e '$inf) 1)
+        ((eq e '$infinity) '$ind) ; not sure
+        (t (ftake '%signum e))))
+(setf (gethash '%signum *extended-real-eval*) #'signum-of-extended-real)
+
+(defun erf-of-extended-real (e)
+  (setq e (car e))
+  (cond ((eq e '$minf) -1) ;erf(minf) = -1
+        ((eq e '$zerob) '$zerob)
+        ((eq e '$zeroa) '$zeroa)
+        ((eq e '$ind) '$ind)
+        ((eq e '$und) '$und)
+        ((eq e '$inf) 1)
+        ((eq e '$infinity) '$infinity) ; not sure
+        (t (ftake '%erf e))))
+(setf (gethash '%erf *extended-real-eval*) #'erf-of-extended-real)
+
+;; Apply the floor function to an extended real.
+(defun floor-of-extended-real (e)
+  (setq e (car e))
+  (cond ((eq e '$minf) '$minf)
+        ((eq e '$zerob) -1)
+        ((eq e '$zeroa) 0)
+        ((eq e '$ind) '$ind)
+        ((eq e '$und) '$und)
+        ((eq e '$inf) '$inf)
+        ((eq e '$infinity) '$und) ; not sure
+        (t (ftake '$floor e))))
+(setf (gethash '$floor *extended-real-eval*) #'floor-of-extended-real)
+
 ;; The case (or (among '%sum e) (among '$sum e)) e) is a workaround for
 ;; the rtestsum test
 
@@ -302,6 +342,7 @@
 ;;      is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
 
 ;; Until I find a proper fix, we'll do an ugly workaround.
+(defvar *abc* nil)
 (defun my-infsimp (e)
   (let ((fn (if (and (consp e) (consp (car e))) (gethash (caar e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
@@ -323,7 +364,9 @@
 		      (subfunname e) 
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
-        (t (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
+        (t 
+          (push e *abc*)
+          (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 (defun simpinf (e) (my-infsimp e))
 

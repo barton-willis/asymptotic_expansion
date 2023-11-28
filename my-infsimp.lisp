@@ -250,7 +250,7 @@
         ;; inf^pos = inf.
         ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf)
         ;; inf^neg = 0. 
-        ((and (eq a '$inf) (eq t (mgrp 0 b)))  0)
+        ((and (eq a '$inf) (eq t (mgrp 0 b))) '$zeroa)
         ;; minf^integer
         ((and (eq a '$minf) (integerp b) (> b 0))
           (if ($evenp b) '$inf '$minf))
@@ -259,6 +259,13 @@
         ((and (eq b '$minf) (eq t (mgrp a 1))) 0)
         ;; (0 < x < 1)^minf = inf
         ((and (eq b '$minf) (eq t (mgrp 0 a)) (eq t (mgrp a 1))) '$inf)
+
+        ((and (eq a '$zeroa) (eq t (mgrp 0 b))) ; zeroa^negative = inf
+          '$inf)
+        
+        ((and (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
+          '$zeroa)
+          
         (t (ftake 'mexpt a b)))))
 
 ;; functions only intended for testing

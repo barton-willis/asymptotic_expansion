@@ -63,7 +63,7 @@
         ((eq l '$ind) '$ind) ; x + ind = ind
         ((eq l '$und) '$und) ;x + und = und
         ;; Give up and return a nounform. But this shouldn't happen!
-        (t (list (get 'mplus 'msimpind) (sort (list x l) '$orderlessp)))))
+        (t (cons (get 'mplus 'msimpind) (sort (list x l) '$orderlessp)))))
 
 ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.
@@ -128,7 +128,7 @@
 ;; properly sort the argument list. Ahh should the sort predicate be great
 ;; or '$orderlessp?
 (defun nounform-mult (a b)
-  (list (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
+  (cons (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
 
 (defun mult-expr-infinities (x l) 
   (let ((sgn))

@@ -14,7 +14,8 @@
 ;; returns und.
 
 ;; Possibly controversial, but since limit ((x,y)-> (0+, 0-) (x+y) = 0, we'll 
-;; define zerob + zeroa = 0.
+;; define zerob + zeroa = 0. The four nonassociate cases are +(zerob,zerob,zeroa),
+;; + (zerob,zeroa,zeroa), +(zeroa,zerob,zerob), and +(zeroa,zeroa,zerob).
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
@@ -24,7 +25,7 @@
          (list '$minf '$ind '$minf)
 
          (list '$zerob '$zerob '$zerob)
-         (list '$zerob '$zeroa 0) ; possibly controversial?
+         (list '$zerob '$zeroa 0) ; possibly controversial
          (list '$zeroa '$zeroa '$zeroa)
 
          (list '$inf '$inf '$inf)
@@ -41,8 +42,7 @@
          (list '$ind '$zeroa '$ind)))
 
 ;; Add extended reals a & b. When (a,b) isn't a key in the hashtable, return
-;; $und. The table is symmetric, so we look for both (a,b) and if that fails,
-;; we look for (b,a).
+;; $und. The table is symmetric, if looking up (a,b) fails, we look for (b,a).
 (defun add-extended-real(a b)
   (gethash (list a b) *extended-real-add-table* 
     (gethash (list b a) *extended-real-add-table* '$und)))
@@ -80,6 +80,10 @@
 ;; real numbers. The table is symmetric, so we only list its "upper" half.
 ;; Also, when a value isn't found in the hashtable, mult-extended-real 
 ;; returns und. So we don't need to list the und cases.
+
+;; This multiplication is commutative and associative. There are 56 cases where
+;; distributivity fails; for example inf*(inf + zeroa) = inf, but
+;; inf * inf + inf*zeroa = und.
 (defvar *extended-real-mult-table* (make-hash-table :test #'equal))
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
    (list (list '$minf '$minf '$inf)
@@ -239,8 +243,10 @@
                 ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
                 ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = inf
                 (t (ftake 'mexpt a b))))
-        ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^positive integer = $ind
+        ((and (eq a '$ind) (integerp b) (> b 0)) ;ind^positive integer = $ind
           '$ind)
+         ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^negative integer = $und
+          '$und)  
         ;; inf^pos = inf.
         ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf)
         ;; inf^neg = 0. 

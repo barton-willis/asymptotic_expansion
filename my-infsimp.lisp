@@ -361,7 +361,8 @@
         ;; The operator of e has an infsimp routine, so map my-infsimp over 
         ;; the arguments of e and dispatch fn.
         (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
-
+        ;; Eventually, we should define a function for the polylogarithm functions.
+        ;; But running the testsuite doesn't catch any cases such as li[2](ind).
         (($subvarp (mop e)) ;subscripted function
           (push e *abc*)
 		     (subfunmake 
@@ -372,6 +373,7 @@
           (push e *abc*)
           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
+;; Redefine simpinf, infsimp, and simpab to just call my-infsimp.
 (defun simpinf (e) (my-infsimp e))
 (defun infsimp (e) (my-infsimp e))   
 (defun simpab (e) (my-infsimp e))

@@ -310,15 +310,18 @@
         (t (ftake '%signum e))))
 (setf (gethash '%signum *extended-real-eval*) #'signum-of-extended-real)
 
+;; Extend erf to handle extended real inputs. The general simplifier handles
+;; erf(minf) and erf(inf) OK. But this code extends erf to the five other 
+;; extended real numbers.
 (defun erf-of-extended-real (e)
   (setq e (car e))
   (cond ((eq e '$minf) -1) ;erf(minf) = -1
-        ((eq e '$zerob) '$zerob)
-        ((eq e '$zeroa) '$zeroa)
-        ((eq e '$ind) '$ind)
-        ((eq e '$und) '$und)
-        ((eq e '$inf) 1)
-        ((eq e '$infinity) '$infinity) ; not sure
+        ((eq e '$zerob) '$zerob) ;erf(zerob) = zerob
+        ((eq e '$zeroa) '$zeroa)  ;erf(zeroa) = zeroa
+        ((eq e '$ind) '$ind) ;erf(ind) = ind
+        ((eq e '$und) '$und) ;erf(und) = und
+        ((eq e '$inf) 1)  ;erf(inf) = 1
+        ((eq e '$infinity) '$infinity)  ;erf(infinity) = infinity (not sure)
         (t (ftake '%erf e))))
 (setf (gethash '%erf *extended-real-eval*) #'erf-of-extended-real)
 
@@ -360,6 +363,7 @@
         (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
 
         (($subvarp (mop e)) ;subscripted function
+          (push e *abc*)
 		     (subfunmake 
 		      (subfunname e) 
 			        (mapcar #'my-infsimp (subfunsubs e)) 
@@ -369,5 +373,5 @@
           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 (defun simpinf (e) (my-infsimp e))
-
 (defun infsimp (e) (my-infsimp e))   
+(defun simpab (e) (my-infsimp e))

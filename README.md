@@ -1,6 +1,6 @@
 # Asymptotic expansions
 
-This package extends the Maxima function `stirling0` that is used internally by the limit code. The function `stirling0` does asymptotic expansions for gamma, factorial, and polylogarithm functions. The `asymptotic_expansion` package extends `stirling0` to handle more functions. There are no user-level functions in this package.
+This package extends the Maxima function `stirling0.` The function `stirling0` is used internally by the limit code to find asymptotic expansions for gamma, factorial, and polylogarithm expressions. The `asymptotic_expansion` package extends `stirling0` to handle more cases. There are no user-level functions in this package.
 
 The `asymptotic_expansion` package and the three associated files that are described below, are _not_ ready for general work. The three associated files are:
 

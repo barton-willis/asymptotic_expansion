@@ -8,7 +8,7 @@ The `asymptotic_expansion` package and the three associated files that are descr
 
 * `my-infsimp` is a new implementation of the functions `simpinf` and `infsimp.` 
 Both of these functions are used internally by the limit code to do extended real arithmetic. The intent is to make these functions handle more cases and to make
-them easier to extend and to fix.
+them easier to extend and fix.
 
 * `continuous_p` is a function that attempts to determine if an expression is continuous.
 

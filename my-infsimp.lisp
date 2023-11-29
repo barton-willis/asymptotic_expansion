@@ -255,12 +255,22 @@
                 ((eq sgn '$pos) '$inf)
                 ((eq sgn '$zero) '$und)
                 (t '$und)))
+
+         ;; For infinity^x, do an asksign on realpart(x)
+        ((eq a '$infinity) 
+          (setq sgn ($asksign ($realpart b)))
+          (cond ((eq sgn '$neg) '$zeroa)
+                ((eq sgn '$pos) '$infinity)
+                ((eq sgn '$zero) '$und)
+                (t '$und)))
     
-        ;; This needs some work
+        ;; This needs some work.
         ((eq a '$minf)
           (mul (power -1 b) (mexpt-extended '$inf b)))
+
         ;;(x>1)^minf = 0
         ((and (eq b '$minf) (eq t (mgrp a 1))) 0)
+
         ;; (0 < x < 1)^minf = inf
         ((and (eq b '$minf) (eq t (mgrp 0 a)) (eq t (mgrp a 1))) '$inf)
 

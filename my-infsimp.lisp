@@ -67,12 +67,11 @@
 
 ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.
-(defun addn-extended (l &optional (flag t))
-  (when flag
-    (setq l (mapcar #'my-infsimp l)))
-
+(defun addn-extended (l)
   (let ((xterms nil) (rterms 0))
+    (setq )
     (dolist (lk l)
+      (setq lk (my-infsimp lk))
       (if (extended-real-p lk) (push lk xterms) (setq rterms (add lk rterms))))
     (add-expr-infinities rterms xterms)))      
 
@@ -110,12 +109,10 @@
   (gethash (list a b) *extended-real-mult-table* 
 	    (gethash (list b a) *extended-real-mult-table* '$und)))
 
-(defun muln-extended (l &optional (flag t))
-  (when flag
-    (setq l (mapcar #'my-infsimp l)))
-
+(defun muln-extended (l)
   (let ((xterms nil) (rterms 1))
     (dolist (lk l)
+      (setq lk (my-infsimp lk))
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
@@ -155,14 +152,6 @@
             (if (eq sgn '$zero) '$und '$infinity))
           ((eq l '$und) '$und)
           (t (nounform-mult x l)))))
-
-(defun muln-extended (l &optional (flag t))
-    (when flag
-      (setq l (mapcar #'my-infsimp l)))
-    (let ((xterms nil) (rterms 1))
-    (dolist (lk l)
-      (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
-    (mult-expr-infinities rterms xterms)))        
 
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
 
@@ -285,10 +274,10 @@
   (my-infsimp (ratdisrep e)))
 
 (defun $mul (&rest a)
-   (muln-extended a t))
+   (muln-extended a))
 
 (defun $add (&rest a)
-   (addn-extended a t))
+   (addn-extended a))
 
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
@@ -371,12 +360,12 @@
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
  
   (cond (($mapatom e) e)
-        ((among '%sum e) e)
+        ((among '%sum e) e) ;gnarly bug workaround.
         ((mbagp e) ;map my-infsimp over lists & such
           (fapply (caar e) (mapcar #'my-infsimp (cdr e))))
         ;; The second argument of true means to map my-infsimp over arguments
-        ((mplusp e) (addn-extended (cdr e) t))
-        ((mtimesp e) (muln-extended (cdr e) t))
+        ((mplusp e) (addn-extended (cdr e)))
+        ((mtimesp e) (muln-extended (cdr e)))
         ((mexptp e)
           (mexpt-extended (second e) (third e)))
         ;; The operator of e has an infsimp routine, so map my-infsimp over 

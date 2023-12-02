@@ -339,25 +339,22 @@
 ;; the rtestsum test
 
 ;; (kill(f), block ([x : product (sum (f(i), i, 1, inf), j, 1, inf)], block ([simp : false], 
-;;     is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
+ ;;   is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
 
 ;; Until I find a proper fix, we'll do an ugly workaround.
+(defvar *aaa* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
- 
   (cond (($mapatom e) e)
+        ((or (eq '%sum (caar e)) (eq '%product (caar e))) e)
         ((among '%sum e) e) ;gnarly bug workaround.
-        ((mbagp e) ;map my-infsimp over lists & such
-          (fapply (caar e) (mapcar #'my-infsimp (cdr e))))
         ;; The second argument of true means to map my-infsimp over arguments
         ((mplusp e) (addn-extended (cdr e)))
         ((mtimesp e) (muln-extended (cdr e)))
-        ((mexptp e)
-          (mexpt-extended (second e) (third e)))
+        ((mexptp e) (mexpt-extended (second e) (third e)))
         ;; The operator of e has an infsimp routine, so map my-infsimp over 
         ;; the arguments of e and dispatch fn.
-        (fn 
-           (funcall fn (mapcar #'my-infsimp (cdr e))))
+        (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
         ;; Eventually, we should define a function for the polylogarithm functions.
         ;; But running the testsuite doesn't catch any cases such as li[2](ind).
         (($subvarp (mop e)) ;subscripted function
@@ -365,8 +362,7 @@
 		      (subfunname e) 
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
-        (t 
-          (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
+        (t (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
 (defun simpinf (e) (my-infsimp e))

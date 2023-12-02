@@ -129,7 +129,6 @@
     (setq l (cond ((null l) 1)
                   ((null (cdr l)) (car l))
                   (t (reduce #'mult-extended-real l))))
-    (setq l (ridofab l)); not sure   
     (cond ((eq l '$minf)
              (cond ((eq sgn '$neg) '$inf)
                    ((eq sgn '$pos) '$minf)
@@ -293,16 +292,6 @@
         (t (ftake '%log e))))
 (setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
-(defun sum-of-extended-real (e)
-  (cons (list '$sum 'simp) e))
-(setf (gethash '%sum *extended-real-eval*) #'sum-of-extended-real)
-(setf (gethash '$sum *extended-real-eval*) #'sum-of-extended-real)
-
-(defun product-of-extended-real (e)
-  (cons (list '$product 'simp) e))
-(setf (gethash '%product *extended-real-eval*) #'product-of-extended-real)
-(setf (gethash '$product *extended-real-eval*) #'product-of-extended-real)
-
 ;; The general simplifier handles signum(minf and inf), but we'll define
 ;; signum for each of the seven extended real numbers. Maybe 
 ;; signum(infinity) = ind is OK. 
@@ -353,9 +342,6 @@
 ;;     is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
 
 ;; Until I find a proper fix, we'll do an ugly workaround.
-(defvar *abc* nil)
-(defvar *ppp* nil)
-(defvar *qqq* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
  
@@ -371,18 +357,15 @@
         ;; The operator of e has an infsimp routine, so map my-infsimp over 
         ;; the arguments of e and dispatch fn.
         (fn 
-           (push (caar e) *ppp*)
            (funcall fn (mapcar #'my-infsimp (cdr e))))
         ;; Eventually, we should define a function for the polylogarithm functions.
         ;; But running the testsuite doesn't catch any cases such as li[2](ind).
         (($subvarp (mop e)) ;subscripted function
-          (push e *abc*)
 		     (subfunmake 
 		      (subfunname e) 
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
         (t 
-          (push e *abc*)
           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 

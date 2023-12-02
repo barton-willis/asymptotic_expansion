@@ -119,11 +119,6 @@
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
-(defmfun $askcsign (e)
-  (let (($simp t)) (setq e ($expand e 0 0)))
-  (let ((ans (errcatch ($csign e))))
-    (if ans (car ans) '$complex)))
-    
 ;; Return a*b without dispatching the simplifier on the product. But we do
 ;; properly sort the argument list. Ahh should the sort predicate be great
 ;; or '$orderlessp?
@@ -132,7 +127,7 @@
 
 (defun mult-expr-infinities (x l) 
   (let ((sgn))
-    (setq sgn ($askcsign x))  ;set ans to the complex sign of x
+    (setq sgn ($csign x))  ;set ans to the complex sign of x
 
     (setq l (cond ((null l) 1)
                   ((null (cdr l)) (car l))
@@ -287,7 +282,7 @@
 
 ;; functions only intended for testing
 (defun $infsimp (e)
-  (my-infsimp e))
+  (my-infsimp (ratdisrep e)))
 
 (defun $mul (&rest a)
    (muln-extended a t))
@@ -308,6 +303,16 @@
         ((eq e '$infinity) '$infinity)
         (t (ftake '%log e))))
 (setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
+
+(defun sum-of-extended-real (e)
+  (cons (list '$sum 'simp) e))
+(setf (gethash '%sum *extended-real-eval*) #'sum-of-extended-real)
+(setf (gethash '$sum *extended-real-eval*) #'sum-of-extended-real)
+
+(defun product-of-extended-real (e)
+  (cons (list '$product 'simp) e))
+(setf (gethash '%product *extended-real-eval*) #'product-of-extended-real)
+(setf (gethash '$product *extended-real-eval*) #'product-of-extended-real)
 
 ;; The general simplifier handles signum(minf and inf), but we'll define
 ;; signum for each of the seven extended real numbers. Maybe 
@@ -356,18 +361,17 @@
 ;; the rtestsum test
 
 ;; (kill(f), block ([x : product (sum (f(i), i, 1, inf), j, 1, inf)], block ([simp : false], 
-;;      is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
+;;     is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
 
 ;; Until I find a proper fix, we'll do an ugly workaround.
 (defvar *abc* nil)
 (defvar *ppp* nil)
 (defvar *qqq* nil)
 (defun my-infsimp (e)
-  (let ((fn (if (and (consp e) (consp (car e))) (gethash (caar e) *extended-real-eval*) nil)))
+  (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
+ 
   (cond (($mapatom e) e)
-        ((or (among '%sum e) (among '$sum e)) 
-         (push e *qqq*)
-        e)
+        ((among '%sum e) e)
         ((mbagp e) ;map my-infsimp over lists & such
           (fapply (caar e) (mapcar #'my-infsimp (cdr e))))
         ;; The second argument of true means to map my-infsimp over arguments

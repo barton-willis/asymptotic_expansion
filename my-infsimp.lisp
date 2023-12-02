@@ -360,21 +360,26 @@
 
 ;; Until I find a proper fix, we'll do an ugly workaround.
 (defvar *abc* nil)
+(defvar *ppp* nil)
+(defvar *qqq* nil)
 (defun my-infsimp (e)
   (let ((fn (if (and (consp e) (consp (car e))) (gethash (caar e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
-        ((or (among '%sum e) (among '$sum e)) e)
+        ((or (among '%sum e) (among '$sum e)) 
+         (push e *qqq*)
+        e)
         ((mbagp e) ;map my-infsimp over lists & such
           (fapply (caar e) (mapcar #'my-infsimp (cdr e))))
-        ((mplusp e)
-          (addn-extended (cdr e) t))
-        ((mtimesp e)
-          (muln-extended (cdr e) t))
+        ;; The second argument of true means to map my-infsimp over arguments
+        ((mplusp e) (addn-extended (cdr e) t))
+        ((mtimesp e) (muln-extended (cdr e) t))
         ((mexptp e)
           (mexpt-extended (second e) (third e)))
         ;; The operator of e has an infsimp routine, so map my-infsimp over 
         ;; the arguments of e and dispatch fn.
-        (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
+        (fn 
+           (push (caar e) *ppp*)
+           (funcall fn (mapcar #'my-infsimp (cdr e))))
         ;; Eventually, we should define a function for the polylogarithm functions.
         ;; But running the testsuite doesn't catch any cases such as li[2](ind).
         (($subvarp (mop e)) ;subscripted function

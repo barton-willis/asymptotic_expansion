@@ -346,7 +346,6 @@
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
-        ((or (eq '%sum (caar e)) (eq '%product (caar e))) e)
         ((among '%sum e) e) ;gnarly bug workaround.
         ;; The second argument of true means to map my-infsimp over arguments
         ((mplusp e) (addn-extended (cdr e)))

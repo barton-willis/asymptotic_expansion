@@ -126,6 +126,7 @@
 ;; To fix it, I changed the code to only call csign when it was needed--before
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
 ;; it did.
+
 (defun mult-expr-infinities (x l) 
   (let ((sgn))
     (setq l (cond ((null l) 1)
@@ -342,6 +343,14 @@
         (t (ftake '$floor e))))
 (setf (gethash '$floor *extended-real-eval*) #'floor-of-extended-real)
 
+;; The calculation 
+
+;;  xxx : product(f(i),i,1,inf);
+;;  xxx : subst(f(i) = product(g(k),k,1,inf), xxx);
+;;  xxx : subst(g(k) = product(w(m),m,1,inf), xxx);
+
+;; finishes, but is very slow and it calls infsimp many times. The
+;; calculation with standard Maxima is also slow.
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)

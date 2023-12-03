@@ -122,14 +122,18 @@
 (defun nounform-mult (a b)
   (cons (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
 
+;; Once product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
+;; To fix it, I changed the code to only call csign when it was needed--before
+;; the call to csign was in the let. I don't know why this fixed the bug, but 
+;; it did.
 (defun mult-expr-infinities (x l) 
   (let ((sgn))
-    (setq sgn ($csign x))  ;set ans to the complex sign of x
-
     (setq l (cond ((null l) 1)
                   ((null (cdr l)) (car l))
                   (t (reduce #'mult-extended-real l))))
+            
     (cond ((eq l '$minf)
+             (setq sgn ($csign x))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$inf)
                    ((eq sgn '$pos) '$minf)
                    ((eq sgn '$zero) '$und)
@@ -140,15 +144,18 @@
           ((eql l 0) 0) ;X*0 = 0
 
           ((eq l '$inf)
+             (setq sgn ($csign x))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$minf)
                    ((eq sgn '$zero) '$und)
                    ((eq sgn '$pos) '$inf)
                    ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
                    (t (nounform-mult x l))))
           ((eq l '$ind) 
-            (if (eq sgn '$zero) 0 '$ind))
+             (setq sgn ($csign x))  ;set ans to the complex sign of x
+             (if (eq sgn '$zero) 0 '$ind))
           ((eq l '$infinity) ;0*infinity = und & X*infinity = infinity.
-            (if (eq sgn '$zero) '$und '$infinity))
+             (setq sgn ($csign x))  ;set ans to the complex sign of x
+             (if (eq sgn '$zero) '$und '$infinity))
           ((eq l '$und) '$und)
           (t (nounform-mult x l)))))
 
@@ -335,25 +342,15 @@
         (t (ftake '$floor e))))
 (setf (gethash '$floor *extended-real-eval*) #'floor-of-extended-real)
 
-;; The case (or (among '%sum e) (among '$sum e)) e) is a workaround for
-;; the rtestsum test
-
-;; (kill(f), block ([x : product (sum (f(i), i, 1, inf), j, 1, inf)], block ([simp : false], 
- ;;   is (x = 'product ('sum (f(i), i, 1, inf), j, 1, inf)))));
-
-;; Until I find a proper fix, we'll do an ugly workaround.
-(defvar *aaa* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
-        ((or (among '%sum e) (among '%product e)) e) ;gnarly bug workaround.
         ;; The second argument of true means to map my-infsimp over arguments
         ((mplusp e) (addn-extended (cdr e)))
         ((mtimesp e) (muln-extended (cdr e)))
         ((mexptp e) (mexpt-extended (second e) (third e)))
         ;; The operator of e has an infsimp routine, so map my-infsimp over 
         ;; the arguments of e and dispatch fn.
-  
         (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
         ;; Eventually, we should define a function for the polylogarithm functions.
         ;; But running the testsuite doesn't catch any cases such as li[2](ind).

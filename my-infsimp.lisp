@@ -345,7 +345,6 @@
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
-        ;; The second argument of true means to map my-infsimp over arguments
         ((mplusp e) (addn-extended (cdr e)))
         ((mtimesp e) (muln-extended (cdr e)))
         ((mexptp e) (mexpt-extended (second e) (third e)))

@@ -227,7 +227,7 @@
 
   (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
       
-        ((and (eq b '$inf))
+        ((eq b '$inf)
           (setq amag ($cabs a))
           (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
                 ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
@@ -240,7 +240,7 @@
           '$und)
 
         ;; For inf^x, do an asksign on realpart(x)
-        ((and (eq a '$inf)) 
+        ((eq a '$inf)
           (setq sgn ($asksign ($realpart b)))
           (cond ((eq sgn '$neg) '$zeroa)
                 ((eq sgn '$pos) '$inf)
@@ -248,7 +248,7 @@
                 (t '$und)))
 
          ;; For infinity^x, do an asksign on realpart(x)
-        ((and (eq a '$infinity)) 
+        ((eq a '$infinity)
           (setq sgn ($asksign ($realpart b)))
           (cond ((eq sgn '$neg) '$zeroa)
                 ((eq sgn '$pos) '$infinity)
@@ -258,7 +258,7 @@
         
     
         ;; This needs some work.
-        ((and (eq a '$minf))
+        ((eq a '$minf)
           (mul (power -1 b) (mexpt-extended '$inf b)))
 
         ;;(x>1)^minf = 0

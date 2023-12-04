@@ -226,7 +226,7 @@
   (let ((amag) (sgn))
 
   (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
-      
+        ;; a^inf 
         ((eq b '$inf)
           (setq amag ($cabs a))
           (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
@@ -283,7 +283,7 @@
   (my-infsimp (ratdisrep e)))
 
 (defun $mul (&rest a)
-   (muln-extended a))
+   (muln-extended (mapcar #'ratdisrep a)))
 
 (defun $add (&rest a)
    (addn-extended (mapcar #'ratdisrep a)))
@@ -345,6 +345,34 @@
         (t (ftake '$floor e))))
 (setf (gethash '$floor *extended-real-eval*) #'floor-of-extended-real)
 
+(defun realpart-of-extended-real (e)
+  (setq e (car e))
+   (cond ((eq e '$minf) '$minf)
+         ((eq e '$zerob) '$zerob)
+         ((eq e '$zeroa) '$zeroa)
+         ((eq e '$ind) '$ind)
+         ((eq e '$und) '$und)
+         ((eq e '$inf) '$inf)
+         ((eq e '$infinity) '$und) ; not sure
+         (t (ftake '%realpart e))))
+(setf (gethash '%realpart *extended-real-eval*) #'realpart-of-extended-real)
+
+(defun imagpart-of-extended-real (e)
+  (setq e (car e))
+   (cond ((eq e '$minf) 0)
+         ((eq e '$zerob) 0)
+         ((eq e '$zeroa) 0)
+         ((eq e '$ind) '$ind) ;not sure
+         ((eq e '$und) '$und)
+         ((eq e '$inf) 0)
+         ((eq e '$infinity) '$und) ; not sure
+         (t (ftake '%imagpart e))))
+(setf (gethash '%imagpart *extended-real-eval*) #'imagpart-of-extended-real)
+
+(defun sum-of-extended-real (e)
+  (fapply '%sum e))
+(setf (gethash '%sum *extended-real-eval*) #'sum-of-extended-real)
+
 ;; The calculation 
 
 ;;  xxx : product(f(i),i,1,inf);
@@ -353,6 +381,7 @@
 
 ;; finishes, but is very slow and it calls infsimp many times. The
 ;; calculation with standard Maxima is also slow.
+(defvar *aaa* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
   (cond (($mapatom e) e)
@@ -369,7 +398,9 @@
 		      (subfunname e) 
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
-        (t (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
+        (t 
+          (push e *aaa*)
+          (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
 (defun simpinf (e) (my-infsimp e))

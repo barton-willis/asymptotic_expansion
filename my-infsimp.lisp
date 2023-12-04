@@ -278,7 +278,7 @@
 
         (t (ftake 'mexpt a b)))))
 
-;; functions only intended for testing
+;; The functions $infsimp, $mul, and $add are only intended for testing
 (defun $infsimp (e)
   (my-infsimp (ratdisrep e)))
 
@@ -286,7 +286,7 @@
    (muln-extended a))
 
 (defun $add (&rest a)
-   (addn-extended a))
+   (addn-extended (mapcar #'ratdisrep a)))
 
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 

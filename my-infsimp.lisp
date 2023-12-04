@@ -69,7 +69,6 @@
 ;; argument flag is true, dispatch infsimp on each list member before adding.
 (defun addn-extended (l)
   (let ((xterms nil) (rterms 0))
-    (setq )
     (dolist (lk l)
       (setq lk (my-infsimp lk))
       (if (extended-real-p lk) (push lk xterms) (setq rterms (add lk rterms))))
@@ -227,20 +226,21 @@
   (let ((amag) (sgn))
 
   (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
-        ((eq b '$inf)
+      
+        ((and (eq b '$inf))
           (setq amag ($cabs a))
           (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
                 ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
                 ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = inf
                 (t (ftake 'mexpt a b))))
-
         ((and (eq a '$ind) (integerp b) (> b 0)) ;ind^positive integer = $ind
           '$ind)
-         ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^negative integer = $und
+
+        ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^negative integer = $und
           '$und)
 
         ;; For inf^x, do an asksign on realpart(x)
-        ((eq a '$inf) 
+        ((and (eq a '$inf)) 
           (setq sgn ($asksign ($realpart b)))
           (cond ((eq sgn '$neg) '$zeroa)
                 ((eq sgn '$pos) '$inf)
@@ -248,15 +248,17 @@
                 (t '$und)))
 
          ;; For infinity^x, do an asksign on realpart(x)
-        ((eq a '$infinity) 
+        ((and (eq a '$infinity)) 
           (setq sgn ($asksign ($realpart b)))
           (cond ((eq sgn '$neg) '$zeroa)
                 ((eq sgn '$pos) '$infinity)
                 ((eq sgn '$zero) '$und)
                 (t '$und)))
     
+        
+    
         ;; This needs some work.
-        ((eq a '$minf)
+        ((and (eq a '$minf))
           (mul (power -1 b) (mexpt-extended '$inf b)))
 
         ;;(x>1)^minf = 0
@@ -265,10 +267,10 @@
         ;; (0 < x < 1)^minf = inf
         ((and (eq b '$minf) (eq t (mgrp 0 a)) (eq t (mgrp a 1))) '$inf)
 
-        ((and (eq a '$zeroa) (eq t (mgrp 0 b))) ; zeroa^negative = inf
+        ((and  (eq a '$zeroa) (eq t (mgrp 0 b))) ; zeroa^negative = inf
           '$inf)
         
-        ((and (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
+        ((and  (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
           '$zeroa)
 
         ((and (eq a '$zerob) (integerp b))

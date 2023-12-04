@@ -14,7 +14,7 @@
 ;; returns und.
 
 ;; Possibly controversial, but since limit ((x,y)-> (0+, 0-) (x+y) = 0, we'll 
-;; define zerob + zeroa = 0. The four nonassociate cases are +(zerob,zerob,zeroa),
+;; define zerob + zeroa = 0. The four non associative cases are +(zerob,zerob,zeroa),
 ;; + (zerob,zeroa,zeroa), +(zeroa,zerob,zerob), and +(zeroa,zeroa,zerob).
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 

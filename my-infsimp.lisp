@@ -1,3 +1,8 @@
+;;; Copyright (c) Barton Willis 2023
+
+;;; GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
+;;; For details, see the file LICENSE
+
 (in-package :maxima)
 
 ;; Return true iff e is an symbol & and extended real. The seven extended reals 

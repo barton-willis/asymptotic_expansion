@@ -225,6 +225,8 @@
    (list '$und '$infinity '$und) 
    (list '$und '$und '$und)))
 
+
+
 (defun mexpt-extended (a b)
   (setq a (my-infsimp a))
   (setq b (my-infsimp b))
@@ -236,7 +238,9 @@
           (setq amag ($cabs a))
           (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
                 ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
-                ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = inf
+                ((eql 1 a) '$und) ; 1^inf = und
+                ((eql 1 amag) '$ind) ; (on unit circle and not 1)^inf = ind
+                ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = infinity
                 (t (ftake 'mexpt a b))))
         ((and (eq a '$ind) (integerp b) (> b 0)) ;ind^positive integer = $ind
           '$ind)
@@ -259,9 +263,6 @@
                 ((eq sgn '$pos) '$infinity)
                 ((eq sgn '$zero) '$und)
                 (t '$und)))
-    
-        
-    
         ;; This needs some work.
         ((eq a '$minf)
           (mul (power -1 b) (mexpt-extended '$inf b)))
@@ -272,10 +273,10 @@
         ;; (0 < x < 1)^minf = inf
         ((and (eq b '$minf) (eq t (mgrp 0 a)) (eq t (mgrp a 1))) '$inf)
 
-        ((and  (eq a '$zeroa) (eq t (mgrp 0 b))) ; zeroa^negative = inf
+        ((and (eq a '$zeroa) (eq t (mgrp 0 b))) ; zeroa^negative = inf
           '$inf)
         
-        ((and  (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
+        ((and (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
           '$zeroa)
 
         ((and (eq a '$zerob) (integerp b))
@@ -285,13 +286,17 @@
 
 ;; The functions $infsimp, $mul, and $add are only intended for testing
 (defun $infsimp (e)
-  (my-infsimp (ratdisrep e)))
+   (my-infsimp (ratdisrep e)))
 
 (defun $mul (&rest a)
    (muln-extended (mapcar #'ratdisrep a)))
 
 (defun $add (&rest a)
    (addn-extended (mapcar #'ratdisrep a)))
+
+(defun $power (a b)
+   (mexpt-extended (ratdisrep a) (ratdisrep b)))
+   
 
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
@@ -307,9 +312,9 @@
         (t (ftake '%log e))))
 (setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
-;; The general simplifier handles signum(minf and inf), but we'll define
+;; The general simplifier handles signum(minf and inf), so we'll define
 ;; signum for each of the seven extended real numbers. Maybe 
-;; signum(infinity) = ind is OK. 
+;; signum(infinity) = ind is OK, but I'm not sure.
 (defun signum-of-extended-real (e)
   (setq e (car e))
   (cond ((eq e '$minf) -1) ;signum(minf) = -1
@@ -392,6 +397,8 @@
 ;; {ceiling, f, g, acos, asin, asinh, atan, cos, derivative,
 ;;  expintegral_ei, gamma, gamma_incomplete, integrate, limit, sin, zeta}
 
+;; For code development, collect all expressions that don't have a 
+;; function for extending them to the extended real numbers.
 (defvar *aaa* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
@@ -418,3 +425,4 @@
 (defun simpinf (e) (my-infsimp e))
 (defun infsimp (e) (my-infsimp e))   
 (defun simpab (e) (my-infsimp e))
+

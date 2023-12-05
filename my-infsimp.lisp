@@ -121,7 +121,7 @@
 (defun nounform-mult (a b)
   (cons (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
 
-;; Once product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
+;; At one time product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
 ;; To fix it, I changed the code to only call csign when it was needed--before
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
 ;; it did.
@@ -300,7 +300,7 @@
         ((eq e '$inf) '$inf)
         ((eq e '$infinity) '$infinity)
         (t (ftake '%log e))))
-(setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
+;(setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
 ;; The general simplifier handles signum(minf and inf), but we'll define
 ;; signum for each of the seven extended real numbers. Maybe 
@@ -369,6 +369,8 @@
          (t (ftake '%imagpart e))))
 (setf (gethash '%imagpart *extended-real-eval*) #'imagpart-of-extended-real)
 
+;; I'm not sure what else this might do? I suppose sum(inf,k,a,b) =
+;; inf when a < b would be OK. For now, it does nothing.
 (defun sum-of-extended-real (e)
   (fapply '%sum e))
 (setf (gethash '%sum *extended-real-eval*) #'sum-of-extended-real)
@@ -381,6 +383,10 @@
 
 ;; finishes, but is very slow and it calls infsimp many times. The
 ;; calculation with standard Maxima is also slow.
+
+;; {ceiling, f, g, acos, asin, asinh, atan, cos, derivative,
+;;  expintegral_ei, gamma, gamma_incomplete, integrate, limit, sin, zeta}
+
 (defvar *aaa* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
@@ -399,7 +405,8 @@
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
         (t 
-          (push e *aaa*)
+          (when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
+             (push (caar e) *aaa*))
           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 

@@ -300,7 +300,7 @@
         ((eq e '$inf) '$inf)
         ((eq e '$infinity) '$infinity)
         (t (ftake '%log e))))
-;(setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
+(setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
 ;; The general simplifier handles signum(minf and inf), but we'll define
 ;; signum for each of the seven extended real numbers. Maybe 

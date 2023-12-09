@@ -296,7 +296,6 @@
 
 (defun $power (a b)
    (mexpt-extended (ratdisrep a) (ratdisrep b)))
-   
 
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 

@@ -177,7 +177,6 @@
 
 (defvar *zzz* nil)
 (defun simplim%mexpt (e x pt &optional (al nil) (bl nil))
-    (mtell "e = ~M ~%" e)
 	(let* ((a (cadr e))
 		   (b (caddr e)) ;e = a^b
 		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (preserve-direction t))

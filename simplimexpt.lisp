@@ -172,16 +172,15 @@
 (defvar *c* nil)
 (defvar *xxx* nil)
 ;; Redefine simplimexpt--call the new simplim%expt function.
-(defun simplimexpt-999 (a b al bl)
+(defun simplimexpt (a b al bl)
 	(simplim%mexpt (list '(mexpt) a b) var val al bl))
 
 (defvar *zzz* nil)
 (defun simplim%mexpt (e x pt &optional (al nil) (bl nil))
-   
+    (mtell "e = ~M ~%" e)
 	(let* ((a (cadr e))
 		   (b (caddr e)) ;e = a^b
 		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (preserve-direction t))
-
 
         ;(setq a (extra-simp a))
 		;(setq b (extra-simp b))
@@ -234,7 +233,7 @@
 			;; zeroa, so we give up. Maybe here we should check the real part
 			;; of bl, not just bl
 			((and (eql al 0) (eq t (mgrp 0 bl))) 
-			  (throw 'limit nil))
+			  (throw 'limit t))
 
 			;; For an indeterminate form, dispatch bylog.
 			((mexpt-indeterminate-form-p al bl)
@@ -288,10 +287,11 @@
 
             ;; When bl is an extended real, dispatch mexpt-a^extended
 			((extended-real-p bl) 
-			(mexpt-a^extended al bl))
+			  (mexpt-a^extended al bl))
 
 			;; When al is an extended real, dispatch mexpt-extended^b
-			;((extended-real-p al) (mexpt-extended^b al bl))
+			((extended-real-p al) 
+			   (mexpt-extended^b al bl))
 			;; Give up--shouldn't happen	 
 			(t 
 			    (push (ftake 'mlist al bl) *c*)

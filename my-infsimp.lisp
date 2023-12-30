@@ -5,7 +5,40 @@
 
 (in-package :maxima)
 
-;; Return true iff e is an symbol & and extended real. The seven extended reals 
+;; This is a start at an extension of the function asksign. It allows responding
+;; that the sign is anyone of neg, nz, zero, pz, pos, pnz, imaginary, or complex. 
+;; When a user inputs a sign and it is either  neg, nz, zero, pz, or pos the 
+;; function does an appropriate assume. When a user input is either complex or 
+;; imaginary, it does an appropirate declare.
+(defmfun $askcsign (e &optional (learn nil))
+  ;;(setq e (ridofab e)) ;; not sure about this!
+  (let ((sgn ($csign e)) (*standard-output* *debug-io*)
+        (allowed (list '$neg '$nz '$zero '$pz '$pos '$imaginary '$complex)))
+    (when (not (member sgn allowed))
+           (mtell "csign(~M) = " e)
+           (setq sgn ($read))
+           ;(mtell "~%")
+           (while (not (member sgn allowed))
+              (mtell "sign must be one of ~M ~%" (fapply 'mlist allowed))
+              (setq sgn ($read)))
+          (when learn
+            (cond ((eq sgn '$neg)
+                      (assume (ftake 'mlessp e 0)))
+                  ((eq sgn '$nz)
+                      (assume (ftake 'mleqp e 0)))
+                  ((eq sgn '$zero)
+                      (assume (ftake '$equal e 0)))
+                  ((eq sgn '$pz)
+                      (assume (ftake 'mgeqp e 0)))
+                  ((eq sgn '$pos)
+                      (assume (ftake 'mgreaterp e 0)))
+                  ((and (eq sgn '$complex) (atom e))
+                      (mfuncall '$declare e '$complex))
+                  ((and (eq sgn '$imaginary) (atom e))
+                      (mfuncall '$declare e '$imaginary)))))
+    sgn))
+
+;; Return true iff e is an symbol & and an extended real. The seven extended reals 
 ;; are minf, zerob, zeroa, ind, inf, infinity, and und. 
 (defun extended-real-p (e)
   (member e (list '$minf '$zerob '$zeroa '$ind '$inf '$infinity '$und)))
@@ -126,7 +159,7 @@
 (defun nounform-mult (a b)
   (cons (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
 
-;; At one time product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
+;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
 ;; To fix it, I changed the code to only call csign when it was needed--before
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
 ;; it did.
@@ -138,7 +171,7 @@
                   (t (reduce #'mult-extended-real l))))
             
     (cond ((eq l '$minf)
-             (setq sgn ($csign x))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$inf)
                    ((eq sgn '$pos) '$minf)
                    ((eq sgn '$zero) '$und)
@@ -149,17 +182,17 @@
           ((eql l 0) 0) ;X*0 = 0
 
           ((eq l '$inf)
-             (setq sgn ($csign x))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$minf)
                    ((eq sgn '$zero) '$und)
                    ((eq sgn '$pos) '$inf)
                    ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
                    (t (nounform-mult x l))))
           ((eq l '$ind) 
-             (setq sgn ($csign x))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x))) ;set ans to the complex sign of x
              (if (eq sgn '$zero) 0 '$ind))
           ((eq l '$infinity) ;0*infinity = und & X*infinity = infinity.
-             (setq sgn ($csign x))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
              (if (eq sgn '$zero) '$und '$infinity))
           ((eq l '$und) '$und)
           (t (nounform-mult x l)))))
@@ -224,8 +257,6 @@
    (list '$und '$inf '$und) 
    (list '$und '$infinity '$und) 
    (list '$und '$und '$und)))
-
-
 
 (defun mexpt-extended (a b)
   (setq a (my-infsimp a))
@@ -400,25 +431,28 @@
 ;; function for extending them to the extended real numbers.
 (defvar *aaa* nil)
 (defun my-infsimp (e)
-  (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
-  (cond (($mapatom e) e)
-        ((mplusp e) (addn-extended (cdr e)))
-        ((mtimesp e) (muln-extended (cdr e)))
-        ((mexptp e) (mexpt-extended (second e) (third e)))
-        ;; The operator of e has an infsimp routine, so map my-infsimp over 
-        ;; the arguments of e and dispatch fn.
-        (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
-        ;; Eventually, we should define a function for the polylogarithm functions.
-        ;; But running the testsuite doesn't catch any cases such as li[2](ind).
-        (($subvarp (mop e)) ;subscripted function
-		     (subfunmake 
+  (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil))
+        (cntx ($supcontext)))
+  (unwind-protect       
+   (cond (($mapatom e) e)
+         ((mplusp e) (addn-extended (cdr e)))
+         ((mtimesp e) (muln-extended (cdr e)))
+         ((mexptp e) (mexpt-extended (second e) (third e)))
+         ;; The operator of e has an infsimp routine, so map my-infsimp over 
+         ;; the arguments of e and dispatch fn.
+         (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
+         ;; Eventually, we should define a function for the polylogarithm functions.
+         ;; But running the testsuite doesn't catch any cases such as li[2](ind).
+         (($subvarp (mop e)) ;subscripted function
+		      (subfunmake 
 		      (subfunname e) 
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
-        (t 
-          (when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
-             (push (caar e) *aaa*))
-          (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
+         (t 
+           (when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
+              (push (caar e) *aaa*))
+           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))
+        ($killcontext cntx))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
 (defun simpinf (e) (my-infsimp e))

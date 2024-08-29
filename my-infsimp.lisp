@@ -12,7 +12,7 @@
 		      loginprod? a context limit-assumptions
 		      limit-top))
 ;; This is a start at an extension of the function asksign. It allows responding
-;; that the sign is anyone of neg, nz, zero, pz, pos, pnz, imaginary, or complex. 
+;; that the sign is anyone of neg, nz, zero, pz, pos, pnz, imaginary, or complex.   
 ;; When a user inputs a sign and it is either  neg, nz, zero, pz, or pos the 
 ;; function does an appropriate assume. When a user input is either complex or 
 ;; imaginary, it does an appropriate declare.
@@ -547,4 +547,3 @@
 
 (defun simplimtimes (e)
   (simplim%mtimes (cons '(mtimes) e) var val))
-

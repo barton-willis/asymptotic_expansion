@@ -92,24 +92,22 @@
   (gethash (list a b) *extended-real-add-table* 
     (gethash (list b a) *extended-real-add-table* '$und)))
 
-;; Add an expression x to a list of infinities l. Arguably x + minf --> minf is 
-;; wrong because when x = inf it's wrong. 
 (defun add-expr-infinities (x l)
-  "Add the members of the list of extended reals l, then add to the finite expression `x`."
+  "Add the members of the list of extended reals l, then add to the list of finite expressions `x`."
    (let ((lsum (cond ((null l) 0)
                      ((null (cdr l)) (car l))
                      (t (reduce #'add-extended-real l)))))
   (if (zerop2 lsum)
-      x
+      (fapply 'mplus x)
       lsum))) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
  
  ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.
 (defun addn-extended (l)
-  (let ((xterms nil) (rterms 0))
+  (let ((xterms nil) (rterms nil))
     (dolist (lk l)
       (setq lk (my-infsimp lk))
-      (if (extended-real-p lk) (push lk xterms) (setq rterms (add lk rterms))))
+      (if (extended-real-p lk) (push lk xterms) (push lk rterms)))
     (add-expr-infinities rterms xterms)))      
 
 ;; We use a hashtable to represent the multiplication table for extended 
@@ -271,6 +269,7 @@
    (list '$und '$infinity '$und) 
    (list '$und '$und '$und)))
 
+;; missing: (-2)^minf, (-2)^ind (-2)^infinity, (-1)^infinity, 2^infinity, 2^ind, (-1)^ind, (-1)^minf
 (defun mexpt-extended (a b)
   (setq a (my-infsimp a))
   (setq b (my-infsimp b))

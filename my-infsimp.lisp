@@ -94,18 +94,16 @@
 
 ;; Add an expression x to a list of infinities l. Arguably x + minf --> minf is 
 ;; wrong because when x = inf it's wrong. 
-(defun add-expr-infinities (x l) 
-  ;; Add the members of the list of extended reals l.
-  (setq l (cond ((null l) 0)
-                ((null (cdr l)) (car l))
-                (t (reduce #'add-extended-real l))))
-  (if (or (eql l 0) (eq l '$zerob) (eql l '$zeroa)) 
-       x
-       l)) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
-
+(defun add-expr-infinities (x l)
+  "Add the members of the list of extended reals l, then add to the finite expression `x`."
+   (let ((lsum (cond ((null l) 0)
+                     ((null (cdr l)) (car l))
+                     (t (reduce #'add-extended-real l)))))
+  (if (zerop2 lsum)
+      x
+      lsum))) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
  
-
-;; Add a list of expressions, including extended reals. When the optional
+ ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.
 (defun addn-extended (l)
   (let ((xterms nil) (rterms 0))

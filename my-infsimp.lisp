@@ -160,10 +160,8 @@
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
-;; Return a*b without dispatching the simplifier on the product. But we do
-;; properly sort the argument list. Ahh should the sort predicate be great
-;; or '$orderlessp?
 (defun nounform-mult (a b)
+  "Return simplified noun-form product of a and b without dispatching the simplifier."
   (cons (list 'mtimes 'simp) (sort (list a b) '$orderlessp)))
 
 ;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.

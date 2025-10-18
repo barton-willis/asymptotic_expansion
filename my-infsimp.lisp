@@ -95,20 +95,15 @@
 ;; Add an expression x to a list of infinities l. Arguably x + minf --> minf is 
 ;; wrong because when x = inf it's wrong. 
 (defun add-expr-infinities (x l) 
-  ;; Add the members of this list of extended reals l.
+  ;; Add the members of the list of extended reals l.
   (setq l (cond ((null l) 0)
                 ((null (cdr l)) (car l))
                 (t (reduce #'add-extended-real l))))
+  (if (or (eql l 0) (eq l '$zerob) (eql l '$zeroa)) 
+       x
+       l)) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
 
-  (cond ((eql x 0) l)
-        ((or (eql l 0) (eq l '$zeroa) (eq l '$zerob)) x) ;x + 0 = x
-        ((eq l '$inf) '$inf)   ;x + inf = inf
-        ((eq l '$minf) '$minf) ;x + minf = minf
-        ((eq l '$infinity) '$infinity) ;x + infinity = infinity
-        ((eq l '$ind) '$ind) ; x + ind = ind
-        ((eq l '$und) '$und) ;x + und = und
-        ;; Give up and return a nounform. But this shouldn't happen!
-        (t (cons (list 'mplus 'simp) (sort (list x l) '$orderlessp)))))
+ 
 
 ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.

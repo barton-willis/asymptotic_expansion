@@ -107,7 +107,7 @@
         ((eq l '$ind) '$ind) ; x + ind = ind
         ((eq l '$und) '$und) ;x + und = und
         ;; Give up and return a nounform. But this shouldn't happen!
-        (t (cons (get 'mplus 'msimpind) (sort (list x l) '$orderlessp)))))
+        (t (cons (list 'mplus 'simp) (sort (list x l) '$orderlessp)))))
 
 ;; Add a list of expressions, including extended reals. When the optional
 ;; argument flag is true, dispatch infsimp on each list member before adding.
@@ -163,7 +163,7 @@
 ;; properly sort the argument list. Ahh should the sort predicate be great
 ;; or '$orderlessp?
 (defun nounform-mult (a b)
-  (cons (get 'mtimes 'msimpind) (sort (list a b) '$orderlessp)))
+  (cons (list 'mtimes 'simp) (sort (list a b) '$orderlessp)))
 
 ;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
 ;; To fix it, I changed the code to only call csign when it was needed--before

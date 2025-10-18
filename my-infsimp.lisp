@@ -464,24 +464,6 @@
            (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
-(defun simpinf (e) 
-  (let ((cntx ($supcontext)))
-    (unwind-protect
-       (progn
-          (assume (ftake 'mlessp 0 '$zeroa))
-          (assume (ftake 'mlessp '$zerob 0))
-          (ridofab (my-infsimp e)))
-       ($killcontext cntx))))
-
-(defun infsimp (e) 
- (let ((cntx ($supcontext)))
-    (unwind-protect
-       (progn
-          (assume (ftake 'mlessp 0 '$zeroa))
-          (assume (ftake 'mlessp '$zerob 0))
-          (ridofab (my-infsimp e)))
-       ($killcontext cntx))))
-        
 (defun simpab (e) 
  (let ((cntx ($supcontext)))
     (unwind-protect
@@ -491,6 +473,11 @@
           (my-infsimp e))
        ($killcontext cntx))))
 
+(defun simpinf (e)
+   (ridofab (simpab e)))
+
+(defun infsimp (e)
+   (ridofab (simpab e)))
 #| 
 ;; This code causes lots of testsuite failures--let's comment it out for now!
 (defun simplimtimes (e)

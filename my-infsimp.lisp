@@ -47,7 +47,7 @@
 ;; Return true iff e is an symbol & and an extended real. The seven extended reals 
 ;; are minf, zerob, zeroa, ind, inf, infinity, and und. 
 (defun extended-real-p (e)
-  (member e (list '$minf '$zerob '$zeroa '$ind '$inf '$infinity '$und)))
+  (member e *extended-reals*))
 
 ;; We use a hashtable to represent the addition table of the extended real numbers.
 ;; Arguably the hashtable isn't the most compact way to to this, but this scheme 
@@ -194,6 +194,21 @@
                    ((eq sgn '$pos) '$inf)
                    ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
                    (t (nounform-mult x l))))
+
+          ((eq l '$zerob)
+           (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+             (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa)
+                   ((eq sgn '$zero) 0)
+                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob)
+                   (t (nounform-mult x l))))
+                   
+           ((eq l '$zeroa)
+           (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+             (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob)
+                   ((eq sgn '$zero) 0)
+                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa)
+                   (t (nounform-mult x l))))
+
           ((eq l '$ind) 
              (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x))) ;set ans to the complex sign of x
              (if (eq sgn '$zero) 0 '$ind))
@@ -435,11 +450,9 @@
 
 ;; For code development, collect all expressions that don't have a 
 ;; function for extending them to the extended real numbers.
-(defvar *aaa* nil)
+(defvar *missinginfsimp* nil)
 (defun my-infsimp (e)
-  (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil))
-        (cntx ($supcontext)))
-  (unwind-protect       
+  (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
    (cond (($mapatom e) e)
          ((mplusp e) (addn-extended (cdr e)))
          ((mtimesp e) (muln-extended (cdr e)))
@@ -456,14 +469,41 @@
 			        (mapcar #'my-infsimp (subfunargs e))))
          (t 
            (when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
-              (push (caar e) *aaa*))
-           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))
-        ($killcontext cntx))))
+              (push (caar e) *missinginfsimp*))
+           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
-(defun simpinf (e) (my-infsimp e))
-(defun infsimp (e) (my-infsimp e))   
-(defun simpab (e) (my-infsimp e))
+(defun simpinf (e) 
+  (let ((cntx ($supcontext)))
+    (unwind-protect
+       (progn
+          (assume (ftake 'mlessp 0 '$zeroa))
+          (assume (ftake 'mlessp '$zerob 0))
+          (ridofab (my-infsimp e)))
+       ($killcontext cntx))))
+
+(defun infsimp (e) 
+ (let ((cntx ($supcontext)))
+    (unwind-protect
+       (progn
+          (assume (ftake 'mlessp 0 '$zeroa))
+          (assume (ftake 'mlessp '$zerob 0))
+          (ridofab (my-infsimp e)))
+       ($killcontext cntx))))
+        
+(defun simpab (e) 
+ (let ((cntx ($supcontext)))
+    (unwind-protect
+       (progn
+          (assume (ftake 'mlessp 0 '$zeroa))
+          (assume (ftake 'mlessp '$zerob 0))
+          (my-infsimp e))
+       ($killcontext cntx))))
+
+#| 
+;; This code causes lots of testsuite failures--let's comment it out for now!
+(defun simplimtimes (e)
+  (simplim%mtimes (cons '(mtimes) e) var val))
 
 (defun simplim%mtimes (e x pt) ; e =((mtimes simp) ...)
    ;;;;;;;;;;(mtell "e = ~M ~%" e)
@@ -474,11 +514,11 @@
          (undterms nil)
          (otherterms nil))
     ;; Classify each term according if its limit is
-	;;  a) zerob, 0, or zeroa  (zeroterms)
-	;;  b) minf,inf, or infinity (infterms)
-	;;  c) ind (indterms)
-	;;  d) und (undterms)
-	;;  e) none of the above (otherterms)
+	  ;;  a) zerob, 0, or zeroa  (zeroterms)
+	  ;;  b) minf, inf, or infinity (infterms)
+	  ;;  c) ind (indterms)
+	  ;;  d) und (undterms)
+	  ;;  e) none of the above (otherterms)
     (dolist (ek (cdr e))
         (setq ans (limit ek x pt 'think))
         (cond ((or (eql ans 0) (eq ans '$zerob) (eq ans '$zeroa))
@@ -543,7 +583,8 @@
 				        (mapcar #'cadr infterms))))
 			  '$und)))			  
      	 (t (fapply 'mtimes (mapcar #'cadr otherterms))))))
-(setf (get 'mtimes 'simplim%function) 'simplim%mtimes)
+;(setf (get 'mtimes 'simplim%function) 'simplim%mtimes)
 
-(defun simplimtimes (e)
-  (simplim%mtimes (cons '(mtimes) e) var val))
+;(defun simplimtimes (e)
+ ; (simplim%mtimes (cons '(mtimes) e) var val))
+|#

@@ -44,10 +44,11 @@
                       (mfuncall '$declare e '$imaginary)))))
     sgn))
 
-;; Return true iff e is an symbol & and an extended real. The seven extended reals 
-;; are minf, zerob, zeroa, ind, inf, infinity, and und. 
 (defun extended-real-p (e)
-  (member e *extended-reals*))
+  "Return true if `e` is a symbol and an element of *extended-reals*. The seven extended
+   reals are `minf`, `zerob`, `zeroa`, `ind`, `inf`, `infinity`, and `und`."
+  (and (symbolp e) (member e *extended-reals*)))
+
 
 ;; We use a hashtable to represent the addition table of the extended real numbers.
 ;; Arguably the hashtable isn't the most compact way to to this, but this scheme 

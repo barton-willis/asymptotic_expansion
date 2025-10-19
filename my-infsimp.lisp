@@ -302,19 +302,6 @@
          (push (ftake 'mlist a b) *missing*)
         (ftake 'mexpt a b)))))
 
-;; The functions $infsimp, $mul, and $add are only intended for testing
-(defun $infsimp (e)
-   (my-infsimp (ratdisrep e)))
-
-(defun $mul (&rest a)
-   (muln-extended (mapcar #'ratdisrep a)))
-
-(defun $add (&rest a)
-   (addn-extended (mapcar #'ratdisrep a)))
-
-(defun $power (a b)
-   (mexpt-extended (ratdisrep a) (ratdisrep b)))
-
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
 (defun log-of-extended-real (e)

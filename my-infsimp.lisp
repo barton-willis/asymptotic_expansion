@@ -5,13 +5,6 @@
 
 (in-package :maxima)
 
-(declare-top (special origval
-		      *indicator numer denom exp var val
-		      taylored logcombed
-		      $exponentialize lhp? lhcount
-		      loginprod? a context limit-assumptions
-		      limit-top))
-
 (defun extended-real-p (e)
   "Return true if `e` is a symbol and an element of *extended-reals*. The seven extended
    reals are `minf`, `zerob`, `zeroa`, `ind`, `inf`, `infinity`, and `und`."
@@ -273,7 +266,6 @@
     ;; General fallback via exponentiation
     (t
      (let ((z (my-infsimp (mul b (ftake '%log a)))))
-       (mtell "z = ~M ~%" z)
        (cond
          ((eq z '$minf) 0)         ; exp(minf) = 0
          ((eq z '$zerob) 1)        ; exp(zerob) = 1

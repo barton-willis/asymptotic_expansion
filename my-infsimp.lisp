@@ -374,7 +374,7 @@
 ;; function for extending them to the extended real numbers.
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
-   (cond (($mapatom e) e)
+   (cond ((or ($mapatom e) (not (amongl *extended-reals* e))) e) ;early bailout might boost speed
          ((mplusp e) (addn-extended (cdr e)))
          ((mtimesp e) (muln-extended (cdr e)))
          ((mexptp e) (mexpt-extended (second e) (third e)))

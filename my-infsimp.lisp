@@ -270,13 +270,17 @@
    (list '$und '$infinity '$und) 
    (list '$und '$und '$und)))
 
-;; missing: (-2)^minf, (-2)^ind (-2)^infinity, (-1)^infinity, 2^infinity, 2^ind, (-1)^ind, (-1)^minf
+;; missing: (-2)^minf = 0, (-2)^ind = ?, (-2)^infinity = und(?), (-1)^infinity = und(?), 2^infinity = und?
+;; 2^ind = ind, (-1)^ind = und(?), (-1)^minf = und (?)
+(defvar *missing* nil)
 (defun mexpt-extended (a b)
   (setq a (my-infsimp a))
   (setq b (my-infsimp b))
   (let ((amag) (sgn))
 
   (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
+        ((and (not (member a *extended-reals*)) (not (member b *extended-reals*)))
+          (ftake 'mexpt a b))
         ;; a^inf 
         ((eq b '$inf)
           (setq amag ($cabs a))
@@ -326,7 +330,9 @@
         ((and (eq a '$zerob) (integerp b))
          (my-infsimp (mul (power -1 b) (power '$zeroa b))))
 
-        (t (ftake 'mexpt a b)))))
+        (t 
+         (push (ftake 'mlist a b) *missing*)
+        (ftake 'mexpt a b)))))
 
 ;; The functions $infsimp, $mul, and $add are only intended for testing
 (defun $infsimp (e)

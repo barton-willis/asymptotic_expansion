@@ -376,7 +376,6 @@
 
 ;; For code development, collect all expressions that don't have a 
 ;; function for extending them to the extended real numbers.
-(defvar *missinginfsimp* nil)
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
    (cond (($mapatom e) e)
@@ -394,8 +393,6 @@
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
          (t 
-           ;(when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
-            ;  (push (caar e) *missinginfsimp*))
            (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 

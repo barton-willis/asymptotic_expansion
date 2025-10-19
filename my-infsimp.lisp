@@ -110,10 +110,6 @@
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
-(defun nounform-mult (a b)
-  "Return simplified noun-form product of a and b without dispatching the simplifier."
-  (cons (list 'mtimes 'simp) (sort (list a b) '$orderlessp)))
-
 ;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
 ;; To fix it, I changed the code to only call csign when it was needed--before
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
@@ -135,7 +131,7 @@
                    ((eq sgn '$pos) '$minf)
                    ((eq sgn '$zero) '$und)
                    ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
-                   (t (nounform-mult x l))))
+                   (t (mul x l))))
 
           ((eq l '$inf)
              (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
@@ -143,21 +139,21 @@
                    ((eq sgn '$zero) '$und)
                    ((eq sgn '$pos) '$inf)
                    ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
-                   (t (nounform-mult x l))))
+                   (t (mul x l))))
 
           ((eq l '$zerob)
            (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa)
                    ((eq sgn '$zero) 0)
                    ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob)
-                   (t (nounform-mult x l))))
+                   (t (mul x l))))
                    
            ((eq l '$zeroa)
            (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob)
                    ((eq sgn '$zero) 0)
                    ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa)
-                   (t (nounform-mult x l))))
+                   (t (mul x l))))
 
           ((eq l '$ind) 
              (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x))) ;set ans to the complex sign of x
@@ -168,7 +164,7 @@
              (if (eq sgn '$zero) '$und '$infinity))
 
           ((eq l '$und) '$und)
-          (t (nounform-mult x l)))))
+          (t (mul x l)))))
 
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
 

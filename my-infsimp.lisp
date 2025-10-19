@@ -238,70 +238,51 @@
    (list '$und '$infinity '$und) 
    (list '$und '$und '$und)))
 
-;; missing: (-2)^minf = 0, (-2)^ind = ?, (-2)^infinity = und(?), (-1)^infinity = und(?), 2^infinity = und?
-;; 2^ind = ind, (-1)^ind = und(?), (-1)^minf = und (?)
-(defvar *missing* nil)
 (defun mexpt-extended (a b)
   (setq a (my-infsimp a))
   (setq b (my-infsimp b))
-  (let ((amag) (sgn))
+  (cond
+    ;; Lookup in table
+    ((gethash (list a b) *extended-real-mexpt-table* nil))
 
-  (cond ((gethash (list a b) *extended-real-mexpt-table* nil)) ;look up
-        ((and (not (member a *extended-reals*)) (not (member b *extended-reals*)))
-          (ftake 'mexpt a b))
-        ;; a^inf 
-        ((eq b '$inf)
-          (setq amag ($cabs a))
-          (cond ((eq t (mgrp 1 amag)) 0); (inside unit circle)^inf = 0
-                ((and (eq t (mgrp amag 1)) (manifestly-real-p a)) '$inf) ;outside unit circle^inf = inf
-                ((eql 1 a) '$und) ; 1^inf = und
-                ((eql 1 amag) '$ind) ; (on unit circle and not 1)^inf = ind
-                ((eq t (mgrp amag 1)) '$infinity) ;outside unit circle^inf = infinity
-                (t (ftake 'mexpt a b))))
-        ((and (eq a '$ind) (integerp b) (> b 0)) ;ind^positive integer = $ind
-          '$ind)
+    ;; Fallback for non-extended reals
+    ((and (not (member a *extended-reals*))
+          (not (member b *extended-reals*)))
+     (ftake 'mexpt a b))
 
-        ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^negative integer = $und
-          '$und)
+    ;; Special cases
+    ((and (eq a '$minf) (integerp b) (< b 0))
+     0) ; minf^negative integer = 0
 
-        ;; For inf^x, do an asksign on realpart(x)
-        ((eq a '$inf)
-          (setq sgn ($asksign ($realpart b)))
-          (cond ((eq sgn '$neg) '$zeroa)
-                ((eq sgn '$pos) '$inf)
-                ((eq sgn '$zero) '$und)
-                (t '$und)))
+    ((and (eq a '$ind) (integerp b) (> b 0))
+     '$ind) ; ind^positive integer = ind
 
-         ;; For infinity^x, do an asksign on realpart(x)
-        ((eq a '$infinity)
-          (setq sgn ($asksign ($realpart b)))
-          (cond ((eq sgn '$neg) '$zeroa)
-                ((eq sgn '$pos) '$infinity)
-                ((eq sgn '$zero) '$und)
-                (t '$und)))
-        ;; This needs some work.
-        ((eq a '$minf)
-          (mul (power -1 b) (mexpt-extended '$inf b)))
+    ((and (eq a '$ind) (integerp b) (> 0 b))
+     '$und) ; ind^negative integer = und
 
-        ;;(x>1)^minf = 0
-        ((and (eq b '$minf) (eq t (mgrp a 1))) 0)
+    ((and (eq a '$zeroa) (eq t (mgrp 0 b)))
+     '$inf) ; zeroa^negative = inf
 
-        ;; (0 < x < 1)^minf = inf
-        ((and (eq b '$minf) (eq t (mgrp 0 a)) (eq t (mgrp a 1))) '$inf)
+    ((and (eq a '$zeroa) (eq t (mgrp b 0)))
+     '$zeroa) ; zeroa^positive = zeroa
 
-        ((and (eq a '$zeroa) (eq t (mgrp 0 b))) ; zeroa^negative = inf
-          '$inf)
-        
-        ((and (eq a '$zeroa) (eq t (mgrp b 0))) ; zeroa^pos = zeroa
-          '$zeroa)
+    ((and (eq a '$zerob) (integerp b))
+     (my-infsimp (mul (power -1 b)
+                      (power '$zeroa b))))
 
-        ((and (eq a '$zerob) (integerp b))
-         (my-infsimp (mul (power -1 b) (power '$zeroa b))))
-
-        (t 
-         (push (ftake 'mlist a b) *missing*)
-        (ftake 'mexpt a b)))))
-
+    ;; General fallback via exponentiation
+    (t
+     (let ((z (my-infsimp (mul b (ftake '%log a)))))
+       (mtell "z = ~M ~%" z)
+       (cond
+         ((eq z '$minf) 0)         ; exp(minf) = 0
+         ((eq z '$zerob) 1)        ; exp(zerob) = 1
+         ((eq z '$zeroa) 1)        ; exp(zeroa) = 1
+         ((eq z '$ind) '$ind)      ; exp(ind) = ind
+         ((eq z '$und) '$und)      ; exp(und) = und
+         ((eq z '$inf) '$inf)      ; exp(inf) = inf
+         ((eq z '$infinity) '$und) ; exp(infinity) = und
+         (t (ftake 'mexpt a b))))))) ; fall back
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
 (defun log-of-extended-real (e)

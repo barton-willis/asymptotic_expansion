@@ -49,18 +49,17 @@
    reals are `minf`, `zerob`, `zeroa`, `ind`, `inf`, `infinity`, and `und`."
   (and (symbolp e) (member e *extended-reals*)))
 
+;; We use a hashtable to represent the addition table for extended real numbers.
+;; Arguably, a hashtable isn't the most compact representation, but this scheme
+;; is easy to extend and modify.
 
-;; We use a hashtable to represent the addition table of the extended real numbers.
-;; Arguably the hashtable isn't the most compact way to to this, but this scheme 
-;; is easy to extend and modify. 
+;; When the sum of two extended reals is undefined (for example, minf + inf),
+;; we omit the entry from the hashtable. In such cases, the function add-extended-real
+;; returns 'und'.
 
-;; When the sum of two extended reals is undefined, for example minf + inf, we don't 
-;; need an entry in this hashtable; for these cases, the function add-extended-real 
-;; returns und.
-
-;; Possibly controversial, but since limit ((x,y)-> (0+, 0-) (x+y) = 0, we'll 
-;; define zerob + zeroa = 0. The four non associative cases are +(zerob,zerob,zeroa),
-;; + (zerob,zeroa,zeroa), +(zeroa,zerob,zerob), and +(zeroa,zeroa,zerob).
+;; Possibly controversial: since limit ((x, y) -> (0⁺, 0⁻)) of (x + y) equals 0,
+;; we define zerob + zeroa = 0. The four non-associative cases are:
+;; +(zerob, zerob, zeroa), +(zerob, zeroa, zeroa), +(zeroa, zerob, zerob),and +(zeroa, zeroa, zerob).
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
@@ -110,14 +109,13 @@
       (if (extended-real-p lk) (push lk xterms) (push lk rterms)))
     (add-expr-infinities rterms xterms)))      
 
-;; We use a hashtable to represent the multiplication table for extended 
-;; real numbers. The table is symmetric, so we only list its "upper" half.
-;; Also, when a value isn't found in the hashtable, mult-extended-real 
-;; returns und. So we don't need to list the und cases.
+;; We use a hashtable to represent the multiplication table for extended
+;; real numbers. The table is symmetric, so we list only its "upper" half.
+;; When a value isn't found in the hashtable, mult-extended-real returns `und`,
+;; so we omit entries for those cases.
 
-;; This multiplication is commutative and associative. There are 56 cases where
-;; distributivity fails; for example inf*(inf + zeroa) = inf, but
-;; inf * inf + inf*zeroa = und.
+;; This multiplication is commutative and associative, but distributivity fails
+;; in 56 cases. For example, inf*(inf + zeroa) = inf, but inf * inf + inf * zeroa = und.
 (defvar *extended-real-mult-table* (make-hash-table :test #'equal))
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
    (list (list '$minf '$minf '$inf)
@@ -151,8 +149,10 @@
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
+(defvar *cld* nil)
 (defun nounform-mult (a b)
   "Return simplified noun-form product of a and b without dispatching the simplifier."
+  (push (ftake 'mlist a b ($csign a)) *cld*)
   (cons (list 'mtimes 'simp) (sort (list a b) '$orderlessp)))
 
 ;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
@@ -161,21 +161,21 @@
 ;; it did.
 
 (defun mult-expr-infinities (x l) 
+
   (let ((sgn))
     (setq l (cond ((null l) 1)
                   ((null (cdr l)) (car l))
                   (t (reduce #'mult-extended-real l))))
             
-    (cond ((eq l '$minf)
+    (cond 
+      ((eql l 1) x) ;X*1 = X
+      ((eq l '$minf)
              (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$inf)
                    ((eq sgn '$pos) '$minf)
                    ((eq sgn '$zero) '$und)
                    ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
                    (t (nounform-mult x l))))
-
-          ((eql l 1) x) ;X*1 = X
-          ((eql l 0) 0) ;X*0 = 0
 
           ((eq l '$inf)
              (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
@@ -202,9 +202,11 @@
           ((eq l '$ind) 
              (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x))) ;set ans to the complex sign of x
              (if (eq sgn '$zero) 0 '$ind))
+
           ((eq l '$infinity) ;0*infinity = und & X*infinity = infinity.
              (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
              (if (eq sgn '$zero) '$und '$infinity))
+
           ((eq l '$und) '$und)
           (t (nounform-mult x l)))))
 
@@ -459,19 +461,13 @@
 			        (mapcar #'my-infsimp (subfunsubs e)) 
 			        (mapcar #'my-infsimp (subfunargs e))))
          (t 
-           (when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
-              (push (caar e) *missinginfsimp*))
+           ;(when (amongl '($minf $zerob $zeroa $ind $und $inf $infinity) e)
+            ;  (push (caar e) *missinginfsimp*))
            (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
 
 ;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
 (defun simpab (e) 
- (let ((cntx ($supcontext)))
-    (unwind-protect
-       (progn
-          (assume (ftake 'mlessp 0 '$zeroa))
-          (assume (ftake 'mlessp '$zerob 0))
-          (my-infsimp e))
-       ($killcontext cntx))))
+  (my-infsimp e))
 
 (defun simpinf (e)
    (ridofab (simpab e)))

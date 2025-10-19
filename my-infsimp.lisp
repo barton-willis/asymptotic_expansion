@@ -149,10 +149,8 @@
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
-(defvar *cld* nil)
 (defun nounform-mult (a b)
   "Return simplified noun-form product of a and b without dispatching the simplifier."
-  (push (ftake 'mlist a b ($csign a)) *cld*)
   (cons (list 'mtimes 'simp) (sort (list a b) '$orderlessp)))
 
 ;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
@@ -169,6 +167,7 @@
             
     (cond 
       ((eql l 1) x) ;X*1 = X
+      ((eql l 0) 0) ;X*0 = 0
       ((eq l '$minf)
              (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$inf)

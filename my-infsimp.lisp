@@ -1,4 +1,4 @@
-;;; Copyright (c) Barton Willis 2023
+;;; Copyright (c) Barton Willis 2023, 2025
 
 ;;; GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
 ;;; For details, see the file LICENSE
@@ -11,38 +11,6 @@
 		      $exponentialize lhp? lhcount
 		      loginprod? a context limit-assumptions
 		      limit-top))
-;; This is a start at an extension of the function asksign. It allows responding
-;; that the sign is anyone of neg, nz, zero, pz, pos, pnz, imaginary, or complex.   
-;; When a user inputs a sign and it is either  neg, nz, zero, pz, or pos the 
-;; function does an appropriate assume. When a user input is either complex or 
-;; imaginary, it does an appropriate declare.
-(defmfun $askcsign (e &optional (learn nil))
-  ;;(setq e (ridofab e)) ;; not sure about this!
-  (let ((sgn ($csign e)) (*standard-output* *debug-io*)
-        (allowed (list '$neg '$nz '$zero '$pz '$pos '$imaginary '$complex)))
-    (when (not (member sgn allowed))
-           (mtell "csign(~M) = " e)
-           (setq sgn ($read))
-           ;(mtell "~%")
-           (while (not (member sgn allowed))
-              (mtell "sign must be one of ~M ~%" (fapply 'mlist allowed))
-              (setq sgn ($read)))
-          (when learn
-            (cond ((eq sgn '$neg)
-                      (assume (ftake 'mlessp e 0)))
-                  ((eq sgn '$nz)
-                      (assume (ftake 'mleqp e 0)))
-                  ((eq sgn '$zero)
-                      (assume (ftake '$equal e 0)))
-                  ((eq sgn '$pz)
-                      (assume (ftake 'mgeqp e 0)))
-                  ((eq sgn '$pos)
-                      (assume (ftake 'mgreaterp e 0)))
-                  ((and (eq sgn '$complex) (atom e))
-                      (mfuncall '$declare e '$complex))
-                  ((and (eq sgn '$imaginary) (atom e))
-                      (mfuncall '$declare e '$imaginary)))))
-    sgn))
 
 (defun extended-real-p (e)
   "Return true if `e` is a symbol and an element of *extended-reals*. The seven extended
@@ -169,7 +137,7 @@
       ((eql l 1) x) ;X*1 = X
       ((eql l 0) 0) ;X*0 = 0
       ((eq l '$minf)
-             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$inf)
                    ((eq sgn '$pos) '$minf)
                    ((eq sgn '$zero) '$und)
@@ -177,7 +145,7 @@
                    (t (nounform-mult x l))))
 
           ((eq l '$inf)
-             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (cond ((eq sgn '$neg) '$minf)
                    ((eq sgn '$zero) '$und)
                    ((eq sgn '$pos) '$inf)
@@ -185,25 +153,25 @@
                    (t (nounform-mult x l))))
 
           ((eq l '$zerob)
-           (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+           (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa)
                    ((eq sgn '$zero) 0)
                    ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob)
                    (t (nounform-mult x l))))
                    
            ((eq l '$zeroa)
-           (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+           (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob)
                    ((eq sgn '$zero) 0)
                    ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa)
                    (t (nounform-mult x l))))
 
           ((eq l '$ind) 
-             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x))) ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x))) ;set ans to the complex sign of x
              (if (eq sgn '$zero) 0 '$ind))
 
           ((eq l '$infinity) ;0*infinity = und & X*infinity = infinity.
-             (setq sgn (if *getsignl-asksign-ok* ($askcsign x t) ($csign x)))  ;set ans to the complex sign of x
+             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
              (if (eq sgn '$zero) '$und '$infinity))
 
           ((eq l '$und) '$und)

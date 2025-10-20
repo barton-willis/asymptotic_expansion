@@ -3,6 +3,35 @@
 ;;; GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
 ;;; For details, see the file LICENSE
 
+#|  Maxima's general simplifier is responsible for simplifying inf - inf to 0.  This code doesn't fix
+     these such bugs, but it does allow some arithmetic operators on the seven extended reals (minf, zerob,
+     zeroa, ind, und,inf, infinity) to be done correctly; for example inf + 42 simplifies to 42.
+
+     Addition and multiplication extended real numbers is commutative and associative, but not distributive.
+     The 54 violations to distributivity are given by the following list of lists.  The first list
+     member represents minf*(minf + zerob) = minf * minf = inf, but minf * minf + minf * zerob = inf + und = und.
+
+[[minf, minf, zerob], [minf, minf, zeroa], [minf, minf, ind],
+[minf, zerob, minf], [minf, zerob, inf], [minf, zerob, infinity],
+[minf, zeroa, minf], [minf, zeroa, inf], [minf, zeroa, infinity],
+[minf, ind, minf], [minf, ind, inf], [minf, ind, infinity],
+[minf, inf, zerob], [minf, inf, zeroa], [minf, inf, ind],
+[minf, infinity, zerob], [minf, infinity, zeroa], [minf, infinity, ind],
+[inf, minf, zerob], [inf, minf, zeroa], [inf, minf, ind], [inf, zerob, minf],
+[inf, zerob, inf], [inf, zerob, infinity], [inf, zeroa, minf],
+[inf, zeroa, inf], [inf, zeroa, infinity], [inf, ind, minf], [inf, ind, inf],
+[inf, ind, infinity], [inf, inf, zerob], [inf, inf, zeroa], [inf, inf, ind],
+[inf, infinity, zerob], [inf, infinity, zeroa], [inf, infinity, ind],
+[infinity, minf, zerob], [infinity, minf, zeroa], [infinity, minf, ind],
+[infinity, zerob, minf], [infinity, zerob, inf], [infinity, zerob, infinity],
+[infinity, zeroa, minf], [infinity, zeroa, inf], [infinity, zeroa, infinity],
+[infinity, ind, minf], [infinity, ind, inf], [infinity, ind, infinity],
+[infinity, inf, zerob], [infinity, inf, zeroa], [infinity, inf, ind],
+[infinity, infinity, zerob], [infinity, infinity, zeroa],
+[infinity, infinity, ind]]
+
+|#
+
 (in-package :maxima)
 
 (defun extended-real-p (e)

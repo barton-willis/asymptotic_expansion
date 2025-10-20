@@ -318,9 +318,8 @@
         (t (ftake '%log e))))
 (setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
-;; The general simplifier handles signum(minf and inf), so we'll define
-;; signum for each of the seven extended real numbers. Maybe 
-;; signum(infinity) = ind is OK, but I'm not sure.
+;; The general simplifier handles signum(minf and inf), but here we define
+;; signum for minf, zerob, zeroa, ind, and inf. We leave signum(infinity) a nounform.
 (defun signum-of-extended-real (e)
   (setq e (car e))
   (cond ((eq e '$minf) -1) ;signum(minf) = -1
@@ -329,7 +328,6 @@
         ((eq e '$ind) '$ind)
         ((eq e '$und) '$und)
         ((eq e '$inf) 1)
-        ((eq e '$infinity) '$ind) ; not sure
         (t (ftake '%signum e))))
 (setf (gethash '%signum *extended-real-eval*) #'signum-of-extended-real)
 
@@ -344,7 +342,6 @@
         ((eq e '$ind) '$ind) ;erf(ind) = ind
         ((eq e '$und) '$und) ;erf(und) = und
         ((eq e '$inf) 1)  ;erf(inf) = 1
-        ((eq e '$infinity) '$infinity)  ;erf(infinity) = infinity (not sure)
         (t (ftake '%erf e))))
 (setf (gethash '%erf *extended-real-eval*) #'erf-of-extended-real)
 
@@ -357,7 +354,6 @@
         ((eq e '$ind) '$ind)
         ((eq e '$und) '$und)
         ((eq e '$inf) '$inf)
-        ((eq e '$infinity) '$und) ; not sure
         (t (ftake '$floor e))))
 (setf (gethash '$floor *extended-real-eval*) #'floor-of-extended-real)
 
@@ -369,7 +365,6 @@
          ((eq e '$ind) '$ind)
          ((eq e '$und) '$und)
          ((eq e '$inf) '$inf)
-         ((eq e '$infinity) '$und) ; not sure
          (t (ftake '%realpart e))))
 (setf (gethash '%realpart *extended-real-eval*) #'realpart-of-extended-real)
 
@@ -381,7 +376,6 @@
          ((eq e '$ind) '$ind) ;not sure
          ((eq e '$und) '$und)
          ((eq e '$inf) 0)
-         ((eq e '$infinity) '$und) ; not sure
          (t (ftake '%imagpart e))))
 (setf (gethash '%imagpart *extended-real-eval*) #'imagpart-of-extended-real)
 

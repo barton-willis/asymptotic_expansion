@@ -304,6 +304,9 @@ the correct value inf.
          ((eq z '$inf) '$inf)      ; exp(inf) = inf
          ((eq z '$infinity) '$und) ; exp(infinity) = und
          (t (ftake 'mexpt a b))))))) ; fall back
+
+;; The hashtable *extended-real-eval* provides a mechanism for simplifing F(extended real); for
+;; example log(inf) = inf and signum(zeroa) = 1.
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
 (defun log-of-extended-real (e)

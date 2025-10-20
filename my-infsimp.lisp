@@ -4,12 +4,16 @@
 ;;; For details, see the file LICENSE
 
 #|  Maxima's general simplifier is responsible for simplifying inf - inf to 0.  This code doesn't fix
-     these such bugs, but it does allow some arithmetic operators on the seven extended reals (minf, zerob,
-     zeroa, ind, und,inf, infinity) to be done correctly; for example inf + 42 simplifies to 42.
+    this bugs, but it does allow arithmetic on the seven extended reals (minf, zerob, zeroa, ind, und, 
+    inf, and infinity) to be done correctly. The one-argument limit function is the only 
+    user-interface to this code; for example, limit(ind^2 + %pi) = ind and limit(inf^2 + zerob) = inf.
 
-     Addition and multiplication extended real numbers is commutative and associative, but not distributive.
-     The 54 violations to distributivity are given by the following list of lists.  The first list
-     member represents minf*(minf + zerob) = minf * minf = inf, but minf * minf + minf * zerob = inf + und = und.
+    Addition and multiplication extended real numbers is commutative and associative, but not distributive.
+    The 54 violations to distributivity are given by the following list of lists. The first list
+    member represents minf*(minf + zerob) = minf * minf = inf, but minf * minf + minf * zerob = inf + und = und.
+     
+    Unfortunately, at the top level of `limit` there is a call to expand(XXX,1,0) to the input XXX.  So 
+    limit(minf*(minf + zerob)) is effectively limit(minf*minf + minf*zerob)= und, not inf as it should be.
 
 [[minf, minf, zerob], [minf, minf, zeroa], [minf, minf, ind],
 [minf, zerob, minf], [minf, zerob, inf], [minf, zerob, infinity],
@@ -105,7 +109,7 @@
 ;; so we omit entries for those cases.
 
 ;; This multiplication is commutative and associative, but distributivity fails
-;; in 56 cases. For example, inf*(inf + zeroa) = inf, but inf * inf + inf * zeroa = und.
+;; in 54 cases. For example, inf*(inf + zeroa) = inf, but inf * inf + inf * zeroa = und.
 (defvar *extended-real-mult-table* (make-hash-table :test #'equal))
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
    (list (list '$minf '$minf '$inf)
@@ -159,7 +163,7 @@
              (cond ((eq sgn '$neg) '$inf)
                    ((eq sgn '$pos) '$minf)
                    ((eq sgn '$zero) '$und)
-                   ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
+                   ((eq sgn '$complex) '$infinity)
                    (t (mul x l))))
 
           ((eq l '$inf)
@@ -167,7 +171,7 @@
              (cond ((eq sgn '$neg) '$minf)
                    ((eq sgn '$zero) '$und)
                    ((eq sgn '$pos) '$inf)
-                   ((or (eq sgn '$complex) (eq sgn '$imaginary)) '$infinity)
+                   ((eq sgn '$complex) '$infinity)
                    (t (mul x l))))
 
           ((eq l '$zerob)

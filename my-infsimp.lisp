@@ -60,9 +60,6 @@ the correct value inf.
 ;; When the sum of two extended reals is undefined (for example, minf + inf),
 ;; we omit the entry from the hashtable. In such cases, the function add-extended-real
 ;; returns 'und'.
-
-;; Possibly controversial: since limit ((x, y) -> (0⁺, 0⁻)) of (x + y) equals 0,
-;; we define zerob + zeroa = 0. 
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
@@ -72,7 +69,7 @@ the correct value inf.
          (list '$minf '$ind '$minf)
 
          (list '$zerob '$zerob '$zerob)
-         (list '$zerob '$zeroa 0) ; possibly controversial
+        ; (list '$zerob '$zeroa 0) ; possibly controversial
          (list '$zeroa '$zeroa '$zeroa)
 
          (list '$inf '$inf '$inf)

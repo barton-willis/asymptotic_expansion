@@ -9,6 +9,10 @@ not fix that bug, but it does enable correct arithmetic on the seven extended re
 ind, und, inf, and infinity. The one-argument limit function is the sole user interface to this code. 
 For example, limit(ind^2 + %pi) evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
+This code has three functions for external use. They are simpinf, infsimp, and simpab. The function simpab
+is the main function. The identical functions simpinf and infsimp call simpab followed by setting both
+zeroa and zerob to zero.
+
 Addition and multiplication of extended real numbers are commutative, but not distributive or associative. 
 The four non associative cases for addition are +(zerob, zerob, zeroa), +(zerob, zeroa, zeroa), 
 +(zeroa, zerob, zerob), and +(zeroa, zeroa, zerob).
@@ -122,8 +126,8 @@ the correct value inf.
          (list '$minf '$infinity '$infinity)
 
          (list '$zerob '$zerob '$zeroa)
-         (list '$zerob '$ind 0)
-         (list '$zeroa '$ind 0)
+         (list '$zerob '$ind '$ind)
+         (list '$zeroa '$ind '$ind)
          (list '$zerob '$zeroa '$zerob)
          (list '$zeroa '$zeroa '$zeroa)
          

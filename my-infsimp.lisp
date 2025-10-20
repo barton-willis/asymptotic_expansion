@@ -9,8 +9,11 @@ not fix that bug, but it does enable correct arithmetic on the seven extended re
 ind, und, inf, and infinity. The one-argument limit function is the sole user interface to this code. 
 For example, limit(ind^2 + %pi) evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
-Addition and multiplication of extended real numbers are commutative and associative, but not distributive. There are 
-54 violations of distributivity, illustrated by the following list of lists. The first entry represents 
+Addition and multiplication of extended real numbers are commutative, but not distributive or associative. 
+The four non associative cases for addition are +(zerob, zerob, zeroa), +(zerob, zeroa, zeroa), 
++(zeroa, zerob, zerob), and +(zeroa, zeroa, zerob).
+
+There are 54 violations of distributivity, illustrated by the following list of lists. The first entry represents 
 the expression minf*(minf + zerob), which simplifies to minf * minf = inf. However, distributing 
 yields minf * minf + minf * zerob = inf + und = und. 
 
@@ -55,8 +58,7 @@ the correct value inf.
 ;; returns 'und'.
 
 ;; Possibly controversial: since limit ((x, y) -> (0⁺, 0⁻)) of (x + y) equals 0,
-;; we define zerob + zeroa = 0. The four non-associative cases are:
-;; +(zerob, zerob, zeroa), +(zerob, zeroa, zeroa), +(zeroa, zerob, zerob),and +(zeroa, zeroa, zerob).
+;; we define zerob + zeroa = 0. 
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))

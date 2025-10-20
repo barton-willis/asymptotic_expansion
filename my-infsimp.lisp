@@ -394,6 +394,7 @@
 ;; finishes, but is very slow and it calls infsimp many times. The
 ;; calculation with standard Maxima is also slow.
 
+;; TODO: *extended-real-eval* function for polylogarithms
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
    (cond ((or ($mapatom e) (not (amongl *extended-reals* e))) e) ;early bailout might boost speed
@@ -403,8 +404,6 @@
          ;; The operator of e has an infsimp routine, so map my-infsimp over 
          ;; the arguments of e and dispatch fn.
          (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
-         ;; Eventually, we should define a function for the polylogarithm functions.
-         ;; But running the testsuite doesn't catch any cases such as li[2](ind).
          (($subvarp (mop e)) ;subscripted function
 		      (subfunmake 
 		      (subfunname e) 

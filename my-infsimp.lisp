@@ -3,17 +3,20 @@
 ;;; GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
 ;;; For details, see the file LICENSE
 
-#|  Maxima's general simplifier is responsible for simplifying inf - inf to 0.  This code doesn't fix
-    this bugs, but it does allow arithmetic on the seven extended reals (minf, zerob, zeroa, ind, und, 
-    inf, and infinity) to be done correctly. The one-argument limit function is the only 
-    user-interface to this code; for example, limit(ind^2 + %pi) = ind and limit(inf^2 + zerob) = inf.
+#|  
+Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0. This code does 
+not fix that bug, but it does enable correct arithmetic on the seven extended reals: minf, zerob, zeroa, 
+ind, und, inf, and infinity. The one-argument limit function is the sole user interface to this code. 
+For example, limit(ind^2 + %pi) evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
-    Addition and multiplication extended real numbers is commutative and associative, but not distributive.
-    The 54 violations to distributivity are given by the following list of lists. The first list
-    member represents minf*(minf + zerob) = minf * minf = inf, but minf * minf + minf * zerob = inf + und = und.
-     
-    Unfortunately, at the top level of `limit` there is a call to expand(XXX,1,0) to the input XXX.  So 
-    limit(minf*(minf + zerob)) is effectively limit(minf*minf + minf*zerob)= und, not inf as it should be.
+Addition and multiplication of extended real numbers are commutative and associative, but not distributive. There are 
+54 violations of distributivity, illustrated by the following list of lists. The first entry represents 
+the expression minf*(minf + zerob), which simplifies to minf * minf = inf. However, distributing 
+yields minf * minf + minf * zerob = inf + und = und. 
+
+Unfortunately, at the top level of limit, Maxima calls expand(XXX, 1, 0) on the input XXX. As a result, 
+limit(minf*(minf + zerob)) is effectively evaluated as limit(minf*minf + minf*zerob) = und, rather than 
+the correct value inf.
 
 [[minf, minf, zerob], [minf, minf, zeroa], [minf, minf, ind],
 [minf, zerob, minf], [minf, zerob, inf], [minf, zerob, infinity],

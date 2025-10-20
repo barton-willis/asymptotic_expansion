@@ -105,7 +105,7 @@ the correct value inf.
 (defun addn-extended (l)
   (let ((xterms nil) (rterms nil))
     (dolist (lk l)
-      (setq lk (my-infsimp lk))
+      (setq lk (simpab lk))
       (if (extended-real-p lk) (push lk xterms) (push lk rterms)))
     (add-expr-infinities rterms xterms)))      
 
@@ -145,7 +145,7 @@ the correct value inf.
 (defun muln-extended (l)
   (let ((xterms nil) (rterms 1))
     (dolist (lk l)
-      (setq lk (my-infsimp lk))
+      (setq lk (simpab lk))
       (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
     (mult-expr-infinities rterms xterms)))      
 
@@ -261,8 +261,8 @@ the correct value inf.
    (list '$und '$und '$und)))
 
 (defun mexpt-extended (a b)
-  (setq a (my-infsimp a))
-  (setq b (my-infsimp b))
+  (setq a (simpab a))
+  (setq b (simpab b))
   (cond
     ;; Lookup in table
     ((gethash (list a b) *extended-real-mexpt-table* nil))
@@ -289,12 +289,12 @@ the correct value inf.
      '$zeroa) ; zeroa^positive = zeroa
 
     ((and (eq a '$zerob) (integerp b))
-     (my-infsimp (mul (power -1 b)
+     (simpab (mul (power -1 b)
                       (power '$zeroa b))))
 
     ;; General fallback via exponentiation
     (t
-     (let ((z (my-infsimp (mul b (ftake '%log a)))))
+     (let ((z (simpab (mul b (ftake '%log a)))))
        (cond
          ((eq z '$minf) 0)         ; exp(minf) = 0
          ((eq z '$zerob) 1)        ; exp(zerob) = 1
@@ -398,27 +398,24 @@ the correct value inf.
 ;; calculation with standard Maxima is also slow.
 
 ;; TODO: *extended-real-eval* function for polylogarithms
-(defun my-infsimp (e)
+(defun simpab (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
    (cond ((or ($mapatom e) (not (amongl *extended-reals* e))) e) ;early bailout might boost speed
          ((mplusp e) (addn-extended (cdr e)))
          ((mtimesp e) (muln-extended (cdr e)))
          ((mexptp e) (mexpt-extended (second e) (third e)))
-         ;; The operator of e has an infsimp routine, so map my-infsimp over 
+         ;; The operator of e has an infsimp routine, so map simpab over 
          ;; the arguments of e and dispatch fn.
-         (fn (funcall fn (mapcar #'my-infsimp (cdr e))))
+         (fn (funcall fn (mapcar #'simpab (cdr e))))
          (($subvarp (mop e)) ;subscripted function
 		      (subfunmake 
 		      (subfunname e) 
-			        (mapcar #'my-infsimp (subfunsubs e)) 
-			        (mapcar #'my-infsimp (subfunargs e))))
+			        (mapcar #'simpab (subfunsubs e)) 
+			        (mapcar #'simpab (subfunargs e))))
          (t 
-           (fapply (caar e) (mapcar #'my-infsimp (cdr e)))))))
+           (fapply (caar e) (mapcar #'simpab (cdr e)))))))
 
-;; Redefine simpinf, infsimp, and simpab to just call my-infsimp. 
-(defun simpab (e) 
-  (my-infsimp e))
-
+;; Redefine simpinf and infsimp to just call simpab followed by ridofab. 
 (defun simpinf (e)
    (ridofab (simpab e)))
 

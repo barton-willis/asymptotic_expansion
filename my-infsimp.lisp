@@ -187,17 +187,17 @@ the correct value inf.
 
            ((eq lprod '$zeroa)
             (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob) ;zeroa x {neg nz} = zerob
-                  ((eq sgn '$zero) 0)                         ;zerob x zero = 0
+                  ((eq sgn '$zero) 0)                         ;zeroa x zero = 0
                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa) ;zeroa x {pos,pz} = zeroa
                   (t (mul x lprod))))                         ;give up--nounform return
 
            ((eq lprod '$ind)
             (if (eq sgn '$zero) 0 '$ind)) ; ind x {zero} = 0; otherwise ind
 
-           ((eq lprod '$infinity) ; 0*infinity = und; otherwise = infinity.
+           ((eq lprod '$infinity) ; 0 x infinity = und; otherwise = infinity.
             (if (eq sgn '$zero) '$und '$infinity))
 
-           ((eq lprod '$und) '$und) ; und x anything = und
+           ((eq lprod '$und) '$und) ;und x anything = und
            (t (mul x lprod))))))))  ;give up--nounform return
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
 
@@ -311,7 +311,7 @@ the correct value inf.
   (cond ((eq e '$minf) '$infinity)
         ((eq e '$zerob) '$infinity)
         ((eq e '$zeroa) '$minf)
-        ((eq e '$ind) '$und) ;could look to see if e is nonzero?
+        ((eq e '$ind) '$und) ;at this point, we don't know the sign of e, so I guess und is what we need
         ((eq e '$und) '$und)
         ((eq e '$inf) '$inf)
         ((eq e '$infinity) '$infinity)

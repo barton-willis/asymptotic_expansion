@@ -153,58 +153,52 @@ the correct value inf.
 ;; To fix it, I changed the code to only call csign when it was needed--before
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
 ;; it did.
+(defun mult-expr-infinities (x l)
+  "Return x times the product of the members in the list l.  The expression `x` should be free of extended
+   real numbers, and `l` should be a CL list of extended reals."
+  (let ((lprod (cond ((null l) 1)
+                     ((null (cdr l)) (car l))
+                     (t (reduce #'mult-extended-real l)))))
+    (cond
+      ((eql lprod 1) x) ; X*1 = X
+      ((eql lprod 0) 0) ; X*0 = 0
+      (t
+       (let ((sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x))))
+         (cond
+           ((eq lprod '$minf)
+            (cond ((eq sgn '$neg) '$inf)          ;minf x neg = inf
+                  ((eq sgn '$pos) '$minf)         ;minf x pos = minf
+                  ((eq sgn '$zero) '$und)         ;minf x zero = und
+                  ((eq sgn '$complex) '$infinity) ;minf x infinity = infinity
+                  (t (mul x lprod))))             ;give up--nounform return
 
-(defun mult-expr-infinities (x l) 
+           ((eq lprod '$inf)
+            (cond ((eq sgn '$neg) '$minf)         ;inf x neg = minf
+                  ((eq sgn '$zero) '$und)         ;inf x zero = und
+                  ((eq sgn '$pos) '$inf)          ;inf x pos = inf
+                  ((eq sgn '$complex) '$infinity) ;inf x complex = infinity
+                  (t (mul x lprod))))             ;give up--nounform return
 
-  (let ((sgn))
-    (setq l (cond ((null l) 1)
-                  ((null (cdr l)) (car l))
-                  (t (reduce #'mult-extended-real l))))
-            
-    (cond 
-      ((eql l 1) x) ;X*1 = X
-      ((eql l 0) 0) ;X*0 = 0
-      ((eq l '$minf)
-             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
-             (cond ((eq sgn '$neg) '$inf)
-                   ((eq sgn '$pos) '$minf)
-                   ((eq sgn '$zero) '$und)
-                   ((eq sgn '$complex) '$infinity)
-                   (t (mul x l))))
+           ((eq lprod '$zerob)
+            (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa) ;zerob x {neg nz} = zeroa
+                  ((eq sgn '$zero) 0)                         ;zerob x zero = 0
+                  ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob) ;zerob x {pos,pz} = zerob
+                  (t (mul x lprod))))                         ;give up--nounform return
 
-          ((eq l '$inf)
-             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
-             (cond ((eq sgn '$neg) '$minf)
-                   ((eq sgn '$zero) '$und)
-                   ((eq sgn '$pos) '$inf)
-                   ((eq sgn '$complex) '$infinity)
-                   (t (mul x l))))
+           ((eq lprod '$zeroa)
+            (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob) ;zeroa x {neg nz} = zerob
+                  ((eq sgn '$zero) 0)                         ;zerob x zero = 0
+                  ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa) ;zeroa x {pos,pz} = zeroa
+                  (t (mul x lprod))))                         ;give up--nounform return
 
-          ((eq l '$zerob)
-           (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
-             (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa)
-                   ((eq sgn '$zero) 0)
-                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob)
-                   (t (mul x l))))
-                   
-           ((eq l '$zeroa)
-           (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
-             (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob)
-                   ((eq sgn '$zero) 0)
-                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa)
-                   (t (mul x l))))
+           ((eq lprod '$ind)
+            (if (eq sgn '$zero) 0 '$ind)) ; ind x {zero} = 0; otherwise ind
 
-          ((eq l '$ind) 
-             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x))) ;set ans to the complex sign of x
-             (if (eq sgn '$zero) 0 '$ind))
+           ((eq lprod '$infinity) ; 0*infinity = und; otherwise = infinity.
+            (if (eq sgn '$zero) '$und '$infinity))
 
-          ((eq l '$infinity) ;0*infinity = und & X*infinity = infinity.
-             (setq sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x)))  ;set ans to the complex sign of x
-             (if (eq sgn '$zero) '$und '$infinity))
-
-          ((eq l '$und) '$und)
-          (t (mul x l)))))
-
+           ((eq lprod '$und) '$und) ; und x anything = und
+           (t (mul x lprod))))))))  ;give up--nounform return
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) 

@@ -394,11 +394,6 @@
 ;; finishes, but is very slow and it calls infsimp many times. The
 ;; calculation with standard Maxima is also slow.
 
-;; {ceiling, f, g, acos, asin, asinh, atan, cos, derivative,
-;;  expintegral_ei, gamma, gamma_incomplete, integrate, limit, sin, zeta}
-
-;; For code development, collect all expressions that don't have a 
-;; function for extending them to the extended real numbers.
 (defun my-infsimp (e)
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
    (cond ((or ($mapatom e) (not (amongl *extended-reals* e))) e) ;early bailout might boost speed

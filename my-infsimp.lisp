@@ -4,20 +4,37 @@
 ;;; For details, see the file LICENSE
 
 #|  
-Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0. This code does 
-not fix that bug, but it does enable correct arithmetic on the seven extended reals: minf, zerob, zeroa, 
-ind, und, inf, and infinity. The one-argument limit function is the sole user interface to this code. 
-For example, limit(ind^2 + %pi) evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
+Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0, 0*inf to 0, and .... 
+This code does fix these bugs, but it does rework the Maxima functions simpfinf, infsimp, and simpab.
+The one-argument limit function is the sole user interface to this code. For example, limit(ind^2 + %pi) 
+evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
 This code has three functions for external use. They are simpinf, infsimp, and simpab. The function simpab
 is the main function. The identical functions simpinf and infsimp call simpab followed by setting both
 zeroa and zerob to zero.
 
-Addition and multiplication of extended real numbers are commutative, but not distributive or associative. 
-The four non associative cases for addition are +(zerob, zerob, zeroa), +(zerob, zeroa, zeroa), 
-+(zeroa, zerob, zerob), and +(zeroa, zeroa, zerob).
+Addition and multiplication of extended real numbers are commutative; addition is not associative, but
+multiplication is associative. The fifteen non associative cases for addition are (example: the first 
+entry means infinity + (zeroa + zerob) = infinity + und = und, but (infinity + zeroa) + zerob = 
+infinity + zerob = infinity.)
 
-There are 54 violations of distributivity, illustrated by the following list of lists. The first entry represents 
+(%o4)	[[infinity,zeroa,zerob],
+       [infinity,zerob,zeroa],[inf,zeroa,zerob],
+       [inf,zerob,zeroa],
+       [ind,zeroa,zerob],
+       [ind,zerob,zeroa],
+       [zeroa,zerob,infinity],
+       [zeroa,zerob,inf],
+       [zeroa,zerob,ind],
+       [zeroa,zerob,minf],
+       [zerob,zeroa,infinity],
+       [zerob,zeroa,inf],
+       [zerob,zeroa,ind],
+       [zerob,zeroa,minf],
+       [minf,zeroa,zerob],
+       [minf,zerob,zeroa]]
+
+There are 58 violations of distributivity, illustrated by the following list of lists. The first entry represents 
 the expression minf*(minf + zerob), which simplifies to minf * minf = inf. However, distributing 
 yields minf * minf + minf * zerob = inf + und = und. 
 
@@ -25,24 +42,18 @@ Unfortunately, at the top level of limit, Maxima calls expand(XXX, 1, 0) on the 
 limit(minf*(minf + zerob)) is effectively evaluated as limit(minf*minf + minf*zerob) = und, rather than 
 the correct value inf.
 
-[[minf, minf, zerob], [minf, minf, zeroa], [minf, minf, ind],
-[minf, zerob, minf], [minf, zerob, inf], [minf, zerob, infinity],
-[minf, zeroa, minf], [minf, zeroa, inf], [minf, zeroa, infinity],
-[minf, ind, minf], [minf, ind, inf], [minf, ind, infinity],
-[minf, inf, zerob], [minf, inf, zeroa], [minf, inf, ind],
-[minf, infinity, zerob], [minf, infinity, zeroa], [minf, infinity, ind],
-[inf, minf, zerob], [inf, minf, zeroa], [inf, minf, ind], [inf, zerob, minf],
-[inf, zerob, inf], [inf, zerob, infinity], [inf, zeroa, minf],
-[inf, zeroa, inf], [inf, zeroa, infinity], [inf, ind, minf], [inf, ind, inf],
-[inf, ind, infinity], [inf, inf, zerob], [inf, inf, zeroa], [inf, inf, ind],
-[inf, infinity, zerob], [inf, infinity, zeroa], [inf, infinity, ind],
-[infinity, minf, zerob], [infinity, minf, zeroa], [infinity, minf, ind],
-[infinity, zerob, minf], [infinity, zerob, inf], [infinity, zerob, infinity],
-[infinity, zeroa, minf], [infinity, zeroa, inf], [infinity, zeroa, infinity],
-[infinity, ind, minf], [infinity, ind, inf], [infinity, ind, infinity],
-[infinity, inf, zerob], [infinity, inf, zeroa], [infinity, inf, ind],
-[infinity, infinity, zerob], [infinity, infinity, zeroa],
-[infinity, infinity, ind]]
+[[infinity,infinity,ind],[infinity,infinity,zeroa],[infinity,infinity,zerob],[infinity,inf,inf],[infinity,inf,ind],
+[infinity,inf,zeroa],[infinity,inf,zerob],[infinity,ind,infinity],[infinity,ind,inf],[infinity,ind,minf],
+[infinity,zeroa,infinity],[infinity,zeroa,inf],[infinity,zeroa,minf],[infinity,zerob,infinity],[infinity,zerob,inf],
+[infinity,zerob,minf],[infinity,minf,ind],[infinity,minf,zeroa],[infinity,minf,zerob],[infinity,minf,minf],
+[inf,infinity,ind],[inf,infinity,zeroa],[inf,infinity,zerob],[inf,inf,ind],[inf,inf,zeroa],
+[inf,inf,zerob],[inf,ind,infinity],[inf,ind,inf],[inf,ind,minf],[inf,zeroa,infinity],[inf,zeroa,inf],
+[inf,zeroa,minf],[inf,zerob,infinity],[inf,zerob,inf],[inf,zerob,minf],[inf,minf,ind],
+[inf,minf,zeroa],[inf,minf,zerob],[ind,zeroa,zerob],[ind,zerob,zeroa],[minf,infinity,ind],
+[minf,infinity,zeroa],[minf,infinity,zerob],[minf,inf,ind],[minf,inf,zeroa],
+[minf,inf,zerob],[minf,ind,infinity],[minf,ind,inf],[minf,ind,minf],[minf,zeroa,infinity],
+[minf,zeroa,inf],[minf,zeroa,minf],[minf,zerob,infinity],[minf,zerob,inf],[minf,zerob,minf],
+[minf,minf,ind],[minf,minf,zeroa],[minf,minf,zerob]]
 
 |#
 
@@ -57,9 +68,9 @@ the correct value inf.
 ;; Arguably, a hashtable isn't the most compact representation, but this scheme
 ;; is easy to extend and modify.
 
-;; When the sum of two extended reals is undefined (for example, minf + inf),
-;; we omit the entry from the hashtable. In such cases, the function add-extended-real
-;; returns 'und'.
+;; The hashtable automatically extends by commutativity--so if a key (a,b) isn't in the 
+;; table, the addition code automatically looks for the key (b,a).  And if both keys
+;; (a,b) and (b, a) are missing, the function add-extended-real returns 'und'.
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
@@ -69,7 +80,7 @@ the correct value inf.
          (list '$minf '$ind '$minf)
 
          (list '$zerob '$zerob '$zerob)
-        ; (list '$zerob '$zeroa 0) ; possibly controversial
+        ; (list '$zerob '$zeroa 0) ; controversial--let's make zerob+zeroa -> und
          (list '$zeroa '$zeroa '$zeroa)
 
          (list '$inf '$inf '$inf)
@@ -87,6 +98,7 @@ the correct value inf.
 
 ;; Add extended reals a & b. When (a,b) isn't a key in the hashtable, return
 ;; $und. The table is symmetric, if looking up (a,b) fails, we look for (b,a).
+;; When both keys (a,b) & (b,a) aren't in the table, return und.
 (defun add-extended-real(a b)
   (gethash (list a b) *extended-real-add-table* 
     (gethash (list b a) *extended-real-add-table* '$und)))
@@ -100,8 +112,7 @@ the correct value inf.
       (fapply 'mplus x)
       lsum))) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
  
- ;; Add a list of expressions, including extended reals. When the optional
-;; argument flag is true, dispatch infsimp on each list member before adding.
+ ;; Add a list of expressions, including extended reals. Dispatch `simpab` on each term before adding.
 (defun addn-extended (l)
   (let ((xterms nil) (rterms nil))
     (dolist (lk l)
@@ -201,71 +212,41 @@ the correct value inf.
            (t (mul x lprod))))))))  ;give up--nounform return
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
 
+;;When a key (a,b) isn't in the hashtable, the default is that a^b is und.
 (mapcar #'(lambda (a) 
   (setf (gethash (list (first a) (second a)) *extended-real-mexpt-table*) (third a)))
    (list 
-   (list '$minf '$minf 0) 
-   (list '$minf '$zerob '$und) 
-   (list '$minf '$zeroa '$und) 
-   (list '$minf '$ind '$und) 
-   (list '$minf '$inf '$infinity) 
-   (list '$minf '$infinity '$infinity)
-   (list '$minf '$und '$und)
+   (list '$minf '$minf 0)              ;minf^minf = 0
+   (list '$minf '$inf '$infinity)      ;minf^inf = infinity
+   (list '$minf '$infinity '$infinity) ;minf^infinity = infinity
 
-   (list '$zerob '$minf '$und) 
-   (list '$zerob '$zerob '$und) 
-   (list '$zerob '$zeroa '$und) 
-   (list '$zerob '$ind '$ind) 
-   (list '$zerob '$inf 0) 
-   (list '$zerob '$infinity 0) 
-   (list '$zerob '$und '$und) 
-   
-   (list '$zeroa '$minf '$und) 
-   (list '$zeroa '$zerob '$und) 
-   (list '$zeroa '$zeroa '$und) 
-   (list '$zeroa '$ind '$ind) 
-   (list '$zeroa '$inf 0) 
-   (list '$zeroa '$infinity 0)
-   (list '$zeroa '$und '$und) 
-   
-   (list '$ind '$minf '$und) 
-   (list '$ind '$zerob '$und) 
-   (list '$ind '$zeroa '$und) 
-   (list '$ind '$ind '$und) 
-   (list '$ind '$inf '$und) 
-   (list '$ind '$infinity '$und) 
-   (list '$ind '$und '$und) 
+   (list '$zerob '$ind '$ind)          ;zerob^ind = ind (not sure)
+   (list '$zerob '$inf 0)              ;zerob^inf = 0 (not sure)
+   (list '$zerob '$infinity 0)         ;zerob^infinity = 0 (not sure)
 
-   (list '$inf '$minf 0) 
-   (list '$inf '$zerob '$und) 
-   (list '$inf '$zeroa '$und) 
-   (list '$inf '$ind '$und) 
-   (list '$inf '$inf '$inf) 
-   (list '$inf '$infinity '$infinity)
-   (list '$inf '$und '$und)
+   (list '$zeroa '$ind '$ind)          ;zeroa^ind = ind
+   (list '$zeroa '$inf 0)              ;zeroa^inf = 0  
+   (list '$zeroa '$infinity 0)         ;zeroa^infinity = 0
 
-   (list '$infinity '$minf '$infinity)
+   (list '$inf '$minf 0)               ;inf^minf = 0
+   (list '$inf '$inf '$inf)            ;inf^inf = inf
+   (list '$inf '$infinity '$infinity)  ;inf^infinity = infinity
+
+   (list '$infinity '$minf '$infinity) 
    (list '$infinity '$zerob 1) 
    (list '$infinity '$zeroa 1) 
-   (list '$infinity '$ind '$und) 
    (list '$infinity '$inf '$infinity) 
-   (list '$infinity '$infinity '$infinity)
-   (list '$infinity '$und '$und) 
-
-   (list '$und '$minf '$und) 
-   (list '$und '$zerob '$und) 
-   (list '$und '$zeroa '$und) 
-   (list '$und '$ind '$und) 
-   (list '$und '$inf '$und) 
-   (list '$und '$infinity '$und) 
-   (list '$und '$und '$und)))
+   (list '$infinity '$infinity '$infinity)))
 
 (defun mexpt-extended (a b)
   (setq a (simpab a))
   (setq b (simpab b))
   (cond
     ;; Lookup in table
-    ((gethash (list a b) *extended-real-mexpt-table* nil))
+    ((and
+       (member a *extended-reals*)
+       (member b *extended-reals*)
+       (gethash (list a b) *extended-real-mexpt-table* '$und)))
 
     ;; Fallback for non-extended reals
     ((and (not (member a *extended-reals*))
@@ -292,6 +273,9 @@ the correct value inf.
      (simpab (mul (power -1 b)
                       (power '$zeroa b))))
 
+    ((and (eq a '$infinity) (eq t (mgrp b 0))) '$infinity) ; infinity^pos = infinity
+    ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf) ; inf^pos = infinity
+    
     ;; General fallback via exponentiation
     (t
      (let ((z (simpab (mul b (ftake '%log a)))))
@@ -421,3 +405,81 @@ the correct value inf.
 
 (defun infsimp (e)
    (ridofab (simpab e)))
+
+(defun eq-ab (a b)
+  (eql (ridofab a) (ridofab b)))
+
+(defun $test_plus_comm ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
+     (dolist (a L)
+      (dolist (b L)
+        ;; test a+b = b+a
+        (let ((ans1 (add-extended-real a b))
+              (ans2 (add-extended-real b a)))
+        (when (not (eq-ab ans1 ans2))
+          (push (ftake 'mlist a b) bad)))))
+    (fapply 'mlist bad)))
+
+(defun $test_plus_assoc ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
+     (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+        ;; test a+(b+c) = (a+b)+c
+        (let ((ans1 (add-extended-real a (add-extended-real b c)))
+              (ans2 (add-extended-real (add-extended-real a b) c)))
+        (when (not (eq-ab ans1 ans2))
+          (push (ftake 'mlist a b c) bad))))))
+    (fapply 'mlist bad)))
+
+(defun $test_mult_comm ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
+     (dolist (a L)
+      (dolist (b L)
+        ;; test a+b = b+a
+        (let ((ans1 (mult-extended-real a b))
+              (ans2 (mult-extended-real b a)))
+        (when (not (eq-ab ans1 ans2))
+          (push (ftake 'mlist a b) bad)))))
+    (fapply 'mlist bad)))
+
+(defun $test_mult_assoc ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
+     (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+        ;; test a*(b*c) = (a*b)*c
+        (let ((ans1 (mult-extended-real a (mult-extended-real b c)))
+              (ans2 (mult-extended-real (mult-extended-real a b) c)))
+        (when (not (eq-ab ans1 ans2))
+          (push (ftake 'mlist a b c) bad))))))
+    (fapply 'mlist bad)))
+
+(defun $test_dist ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
+     (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+        ;; test a*(b+c) = a*b + a*c
+        (let ((ans1 (mult-extended-real a (add-extended-real b c)))
+              (ans2 (add-extended-real 
+                        (mult-extended-real a b)
+                        (mult-extended-real a c))))
+        (when (not (eq-ab ans1 ans2))
+          (push (ftake 'mlist a b c) bad))))))
+    (fapply 'mlist bad)))
+
+
+(defun $test_exp () ;test a^b * a^c = a^(b+c)
+(let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
+     (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+        ;; test a^(b+c) = a^b * a^c
+        (let ((ans1 (mexpt-extended a (add-extended-real b c)))
+              (ans2 (mult-extended-real 
+                        (mexpt-extended-real a b)
+                        (mexpt-extended-real a c))))
+        (when (not (eq-ab ans1 ans2))
+          (push (ftake 'mlist a b c) bad))))))
+    (fapply 'mlist bad)))

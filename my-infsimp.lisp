@@ -5,16 +5,16 @@
 
 #|  
 Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0, 0*inf to 0, and .... 
-This code does fix these bugs, but it does rework the Maxima functions simpfinf, infsimp, and simpab.
+This code does not fix these bugs, but it does rework the Maxima functions simpfinf, infsimp, and simpab.
 The one-argument limit function is the sole user interface to this code. For example, limit(ind^2 + %pi) 
 evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
-This code has three functions for external use. They are simpinf, infsimp, and simpab. The function simpab
+This code has three functions for internal use. They are simpinf, infsimp, and simpab. The function simpab
 is the main function. The identical functions simpinf and infsimp call simpab followed by setting both
-zeroa and zerob to zero.
+zeroa and zerob to zero. 
 
-Addition and multiplication of extended real numbers are commutative and associative. (This assumes that
-zerob+zeroa = 0).
+Addition and multiplication of extended real numbers are commutative and associative. This assumes that
+zerob+zeroa = 0.
 
 There are 62 violations of distributivity, illustrated by the following list of lists. The first entry represents 
 the expression infinity*(infinity + ind), which simplifies to infinity*infinity = infinity. However, distributing 

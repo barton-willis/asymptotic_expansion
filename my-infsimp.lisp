@@ -14,25 +14,17 @@ is the main function. The identical functions simpinf and infsimp call simpab fo
 zeroa and zerob to zero.
 
 Addition and multiplication of extended real numbers are commutative; addition is not associative, but
-multiplication is associative. The fifteen non associative cases for addition are (example: the first 
+multiplication is associative. The twenty non associative cases for addition are (example: the first 
 entry means infinity + (zeroa + zerob) = infinity + und = und, but (infinity + zeroa) + zerob = 
 infinity + zerob = infinity.)
 
-(%o4)	[[infinity,zeroa,zerob],
-       [infinity,zerob,zeroa],[inf,zeroa,zerob],
-       [inf,zerob,zeroa],
-       [ind,zeroa,zerob],
-       [ind,zerob,zeroa],
-       [zeroa,zerob,infinity],
-       [zeroa,zerob,inf],
-       [zeroa,zerob,ind],
-       [zeroa,zerob,minf],
-       [zerob,zeroa,infinity],
-       [zerob,zeroa,inf],
-       [zerob,zeroa,ind],
-       [zerob,zeroa,minf],
-       [minf,zeroa,zerob],
-       [minf,zerob,zeroa]]
+[[infinity, zeroa, zerob], [infinity, zerob, zeroa],
+[inf, zeroa, zerob], [inf, zerob, zeroa], [ind, zeroa, zerob],
+[ind, zerob, zeroa], [zeroa, zeroa, zerob], [zeroa, zerob, infinity],
+[zeroa, zerob, inf], [zeroa, zerob, ind], [zeroa, zerob, zerob],
+[zeroa, zerob, minf], [zerob, zeroa, infinity], [zerob, zeroa, inf],
+[zerob, zeroa, ind], [zerob, zeroa, zeroa], [zerob, zeroa, minf],
+[zerob, zerob, zeroa], [minf, zeroa, zerob], [minf, zerob, zeroa]]
 
 There are 58 violations of distributivity, illustrated by the following list of lists. The first entry represents 
 the expression minf*(minf + zerob), which simplifies to minf * minf = inf. However, distributing 
@@ -102,9 +94,12 @@ the correct value inf.
 ;; Add extended reals a & b. When (a,b) isn't a key in the hashtable, return
 ;; $und. The table is symmetric, if looking up (a,b) fails, we look for (b,a).
 ;; When both keys (a,b) & (b,a) aren't in the table, return und.
-(defun add-extended-real(a b)
-  (gethash (list a b) *extended-real-add-table* 
-    (gethash (list b a) *extended-real-add-table* '$und)))
+(defun add-extended-real (a b)
+  (cond ((eql 0 a) b)
+        ((eql 0 b) a)
+        (t
+            (gethash (list a b) *extended-real-add-table* 
+              (gethash (list b a) *extended-real-add-table* '$und)))))
 
 (defun add-expr-infinities (x l)
   "Add the members of the list of extended reals l, then add to the list of finite expressions `x`."

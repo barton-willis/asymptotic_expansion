@@ -13,40 +13,37 @@ This code has three functions for external use. They are simpinf, infsimp, and s
 is the main function. The identical functions simpinf and infsimp call simpab followed by setting both
 zeroa and zerob to zero.
 
-Addition and multiplication of extended real numbers are commutative; addition is not associative, but
-multiplication is associative. The twenty non associative cases for addition are (example: the first 
-entry means infinity + (zeroa + zerob) = infinity + und = und, but (infinity + zeroa) + zerob = 
-infinity + zerob = infinity.)
+Addition and multiplication of extended real numbers are commutative and associative. (This assumes that
+zerob+zeroa = 0).
 
-[[infinity, zeroa, zerob], [infinity, zerob, zeroa],
-[inf, zeroa, zerob], [inf, zerob, zeroa], [ind, zeroa, zerob],
-[ind, zerob, zeroa], [zeroa, zeroa, zerob], [zeroa, zerob, infinity],
-[zeroa, zerob, inf], [zeroa, zerob, ind], [zeroa, zerob, zerob],
-[zeroa, zerob, minf], [zerob, zeroa, infinity], [zerob, zeroa, inf],
-[zerob, zeroa, ind], [zerob, zeroa, zeroa], [zerob, zeroa, minf],
-[zerob, zerob, zeroa], [minf, zeroa, zerob], [minf, zerob, zeroa]]
-
-There are 58 violations of distributivity, illustrated by the following list of lists. The first entry represents 
-the expression minf*(minf + zerob), which simplifies to minf * minf = inf. However, distributing 
-yields minf * minf + minf * zerob = inf + und = und. 
+There are 62 violations of distributivity, illustrated by the following list of lists. The first entry represents 
+the expression infinity*(infinity + ind), which simplifies to infinity*infinity = infinty. However, distributing 
+yields infinity^2 + infinity*ind = infinity + und = und.
 
 Unfortunately, at the top level of limit, Maxima calls expand(XXX, 1, 0) on the input XXX. As a result, 
 limit(minf*(minf + zerob)) is effectively evaluated as limit(minf*minf + minf*zerob) = und, rather than 
 the correct value inf.
 
-[[infinity,infinity,ind],[infinity,infinity,zeroa],[infinity,infinity,zerob],[infinity,inf,inf],[infinity,inf,ind],
-[infinity,inf,zeroa],[infinity,inf,zerob],[infinity,ind,infinity],[infinity,ind,inf],[infinity,ind,minf],
-[infinity,zeroa,infinity],[infinity,zeroa,inf],[infinity,zeroa,minf],[infinity,zerob,infinity],[infinity,zerob,inf],
-[infinity,zerob,minf],[infinity,minf,ind],[infinity,minf,zeroa],[infinity,minf,zerob],[infinity,minf,minf],
-[inf,infinity,ind],[inf,infinity,zeroa],[inf,infinity,zerob],[inf,inf,ind],[inf,inf,zeroa],
-[inf,inf,zerob],[inf,ind,infinity],[inf,ind,inf],[inf,ind,minf],[inf,zeroa,infinity],[inf,zeroa,inf],
-[inf,zeroa,minf],[inf,zerob,infinity],[inf,zerob,inf],[inf,zerob,minf],[inf,minf,ind],
-[inf,minf,zeroa],[inf,minf,zerob],[ind,zeroa,zerob],[ind,zerob,zeroa],[minf,infinity,ind],
-[minf,infinity,zeroa],[minf,infinity,zerob],[minf,inf,ind],[minf,inf,zeroa],
-[minf,inf,zerob],[minf,ind,infinity],[minf,ind,inf],[minf,ind,minf],[minf,zeroa,infinity],
-[minf,zeroa,inf],[minf,zeroa,minf],[minf,zerob,infinity],[minf,zerob,inf],[minf,zerob,minf],
-[minf,minf,ind],[minf,minf,zeroa],[minf,minf,zerob]]
-
+[[infinity, infinity, ind], [infinity, infinity, zeroa],
+[infinity, infinity, zerob], [infinity, inf, inf], [infinity, inf, ind],
+[infinity, inf, zeroa], [infinity, inf, zerob], [infinity, ind, infinity],
+[infinity, ind, inf], [infinity, ind, minf], [infinity, zeroa, infinity],
+[infinity, zeroa, inf], [infinity, zeroa, minf], [infinity, zerob, infinity],
+[infinity, zerob, inf], [infinity, zerob, minf], [infinity, minf, ind],
+[infinity, minf, zeroa], [infinity, minf, zerob], [infinity, minf, minf],
+[inf, infinity, ind], [inf, infinity, zeroa], [inf, infinity, zerob],
+[inf, inf, ind], [inf, inf, zeroa], [inf, inf, zerob], [inf, ind, infinity],
+[inf, ind, inf], [inf, ind, minf], [inf, zeroa, infinity], [inf, zeroa, inf],
+[inf, zeroa, minf], [inf, zerob, infinity], [inf, zerob, inf],
+[inf, zerob, minf], [inf, minf, ind], [inf, minf, zeroa], [inf, minf, zerob],
+[ind, zeroa, zerob], [ind, zerob, zeroa], [zeroa, zeroa, zerob],
+[zeroa, zerob, zeroa], [zerob, zeroa, zerob], [zerob, zerob, zeroa],
+[minf, infinity, ind], [minf, infinity, zeroa], [minf, infinity, zerob],
+[minf, inf, ind], [minf, inf, zeroa], [minf, inf, zerob],
+[minf, ind, infinity], [minf, ind, inf], [minf, ind, minf],
+[minf, zeroa, infinity], [minf, zeroa, inf], [minf, zeroa, minf],
+[minf, zerob, infinity], [minf, zerob, inf], [minf, zerob, minf],
+[minf, minf, ind], [minf, minf, zeroa], [minf, minf, zerob]]
 |#
 
 (in-package :maxima)

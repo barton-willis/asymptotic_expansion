@@ -69,8 +69,11 @@ the correct value inf.
 ;; is easy to extend and modify.
 
 ;; The hashtable automatically extends by commutativity--so if a key (a,b) isn't in the 
-;; table, the addition code automatically looks for the key (b,a).  And if both keys
+;; table, the addition code automatically looks for the key (b,a).And if both keys
 ;; (a,b) and (b, a) are missing, the function add-extended-real returns 'und'.
+
+;; If zeroa+zerob = und, then integrate(tan(x)^(1/3)/(cos(x)+sin(x))^2,x,0,%pi/2) yields a nounform,
+;; but if zeroa+zerob=0, we get the correct value for this definite integral.
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
@@ -80,7 +83,7 @@ the correct value inf.
          (list '$minf '$ind '$minf)
 
          (list '$zerob '$zerob '$zerob)
-        ; (list '$zerob '$zeroa 0) ; controversial--let's make zerob+zeroa -> und
+         (list '$zerob '$zeroa 0) ; controversial--let's make zerob+zeroa -> 0
          (list '$zeroa '$zeroa '$zeroa)
 
          (list '$inf '$inf '$inf)
@@ -238,6 +241,7 @@ the correct value inf.
    (list '$infinity '$inf '$infinity) 
    (list '$infinity '$infinity '$infinity)))
 
+(defvar *missing* nil)
 (defun mexpt-extended (a b)
   (setq a (simpab a))
   (setq b (simpab b))
@@ -254,13 +258,17 @@ the correct value inf.
      (ftake 'mexpt a b))
 
     ;; Special cases
-    ((and (eq a '$minf) (integerp b) (< b 0))
-     0) ; minf^negative integer = 0
+    ((and (eq a '$minf) (integerp b)) ;minf^integer
+      (cond ((< b 0) 0)         ;minf^negative integer = 0
+            ((eql 0 b) '$und)   ;minf^0 = und
+            ((oddp b) '$minf)   ;minf^(odd positive) = minf
+            ((evenp b) '$inf)   ;minf^(even positive) = inf
+            (t '$und)))         ;shouldn't happen
 
-    ((and (eq a '$ind) (integerp b) (> b 0))
+    ((and (eq a '$ind) (integerp b) (> b 0)) ;ind^(positive integer)
      '$ind) ; ind^positive integer = ind
 
-    ((and (eq a '$ind) (integerp b) (> 0 b))
+    ((and (eq a '$ind) (integerp b) (> 0 b)) ;ind^(negative integer)
      '$und) ; ind^negative integer = und
 
     ((and (eq a '$zeroa) (eq t (mgrp 0 b)))
@@ -269,16 +277,17 @@ the correct value inf.
     ((and (eq a '$zeroa) (eq t (mgrp b 0)))
      '$zeroa) ; zeroa^positive = zeroa
 
-    ((and (eq a '$zerob) (integerp b))
-     (simpab (mul (power -1 b)
-                      (power '$zeroa b))))
+    ((and (eq a '$zerob) (integerp b)) ;zerob^integer
+     (simpab (mul (power -1 b) (power '$zeroa b))))
 
     ((and (eq a '$infinity) (eq t (mgrp b 0))) '$infinity) ; infinity^pos = infinity
     ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf) ; inf^pos = infinity
     
+    ((and (eql a -1) (eq b '$inf)) '$und) ; (-1)^inf = und
     ;; General fallback via exponentiation
     (t
      (let ((z (simpab (mul b (ftake '%log a)))))
+    
        (cond
          ((eq z '$minf) 0)         ; exp(minf) = 0
          ((eq z '$zerob) 1)        ; exp(zerob) = 1
@@ -287,13 +296,23 @@ the correct value inf.
          ((eq z '$und) '$und)      ; exp(und) = und
          ((eq z '$inf) '$inf)      ; exp(inf) = inf
          ((eq z '$infinity) '$und) ; exp(infinity) = und
-         (t (ftake 'mexpt a b))))))) ; fall back
+         (t 
+              (push (ftake 'mlist a b) *missing*)
+         (ftake 'mexpt a b))))))) ; fall back
 
 ;; The hashtable *extended-real-eval* provides a mechanism for simplifing F(extended real); for
 ;; example log(inf) = inf and signum(zeroa) = 1.
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 
-(defun log-of-extended-real (e)
+(defmacro def-extended-real-evaluator (symbol args &body body)
+  "Define a function for extended real evaluation and register it in *extended-real-eval*."
+  `(progn
+     (defun ,(intern (format nil "~A-OF-EXTENDED-REAL" symbol)) ,args
+       ,@body)
+     (setf (gethash ',symbol *extended-real-eval*)
+           #',(intern (format nil "~A-OF-EXTENDED-REAL" symbol)))))
+
+(def-extended-real-evaluator %log (e)
   (setq e (car e))
   (cond ((eq e '$minf) '$infinity)
         ((eq e '$zerob) '$infinity)
@@ -303,11 +322,10 @@ the correct value inf.
         ((eq e '$inf) '$inf)
         ((eq e '$infinity) '$infinity)
         (t (ftake '%log e))))
-(setf (gethash '%log *extended-real-eval*) #'log-of-extended-real)
 
 ;; The general simplifier handles signum(minf and inf), but here we define
 ;; signum for minf, zerob, zeroa, ind, and inf. We leave signum(infinity) a nounform.
-(defun signum-of-extended-real (e)
+(def-extended-real-evaluator %signum (e)
   (setq e (car e))
   (cond ((eq e '$minf) -1) ;signum(minf) = -1
         ((eq e '$zerob) -1)
@@ -316,12 +334,11 @@ the correct value inf.
         ((eq e '$und) '$und)
         ((eq e '$inf) 1)
         (t (ftake '%signum e))))
-(setf (gethash '%signum *extended-real-eval*) #'signum-of-extended-real)
 
 ;; Extend erf to handle extended real inputs. The general simplifier handles
 ;; erf(minf) and erf(inf) OK. But this code extends erf to the five other 
 ;; extended real numbers.
-(defun erf-of-extended-real (e)
+(def-extended-real-evaluator %erf (e)
   (setq e (car e))
   (cond ((eq e '$minf) -1) ;erf(minf) = -1
         ((eq e '$zerob) '$zerob) ;erf(zerob) = zerob
@@ -330,10 +347,9 @@ the correct value inf.
         ((eq e '$und) '$und) ;erf(und) = und
         ((eq e '$inf) 1)  ;erf(inf) = 1
         (t (ftake '%erf e))))
-(setf (gethash '%erf *extended-real-eval*) #'erf-of-extended-real)
 
 ;; Apply the floor function to an extended real.
-(defun floor-of-extended-real (e)
+(def-extended-real-evaluator floor (e)
   (setq e (car e))
   (cond ((eq e '$minf) '$minf)
         ((eq e '$zerob) -1)
@@ -342,9 +358,8 @@ the correct value inf.
         ((eq e '$und) '$und)
         ((eq e '$inf) '$inf)
         (t (ftake '$floor e))))
-(setf (gethash '$floor *extended-real-eval*) #'floor-of-extended-real)
 
-(defun realpart-of-extended-real (e)
+(def-extended-real-evaluator realpart (e)
   (setq e (car e))
    (cond ((eq e '$minf) '$minf)
          ((eq e '$zerob) '$zerob)
@@ -353,9 +368,8 @@ the correct value inf.
          ((eq e '$und) '$und)
          ((eq e '$inf) '$inf)
          (t (ftake '%realpart e))))
-(setf (gethash '%realpart *extended-real-eval*) #'realpart-of-extended-real)
 
-(defun imagpart-of-extended-real (e)
+(def-extended-real-evaluator imagpart (e)
   (setq e (car e))
    (cond ((eq e '$minf) 0)
          ((eq e '$zerob) 0)
@@ -364,13 +378,11 @@ the correct value inf.
          ((eq e '$und) '$und)
          ((eq e '$inf) 0)
          (t (ftake '%imagpart e))))
-(setf (gethash '%imagpart *extended-real-eval*) #'imagpart-of-extended-real)
 
 ;; I'm not sure what else this might do? I suppose sum(inf,k,a,b) =
 ;; inf when a < b would be OK. For now, it does nothing.
-(defun sum-of-extended-real (e)
+(def-extended-real-evaluator %sum (e)
   (fapply '%sum e))
-(setf (gethash '%sum *extended-real-eval*) #'sum-of-extended-real)
 
 ;; The calculation 
 
@@ -478,8 +490,8 @@ the correct value inf.
         ;; test a^(b+c) = a^b * a^c
         (let ((ans1 (mexpt-extended a (add-extended-real b c)))
               (ans2 (mult-extended-real 
-                        (mexpt-extended-real a b)
-                        (mexpt-extended-real a c))))
+                        (mexpt-extended a b)
+                        (mexpt-extended a c))))
         (when (not (eq-ab ans1 ans2))
           (push (ftake 'mlist a b c) bad))))))
     (fapply 'mlist bad)))

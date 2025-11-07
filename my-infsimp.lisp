@@ -44,8 +44,101 @@ the correct value inf.
 [minf, zeroa, infinity], [minf, zeroa, inf], [minf, zeroa, minf],
 [minf, zerob, infinity], [minf, zerob, inf], [minf, zerob, minf],
 [minf, minf, ind], [minf, minf, zeroa], [minf, minf, zerob]]
-|#
 
+Testsuite: Causes one asksign involving a gensym running rtest_simplify_sum.mac. The failures
+are all, I would say, minor or purely semantic.
+
+Error(s) found:
+   rtest16.mac problem:  (525)
+   rtestint.mac problems:   (239 301)
+   rtest_sqrt.mac problems:  (9 299 301)
+   rtest_limit.mac problems:  (201 203 204 232)
+   rtest_trace.mac problem:   (87)
+   rtest_limit_extra.mac problems:   (94 119 400 401)
+   rtest_simplify_sum.mac problem:  (58)
+   rtest_abs_integrate.mac problems:  (181 241)
+
+Tests that were expected to fail but passed:
+   rtest_limit_extra.mac problems: (125 126 127 267)
+
+18 tests failed out of 19,397 total tests.
+
+These failures are not semantic:
+Error(s) found:
+   rtest_sqrt.mac problem:    (9)
+   rtest_limit.mac problems:    (201 232)
+   rtest_trace.mac problem:    (87)
+   rtest_limit_extra.mac problem:    (94)
+   rec/rtest_simplify_sum.mac problem:   (58)
+
+
+Specifically these failures are:
+
+********************* rtest_sqrt.mac: Problem 9 (line 45) *********************
+
+Input:
+limit([sqrt(inf), sqrt(- inf), sqrt(minf), sqrt(- minf), sqrt(infinity)])
+
+Result:
+[inf, %i inf, und, inf, infinity]
+
+This differed from the expected result:
+[inf, infinity, infinity, inf, infinity]
+
+******************* rtest_limit.mac: Problem 201 (line 762) *******************
+
+Input:
+limit(ind inf)
+
+Result:
+und
+
+This differed from the expected result:
+ind inf
+
+******************* rtest_limit.mac: Problem 232 (line 877) *******************
+
+Input:
+        1/x
+limit((x    - 1) sqrt(x), x, 0, minus)
+
+Result:
+%i inf
+
+This differed from the expected result:
+infinity
+
+***************** rtest_limit_extra.mac: Problem 94 (line 321) ****************
+
+Input:
+        1/x
+limit((x    - 1) sqrt(x), x, 0, minus)
+
+Result:
+%i inf
+
+This differed from the expected result:
+infinity
+
+**************** rtest_simplify_sum.mac: Problem 58 (line 470) ****************
+
+Input:
+              2
+             n  harmonic_number(2 n)
+test_sum(sum(───────────────────────, n, 1, inf), [], false, [],
+                        n
+                       2
+                            - (17 sqrt(2) log(3 - 2 sqrt(2)) - 24 log(2) - 68)
+                            ──────────────────────────────────────────────────)
+                                                    8
+
+Result:
+defint: integral is divergent.
+error-catch
+
+This differed from the expected result:
+0
+|#
 (in-package :maxima)
 
 (defun extended-real-p (e)
@@ -58,11 +151,14 @@ the correct value inf.
 ;; is easy to extend and modify.
 
 ;; The hashtable automatically extends by commutativity--so if a key (a,b) isn't in the 
-;; table, the addition code automatically looks for the key (b,a).And if both keys
+;; table, the addition code automatically looks for the key (b,a). If both keys
 ;; (a,b) and (b, a) are missing, the function add-extended-real returns 'und'.
 
-;; If zeroa+zerob = und, then integrate(tan(x)^(1/3)/(cos(x)+sin(x))^2,x,0,%pi/2) yields a nounform,
-;; but if zeroa+zerob=0, we get the correct value for this definite integral.
+;; If zeroa + zerob = und, then integrate(tan(x)^(1/3)/(cos(x)+sin(x))^2,x,0,%pi/2) yields a nounform,
+;; but if zeroa + zerob=0, we get the correct value for this definite integral. But notice that
+;; defining zeroa + zerob = 0, breaks the closure of addition on the set of extended reals. The
+;; function add-extended-real needs additional logic when addition isn't closed on the set of
+;; extended reals.
 (defvar *extended-real-add-table* (make-hash-table :test #'equal))
 
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
@@ -107,8 +203,8 @@ the correct value inf.
       (fapply 'mplus x)
       lsum))) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
  
- ;; Add a list of expressions, including extended reals. Dispatch `simpab` on each term before adding.
-(defun addn-extended (l)
+ (defun addn-extended (l)
+ "Add a list of expressions `l`, including extended reals. Dispatch `simpab` on each term before adding."
   (let ((xterms nil) (rterms nil))
     (dolist (lk l)
       (setq lk (simpab lk))
@@ -120,8 +216,8 @@ the correct value inf.
 ;; When a value isn't found in the hashtable, mult-extended-real returns `und`,
 ;; so we omit entries for those cases.
 
-;; This multiplication is commutative and associative, but distributivity fails
-;; in 54 cases. For example, inf*(inf + zeroa) = inf, but inf * inf + inf * zeroa = und.
+;; This multiplication is commutative and associative, but not distributive. For example, 
+;; inf*(inf + zeroa) = inf, but inf * inf + inf * zeroa = und.
 (defvar *extended-real-mult-table* (make-hash-table :test #'equal))
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
    (list (list '$minf '$minf '$inf)
@@ -129,7 +225,7 @@ the correct value inf.
          (list '$minf '$infinity '$infinity)
 
          (list '$zerob '$zerob '$zeroa)
-         (list '$zerob '$ind '$ind)
+         (list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
          (list '$zeroa '$ind '$ind)
          (list '$zerob '$zeroa '$zerob)
          (list '$zeroa '$zeroa '$zeroa)
@@ -160,7 +256,7 @@ the correct value inf.
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
 ;; it did.
 (defun mult-expr-infinities (x l)
-  "Return x times the product of the members in the list l.  The expression `x` should be free of extended
+  "Return x times the product of the members in the list l. The expression `x` should be free of extended
    real numbers, and `l` should be a CL list of extended reals."
   (let ((lprod (cond ((null l) 1)
                      ((null (cdr l)) (car l))
@@ -198,10 +294,12 @@ the correct value inf.
                   (t (mul x lprod))))                         ;give up--nounform return
 
            ((eq lprod '$ind)
-            (if (eq sgn '$zero) 0 '$ind)) ; ind x {zero} = 0; otherwise ind
+            (if (eq sgn '$zero) 0 '$ind)) ; ind x zero = 0; otherwise ind
 
            ((eq lprod '$infinity) ; 0 x infinity = und; otherwise = infinity.
-            (if (eq sgn '$zero) '$und '$infinity))
+            (cond ((eq sgn '$zero) '$und) ; 0 x infinity = und
+                  ((member sgn '($pos '$neg '$pn)) '$infinity) ;infinity x {pos, neg, pn} = infinity
+                  (t '$und))) ; infinity x pnz = und
 
            ((eq lprod '$und) '$und) ;und x anything = und
            (t (mul x lprod))))))))  ;give up--nounform return
@@ -228,8 +326,8 @@ the correct value inf.
    (list '$inf '$infinity '$infinity)  ;inf^infinity = infinity
 
    (list '$infinity '$minf '$infinity) 
-   (list '$infinity '$zerob 1) 
-   (list '$infinity '$zeroa 1) 
+   ;(list '$infinity '$zerob 1) 
+   ;(list '$infinity '$zeroa 1) 
    (list '$infinity '$inf '$infinity) 
    (list '$infinity '$infinity '$infinity)))
 

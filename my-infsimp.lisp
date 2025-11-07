@@ -17,7 +17,7 @@ Addition and multiplication of extended real numbers are commutative and associa
 zerob+zeroa = 0).
 
 There are 62 violations of distributivity, illustrated by the following list of lists. The first entry represents 
-the expression infinity*(infinity + ind), which simplifies to infinity*infinity = infinty. However, distributing 
+the expression infinity*(infinity + ind), which simplifies to infinity*infinity = infinity. However, distributing 
 yields infinity^2 + infinity*ind = infinity + und = und.
 
 Unfortunately, at the top level of limit, Maxima calls expand(XXX, 1, 0) on the input XXX. As a result, 
@@ -292,7 +292,7 @@ the correct value inf.
               (push (ftake 'mlist a b) *missing*)
          (ftake 'mexpt a b))))))) ; fall back
 
-;; The hashtable *extended-real-eval* provides a mechanism for simplifing F(extended real); for
+;; The hashtable *extended-real-eval* provides a mechanism for simplifying F(extended real); for
 ;; example log(inf) = inf and signum(zeroa) = 1.
 (defvar *extended-real-eval* (make-hash-table :test #'equal))
 

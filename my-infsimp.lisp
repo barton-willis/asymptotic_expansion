@@ -9,8 +9,8 @@ This code does not fix these bugs, but it does rework the Maxima functions simpf
 The one-argument limit function is the sole user interface to this code. For example, limit(ind^2 + %pi) 
 evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
-This code has three functions for internal use. They are simpinf, infsimp, and simpab. The function simpab
-is the main function. The identical functions simpinf and infsimp call simpab followed by setting both
+This code has three functions for internal use. They are simpinf, infsimp, and simpab. The main function is 
+simpab. The identical functions simpinf and infsimp call simpab followed by setting both
 zeroa and zerob to zero. 
 
 Addition and multiplication of extended real numbers are commutative and associative. This assumes that
@@ -54,7 +54,7 @@ Error(s) found:
    rtest_limit.mac problems:    (201 232)
    rtest_trace.mac problem:    (87)
    rtest_limit_extra.mac problem:    (94)
-   
+
 Tests that were expected to fail but passed:
    rtest_limit_extra.mac problems:    (125 126 127 267)
  

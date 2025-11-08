@@ -45,31 +45,20 @@ the correct value inf.
 [minf, zerob, infinity], [minf, zerob, inf], [minf, zerob, minf],
 [minf, minf, ind], [minf, minf, zeroa], [minf, minf, zerob]]
 
-Testsuite: Causes one asksign involving a gensym running rtest_simplify_sum.mac. The failures
-are all, I would say, minor or purely semantic.
-
-Error(s) found:
-   rtest16.mac problem:  (525)
-   rtestint.mac problems:   (239 301)
-   rtest_sqrt.mac problems:  (9 299 301)
-   rtest_limit.mac problems:  (201 203 204 232)
-   rtest_trace.mac problem:   (87)
-   rtest_limit_extra.mac problems:   (94 119 400 401)
-   rtest_simplify_sum.mac problem:  (58)
-   rtest_abs_integrate.mac problems:  (181 241)
-
-Tests that were expected to fail but passed:
-   rtest_limit_extra.mac problems: (125 126 127 267)
-
-18 tests failed out of 19,397 total tests.
-
+Testsuite: Causes one asksign involving a gensym running rtest_simplify_sum.mac. 
 These failures are not semantic:
+
+Error summary:
 Error(s) found:
    rtest_sqrt.mac problem:    (9)
    rtest_limit.mac problems:    (201 232)
    rtest_trace.mac problem:    (87)
    rtest_limit_extra.mac problem:    (94)
-   rec/rtest_simplify_sum.mac problem:   (58)
+   
+Tests that were expected to fail but passed:
+   rtest_limit_extra.mac problems:    (125 126 127 267)
+ 
+5 tests failed out of 19,366 total tests.
 
 
 Specifically these failures are:
@@ -120,24 +109,7 @@ Result:
 This differed from the expected result:
 infinity
 
-**************** rtest_simplify_sum.mac: Problem 58 (line 470) ****************
 
-Input:
-              2
-             n  harmonic_number(2 n)
-test_sum(sum(───────────────────────, n, 1, inf), [], false, [],
-                        n
-                       2
-                            - (17 sqrt(2) log(3 - 2 sqrt(2)) - 24 log(2) - 68)
-                            ──────────────────────────────────────────────────)
-                                                    8
-
-Result:
-defint: integral is divergent.
-error-catch
-
-This differed from the expected result:
-0
 |#
 (in-package :maxima)
 
@@ -282,13 +254,15 @@ This differed from the expected result:
                   (t (mul x lprod))))             ;give up--nounform return
 
            ((eq lprod '$zerob)
-            (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa) ;zerob x {neg nz} = zeroa
+            (cond ((not preserve-direction) 0)
+                  ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa) ;zerob x {neg nz} = zeroa
                   ((eq sgn '$zero) 0)                         ;zerob x zero = 0
                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob) ;zerob x {pos,pz} = zerob
                   (t (mul x lprod))))                         ;give up--nounform return
 
            ((eq lprod '$zeroa)
-            (cond ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob) ;zeroa x {neg nz} = zerob
+            (cond ((not preserve-direction) 0)
+                  ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob) ;zeroa x {neg nz} = zerob
                   ((eq sgn '$zero) 0)                         ;zeroa x zero = 0
                   ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa) ;zeroa x {pos,pz} = zeroa
                   (t (mul x lprod))))                         ;give up--nounform return

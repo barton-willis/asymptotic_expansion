@@ -4,12 +4,12 @@
 ;;; For details, see the file LICENSE
 
 #|  
-Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0, 0*inf to 0, and .... 
-This code does not fix these bugs, but it does rework the Maxima functions simpfinf, infsimp, and simpab.
-The one-argument limit function is the sole user interface to this code. For example, limit(ind^2 + %pi) 
-evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
+Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0, 0*inf to 0, and 
+several other such bugs. This code does not fix these bugs, but it does rework the Maxima functions 
+simpfinf, infsimp, and simpab. The one-argument limit function is the sole user interface to this code. 
+For example, limit(ind^2 + %pi) evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
-This code has three functions for internal use. They are simpinf, infsimp, and simpab. The main function is 
+This code has three internal functions. They are simpinf, infsimp, and simpab. The main function is 
 simpab. The identical functions simpinf and infsimp call simpab followed by setting both
 zeroa and zerob to zero. 
 
@@ -61,7 +61,7 @@ Tests that were expected to fail but passed:
 5 tests failed out of 19,366 total tests.
 
 
-Specifically these failures are:
+Specifically, these failures are:
 
 ********************* rtest_sqrt.mac: Problem 9 (line 45) *********************
 
@@ -175,6 +175,9 @@ infinity
       (fapply 'mplus x)
       lsum))) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
  
+ ;; TODO: Mapping `simpab` on the members of `l` is a bug; for example, 
+ ;; a*inf - inf --> (asksign on a, say positive) inf - inf --> und, but we really need an asksign on a-1.
+
  (defun addn-extended (l)
  "Add a list of expressions `l`, including extended reals. Dispatch `simpab` on each term before adding."
   (let ((xterms nil) (rterms nil))

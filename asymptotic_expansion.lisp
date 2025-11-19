@@ -123,7 +123,6 @@ asinh 8
 		  ;($m1pbranch t) ;not sure about this
 		  ;($algebraic t)
 	      (fn nil) (args nil) (lhp? nil) (fff))
-	      
         ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
 		;; subscripted and non subscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
@@ -138,7 +137,6 @@ asinh 8
 
 		(when fn
 		   (setf (gethash fff *used*) (+ 1 (gethash fff *used* 0))))
-
 		(cond (($mapatom e) e)
 			  (fn (apply fn (list args x pt n)))
 	   	      (t 
@@ -239,12 +237,13 @@ asinh 8
 (defun gamma-asymptotic (e x pt n)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (sratsimp (car e)))
-		;(setq e (asymptotic-expansion e x pt n))
+		(setq e (asymptotic-expansion e x pt n))
 		(when (eql pt 0)
 			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
+		        (setq e (asymptotic-expansion e x pt n))
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)
@@ -257,10 +256,11 @@ asinh 8
 	                (ftake 'mexpt e (add e (div -1 2)))
 		            (ftake 'mexpt '$%e (mul -1 e))))
 
-			  ((or (eq xxx '$zeroa) (zerop2 xxx))
-			  	(setq e (ftake '%gamma e))
-			    ($ratdisrep (tlimit-taylor e x (ridofab pt) n)))
-			  (t (ftake '%gamma e))))) ;give up			 
+                ((or (eq xxx '$zeroa) (zerop2 xxx))
+		         (setq e (ftake '%gamma e))
+		 	     ($ratdisrep (tlimit-taylor e x (ridofab pt) n)))
+			  (t (ftake '%gamma e))))) ;give up		
+
 (setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
 
 (defun mfactorial-asymptotic (e x pt n)
@@ -363,39 +363,43 @@ asinh 8
 	(let ((fn (gethash '%erfc *asymptotic-expansion-hash*)) (xxx))
 	    (setq z (first z))
 	     (setq xxx ($limit z x pt))
-		 (mtell "xxx = ~M ~%" xxx)
 		 (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
 				  (sub 1 (funcall fn (list z) x pt n)))
 			   (t (ftake '%erf z)))))
 (setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
-;; See http://dlmf.nist.gov/8.11.i  
-
+;; See http://dlmf.nist.gov/8.11.i
 (defun gamma-incomplete-asymptotic (e x pt n)
-	(let ((aaa (first e)) (z (second e)) (s 0) (ds) (k 0) (xxx))
-	    (setq z (maxima-substitute '$zeroa 'epsilon z))
-		(setq z (maxima-substitute '$inf 'prin-inf z))
-		;(setq z ($limit z))
-		(setq xxx ($limit z x pt))
-		;;  z--> inf or z --> -inf and a is freeof x
-		;; This should be (and (or (eq '$inf xxx) (eq '$minf xxx))
-		;; But doing so exposes a bug in 
-		;;   integrate(x*sin(x)*exp(-x^2),x,minf,inf)
-		;; that is due to a discontinuous antiderivative that Maxima
-		;; doesn't detect.
-		(cond ((and nil (eq '$inf xxx) (freeof x aaa))
-		         (while (< k n)
-				 	(setq ds (div (mul (ftake 'mexpt -1 k) (ftake '$pochhammer (sub 1 aaa) k))
-								  (ftake 'mexpt z k)))
-				    (setq s (add s ds))
-				    (setq k (+ k 1)))
+	(let* ((aaa (first e)) (z (second e)) (xxx (limit z x pt 'think)))
+		(cond 
+          ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x
+          ;; For the series, see http://dlmf.nist.gov/8.11.i
+		  ((and (or (eq '$inf xxx) (eq '$minf xxx)) (freeof x aaa))
+		         (let ((f 1) (s 0))
+		           (dotimes (k n)
+				      (setq s (add s f))
+                      (setq f (mul f (div (add aaa -1 (- k)) z))))
 				 ;; return z^(a-1)*exp(-z)*s
-				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s))
-
-		      ((eql 0 xxx)  
-				(add (mul -1 '$%gamma) (mul -1 (ftake '%log z))))
-              (t (ftake '%gamma_incomplete aaa z)))))
+				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s)))
+           ;; Case 2: Asymptotic expansion when z -> 0, aaa integer, and aaa <= 0
+		   ;; For the series, see http://dlmf.nist.gov/8.4.E15
+		   ((and (zerop2 xxx) (integerp aaa) (>= 0 aaa))
+		      (let ((s 0))
+		      (flet ((fn (k) (if (eql (add k aaa) 0) 
+			                        0 
+									(div (power (neg z) k) (mul (ftake 'mfactorial k) (add k aaa))))))
+					(dotimes (k n)
+						(setq s (add s (fn k))))
+					
+					(sub (mul
+					       (div (ftake 'mexpt -1 (neg aaa)) (ftake 'mfactorial (neg aaa)))
+					       (sub 
+					         (simplifya (subfunmake '$psi (list 0) (list (add (neg aaa) 1))) nil)
+						     (ftake '%log z)))
+						 (mul (ftake 'mexpt z (neg aaa)) s)))))
+	       ;; Case 3: fall back			
+           (t (ftake '%gamma_incomplete aaa z)))))
 (setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?

@@ -230,7 +230,7 @@ infinity
 ;; To fix it, I changed the code to only call csign when it was needed--before
 ;; the call to csign was in the let. I don't know why this fixed the bug, but 
 ;; it did.
-(defun mult-expr-infinities (x l)
+(defun mult-expr-infinities (x l &optional (level 1))
   "Return x times the product of the members in the list l. The expression `x` should be free of extended
    real numbers, and `l` should be a CL list of extended reals."
   (let ((lprod (cond ((null l) 1)
@@ -239,6 +239,7 @@ infinity
     (cond
       ((eql lprod 1) x) ; X*1 = X
       ((eql lprod 0) 0) ; X*0 = 0
+      ((eql level 0) (mul x lprod))
       (t
        (let ((sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x))))
          (cond

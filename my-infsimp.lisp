@@ -14,10 +14,10 @@ simpab. The identical functions simpinf and infsimp call simpab followed by sett
 zeroa and zerob to zero. 
 
 Addition and multiplication of extended real numbers are commutative and associative. There are 72 violations
-of distributivity,but I think that is too many. One correct violation is infinity * (inf + minf) = infinity * und =und,
-but infinity*inf + infinity*minf = infinity + infinity = infinity.  The current violations are:
+of distributivity. The violations are (the first member represents infinity*(infinity +inf) = infinity*und =
+und, but infinity*infinity+infinity*inf = infinity + infinity = infinity.)
 
-(%o1) [[infinity, infinity, inf], [infinity, infinity, ind],
+[[infinity, infinity, inf], [infinity, infinity, ind],
 [infinity, infinity, zeroa], [infinity, infinity, zerob],
 [infinity, infinity, minf], [infinity, inf, infinity], [infinity, inf, ind],
 [infinity, inf, zeroa], [infinity, inf, zerob], [infinity, inf, minf],
@@ -252,7 +252,7 @@ This differed from the expected result:
   (let ((extended 1) 
         (non-extended 1))
 	  (dolist (lk l)
-        (setq lk (linearize-extended-real lk))
+        (setq lk (simpab lk))
         (if (extended-real-p lk) 
 		     (setq extended (mul-extended-real lk  extended))
 			 (setq non-extended (mul non-extended lk))))
@@ -464,7 +464,7 @@ This differed from the expected result:
         (destructuring-bind (cf-minf cf-zerob cf-zeroa cf-ind cf-inf cf-infinity cf-und)
 		                     (mapcar #'(lambda (q) (coeff ee q 1)) '($minf $zerob $zeroa $ind $inf $infinity $und))
 
-          ;; When the coefficient of minf is negative, promote the minus infinity term to the infinity term
+       ;; When the coefficient of minf is negative, promote the minus infinity term to the infinity term
       (when (eq t (mgrp 0 cf-minf))
 		     (setq cf-inf (sub cf-inf cf-minf)
                    cf-minf 0))
@@ -473,9 +473,9 @@ This differed from the expected result:
 		     (setq cf-minf (sub cf-minf cf-inf)
 		           cf-inf 0))
           ;; Using the signs of the various coefficients, simplify
-		  (cond ((nonzero-p cf-und) '$und) ; und x anything + finite = und
-		  
-				
+     
+		  (cond 
+        ((nonzero-p cf-und) '$und) ; und x anything + finite = und
         ;; inf + minf = und, inf + infinity = und, and minf + infinty = und.
 				((and (nonzero-p cf-inf) (nonzero-p cf-minf)) '$und)
         ((and (nonzero-p cf-inf) (nonzero-p cf-infinity)) '$und)

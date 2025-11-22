@@ -112,79 +112,16 @@ infinity
 
 |#
 (in-package :maxima)
-
+;;; Code for simpab, simpinf, and infsimp
 (defun extended-real-p (e)
   "Return true if `e` is a symbol and an element of *extended-reals*. The seven extended
    reals are `minf`, `zerob`, `zeroa`, `ind`, `inf`, `infinity`, and `und`."
   (and (symbolp e) (member e *extended-reals*)))
 
-;; We use a hashtable to represent the addition table for extended real numbers.
-;; Arguably, a hashtable isn't the most compact representation, but this scheme
-;; is easy to extend and modify.
-
-;; The hashtable automatically extends by commutativity--so if a key (a,b) isn't in the 
-;; table, the addition code automatically looks for the key (b,a). If both keys
-;; (a,b) and (b, a) are missing, the function add-extended-real returns 'und'.
-
-;; If zeroa + zerob = und, then integrate(tan(x)^(1/3)/(cos(x)+sin(x))^2,x,0,%pi/2) yields a nounform,
-;; but if zeroa + zerob=0, we get the correct value for this definite integral. But notice that
-;; defining zeroa + zerob = 0, breaks the closure of addition on the set of extended reals. The
-;; function add-extended-real needs additional logic when addition isn't closed on the set of
-;; extended reals.
-(defvar *extended-real-add-table* (make-hash-table :test #'equal))
-
-(mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-add-table*) (third a)))
-   (list (list '$minf '$minf '$minf)
-         (list '$minf '$zerob '$minf)
-         (list '$minf '$zeroa '$minf)
-         (list '$minf '$ind '$minf)
-
-         (list '$zerob '$zerob '$zerob)
-         (list '$zerob '$zeroa 0) ; controversial--let's make zerob+zeroa -> 0
-         (list '$zeroa '$zeroa '$zeroa)
-
-         (list '$inf '$inf '$inf)
-         (list '$inf '$zerob '$inf)
-         (list '$inf '$zeroa '$inf)
-         (list '$inf '$ind '$inf)
-
-         (list '$infinity '$zerob '$infinity)
-         (list '$infinity '$zeroa '$infinity)
-         (list '$infinity '$ind '$infinity)
-
-         (list '$ind '$ind '$ind)
-         (list '$ind '$zerob '$ind)
-         (list '$ind '$zeroa '$ind)))
-
-;; Add extended reals a & b. When (a,b) isn't a key in the hashtable, return
-;; $und. The table is symmetric, if looking up (a,b) fails, we look for (b,a).
-;; When both keys (a,b) & (b,a) aren't in the table, return und.
-(defun add-extended-real (a b)
-  (cond ((eql 0 a) b)
-        ((eql 0 b) a)
-        (t
-            (gethash (list a b) *extended-real-add-table* 
-              (gethash (list b a) *extended-real-add-table* '$und)))))
-
-(defun add-expr-infinities (x l)
-  "Add the members of the list of extended reals l, then add to the list of finite expressions `x`."
-   (let ((lsum (cond ((null l) 0)
-                     ((null (cdr l)) (car l))
-                     (t (reduce #'add-extended-real l)))))
-  (if (zerop2 lsum)
-      (fapply 'mplus x)
-      lsum))) ; x + minf = minf, x + ind = ind, x + und = und, x + inf = inf, x + infinity = infinity.
- 
- ;; TODO: Mapping `simpab` on the members of `l` is a bug; for example, 
- ;; a*inf - inf --> (asksign on a, say positive) inf - inf --> und, but we really need an asksign on a-1.
-
- (defun addn-extended (l)
- "Add a list of expressions `l`, including extended reals. Dispatch `simpab` on each term before adding."
-  (let ((xterms nil) (rterms nil))
-    (dolist (lk l)
-      (setq lk (simpab lk))
-      (if (extended-real-p lk) (push lk xterms) (push lk rterms)))
-    (add-expr-infinities rterms xterms)))      
+(defun nonzero-p (e)
+  "Return `t` if `e` is not `eql` to 0, nil otherwise. This function does a syntatic, not semantic check 
+   for a vanishing input. In particular, this function returns nil for both `zerob` and `zeroa`."
+  (not (eql e 0)))
 
 ;; We use a hashtable to represent the multiplication table for extended
 ;; real numbers. The table is symmetric, so we list only its "upper" half.
@@ -212,77 +149,34 @@ infinity
 
          (list '$ind '$ind '$ind)))
 
-;; Multiply extended reals a & b. When (a,b) isn't a key in the hashtable, return
-;; $und. The table is symmetric, so we look for both (a,b) and if that fails,
-;; we look for (b,a).
-(defun mult-extended-real (a b)
-  (gethash (list a b) *extended-real-mult-table* 
-	    (gethash (list b a) *extended-real-mult-table* '$und)))
+(defun mul-extended-real (a b)
+  "Multiply `a` and `b`, where both `a` and `b` are either extended reals or one. When `a` and `b` are
+  extended reals, look up the product in the *extended-real-mult-table* hashtable. The table 
+  is symmetric, so we look for both (a,b) and if that fails, we look for (b,a). When both lookups
+  fail, return und."
+  (cond ((onep a) b)
+        ((onep b) a)
+		(t
+          (gethash (list a b) *extended-real-mult-table* 
+	         (gethash (list b a) *extended-real-mult-table* '$und)))))
 
-(defun muln-extended (l)
-  (let ((xterms nil) (rterms 1))
-    (dolist (lk l)
-      (setq lk (simpab lk))
-      (if (extended-real-p lk) (push lk xterms) (setq rterms (mul lk rterms))))
-    (mult-expr-infinities rterms xterms)))      
+(defun mul-extended (l)
+  "Map `linearize-extended-real` on the CL list `l`, then separately multiply the members of 
+   `l` that are extended reals and those that are not. Finally, return the product of the extended
+   reals times the non-extended reals, but do not simplify this product futher--for example, return
+   42 x inf, not inf.
 
-;; At one time, product (sum (f(i), i, 1, inf), j, 1, inf) produced an infinite loop.
-;; To fix it, I changed the code to only call csign when it was needed--before
-;; the call to csign was in the let. I don't know why this fixed the bug, but 
-;; it did.
-(defun mult-expr-infinities (x l &optional (level 1))
-  "Return x times the product of the members in the list l. The expression `x` should be free of extended
-   real numbers, and `l` should be a CL list of extended reals."
-  (let ((lprod (cond ((null l) 1)
-                     ((null (cdr l)) (car l))
-                     (t (reduce #'mult-extended-real l)))))
-    (cond
-      ((eql lprod 1) x) ; X*1 = X
-      ((eql lprod 0) 0) ; X*0 = 0
-      ((eql level 0) (mul x lprod))
-      (t
-       (let ((sgn (if *getsignl-asksign-ok* ($asksign x) ($csign x))))
-         (cond
-           ((eq lprod '$minf)
-            (cond ((eq sgn '$neg) '$inf)          ;minf x neg = inf
-                  ((eq sgn '$pos) '$minf)         ;minf x pos = minf
-                  ((eq sgn '$zero) '$und)         ;minf x zero = und
-                  ((eq sgn '$complex) '$infinity) ;minf x infinity = infinity
-                  (t (mul x lprod))))             ;give up--nounform return
+   The product of the non-extended reals is assumed to be nonzero."
+  (let ((extended 1) 
+        (non-extended 1))
+	  (dolist (lk l)
+        (setq lk (linearize-extended-real lk))
+        (if (extended-real-p lk) 
+		     (setq extended (mul-extended-real lk  extended))
+			 (setq non-extended (mul non-extended lk))))
+	  (mul extended non-extended)))
 
-           ((eq lprod '$inf)
-            (cond ((eq sgn '$neg) '$minf)         ;inf x neg = minf
-                  ((eq sgn '$zero) '$und)         ;inf x zero = und
-                  ((eq sgn '$pos) '$inf)          ;inf x pos = inf
-                  ((eq sgn '$complex) '$infinity) ;inf x complex = infinity
-                  (t (mul x lprod))))             ;give up--nounform return
-
-           ((eq lprod '$zerob)
-            (cond ((not preserve-direction) 0)
-                  ((or (eq sgn '$neg) (eq sgn '$nz)) '$zeroa) ;zerob x {neg nz} = zeroa
-                  ((eq sgn '$zero) 0)                         ;zerob x zero = 0
-                  ((or (eq sgn '$pos) (eq sgn '$pz)) '$zerob) ;zerob x {pos,pz} = zerob
-                  (t (mul x lprod))))                         ;give up--nounform return
-
-           ((eq lprod '$zeroa)
-            (cond ((not preserve-direction) 0)
-                  ((or (eq sgn '$neg) (eq sgn '$nz)) '$zerob) ;zeroa x {neg nz} = zerob
-                  ((eq sgn '$zero) 0)                         ;zeroa x zero = 0
-                  ((or (eq sgn '$pos) (eq sgn '$pz)) '$zeroa) ;zeroa x {pos,pz} = zeroa
-                  (t (mul x lprod))))                         ;give up--nounform return
-
-           ((eq lprod '$ind)
-            (if (eq sgn '$zero) 0 '$ind)) ; ind x zero = 0; otherwise ind
-
-           ((eq lprod '$infinity) ; 0 x infinity = und; otherwise = infinity.
-            (cond ((eq sgn '$zero) '$und) ; 0 x infinity = und
-                  ((member sgn '($pos '$neg '$pn)) '$infinity) ;infinity x {pos, neg, pn} = infinity
-                  (t '$und))) ; infinity x pnz = und
-
-           ((eq lprod '$und) '$und) ;und x anything = und
-           (t (mul x lprod))))))))  ;give up--nounform return
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
-
 ;;When a key (a,b) isn't in the hashtable, the default is that a^b is und.
 (mapcar #'(lambda (a) 
   (setf (gethash (list (first a) (second a)) *extended-real-mexpt-table*) (third a)))
@@ -303,11 +197,9 @@ infinity
    (list '$inf '$inf '$inf)            ;inf^inf = inf
    (list '$inf '$infinity '$infinity)  ;inf^infinity = infinity
 
-   (list '$infinity '$minf '$infinity) 
-   ;(list '$infinity '$zerob 1) 
-   ;(list '$infinity '$zeroa 1) 
-   (list '$infinity '$inf '$infinity) 
-   (list '$infinity '$infinity '$infinity)))
+   (list '$infinity '$minf '$infinity) ;infinity^minf = infinity
+   (list '$infinity '$inf '$infinity)  ;infinity^inf = infinity
+   (list '$infinity '$infinity '$infinity))) ;infinity^infinty = infinity
 
 (defvar *missing* nil)
 (defun mexpt-extended (a b)
@@ -333,6 +225,7 @@ infinity
             ((evenp b) '$inf)   ;minf^(even positive) = inf
             (t '$und)))         ;shouldn't happen
 
+    ((and (eq a '$minf) (alike1 b (div 1 2))) (mul '$%i '$inf))
     ((and (eq a '$ind) (integerp b) (> b 0)) ;ind^(positive integer)
      '$ind) ; ind^positive integer = ind
 
@@ -447,119 +340,113 @@ infinity
          ((eq e '$inf) 0)
          (t (ftake '%imagpart e))))
 
-;; I'm not sure what else this might do? I suppose sum(inf,k,a,b) =
-;; inf when a < b would be OK. For now, it does nothing.
-(def-extended-real-evaluator %sum (e)
-  (fapply '%sum e))
-
-;; The calculation 
-
-;;  xxx : product(f(i),i,1,inf);
-;;  xxx : subst(f(i) = product(g(k),k,1,inf), xxx);
-;;  xxx : subst(g(k) = product(w(m),m,1,inf), xxx);
-
-;; finishes, but is very slow and it calls infsimp many times. The
-;; calculation with standard Maxima is also slow.
-
-;; TODO: *extended-real-eval* function for polylogarithms
-(defun simpab (e)
+(defvar *janet* nil)
+(defun linearize-extended-real-xxx (e)
+  (mtell "Top linearize ~%")
   (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
    (cond ((or ($mapatom e) (not (amongl *extended-reals* e))) e) ;early bailout might boost speed
-         ((mplusp e) (addn-extended (cdr e)))
-         ((mtimesp e) (muln-extended (cdr e)))
-         ((mexptp e) (mexpt-extended (second e) (third e)))
-         ;; The operator of e has an infsimp routine, so map simpab over 
-         ;; the arguments of e and dispatch fn.
-         (fn (funcall fn (mapcar #'simpab (cdr e))))
+         ((mtimesp e) (mul-extended (cdr e)))
+         ((mexptp e) (let ((preserve-direction t)) (mexpt-extended (second e) (third e))))
+         ;; When the operator of e has an *extended-real-eval* routine, map 
+		 ;; linearize-extended-real over the arguments of e and dispatch fn.
+         (fn 
+		   (let ((zzz (funcall fn (mapcar #'simpab (cdr e)))))
+		   	 (when (not (alike1 zzz e))
+			 	(push (ftake 'mlist zzz e) *janet*)))		 
+		 (funcall fn (mapcar #'simpab (cdr e))))
          (($subvarp (mop e)) ;subscripted function
 		      (subfunmake 
 		      (subfunname e) 
-			        (mapcar #'simpab (subfunsubs e)) 
-			        (mapcar #'simpab (subfunargs e))))
-         (t 
-           (fapply (caar e) (mapcar #'simpab (cdr e)))))))
+			        (mapcar #'linearize-extended-real (subfunsubs e)) 
+			        (mapcar #'linearize-extended-real (subfunargs e))))
+         (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
+
+(defun linearize-extended-real (e)
+  "Partially do the extended real number arithmetic in the expression `e`. Specifically, if `e` is a 
+  product, return either a Z or Z x extended real, where Z is finite; if `e` is exponential expression, 
+  either return a finite expression or a extended-real; and if`e` has the form `F(X) attempt to return 
+  either a finite expression or an extended real.
+
+  For an expression such as `42 x inf`, this function does not simplify it to `inf`.  Such simplifications
+  are done by the function `simpab`."
+  (let ((fn (and (consp e) (gethash (mop e) *extended-real-eval*))))
+    (cond
+     ;; Early bailout: atomic or not free of extended reals, return `e`
+     ((or ($mapatom e) (not (amongl *extended-reals* e)))  e)
+     ;; Multiplication of extended reals
+     ((mtimesp e) (mul-extended (cdr e)))
+     ;; Exponentiation involving extended reals
+     ((mexptp e) (let ((preserve-direction t)) (mexpt-extended (second e) (third e))))
+     ;; Known extended-real operator: apply simpab to args and dispatch fn
+     (fn 
+	      (let ((zzz (funcall fn (mapcar #'simpab (cdr e)))))
+		   	 (mtell "zzz = ~M ; e = ~M ~%" zzz e)
+		   	 (when (not (alike1 zzz e))
+			 	(push (ftake 'mlist zzz e) *janet*)))	
+	 
+	 (funcall fn (mapcar #'simpab (cdr e))))
+     ;; Subscripted function: recursively linearize subscripts and arguments
+     (($subvarp (mop e))
+      (subfunmake
+       (subfunname e)
+       (mapcar #'simpab (subfunsubs e))
+       (mapcar #'simpab (subfunargs e))))
+     ;; General fallback: apply operator of `e` to linearized args
+     (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
+
+(defun simpab (e)
+    ;; In the first stage, we attempt to linearize each term to the form either extended x finite
+	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
+	(let ((ee (linearize-extended-real e)))
+
+	;; When the linearization is successful, we do additional simplifications on expressions that are
+	;; affine in an extended real. We check for an affine expression using polynomialp.
+	(cond (($polynomialp ee (fapply 'mlist *extended-reals*) 
+	                       #'(lambda (q) (not (amongl *extended-reals* q)))
+						   #'(lambda (q) (or (eql q 0) (eql q 1))))
+
+        ;; Find the coefficients of each of the extended reals.
+        (destructuring-bind (cf-minf cf-zerob cf-zeroa cf-ind cf-inf cf-infinity cf-und)
+		                     (mapcar #'(lambda (q) (coeff ee q 1)) '($minf $zerob $zeroa $ind $inf $infinity $und))
+
+          ;; When the coefficient of minf is negative, promote the minus infinity term to the infinity term
+          (when (eq t (mgrp 0 cf-minf))
+		     (setq cf-inf (sub cf-inf cf-minf)
+                   cf-minf 0))
+
+		  (when (eq t (mgrp 0 cf-inf))
+		     (setq cf-minf (sub cf-minf cf-inf)
+		           cf-inf 0))
+          ;; Using the signs of the various coefficients, simplify
+		  (cond ((nonzero-p cf-und) '$und) ; und x anything + finite = und
+		        ((nonzero-p cf-infinity) '$infinity) ; infinity x freeof und + finite = 
+				
+				((and (nonzero-p cf-inf) (nonzero-p cf-minf)) '$und)
+				;; Effectively, we convert a*inf + b*minf to (a-b)*inf
+				((or (nonzero-p cf-inf) (nonzero-p cf-minf))
+				 (let* ((cf (sub cf-inf cf-minf)) (sgn ($csign cf)));;; ($asksign cf)))
+				 	(cond ((eq sgn '$neg) '$minf) ;negative x inf + finite = minf
+					      ((eq sgn '$pos) '$inf)  ;pos x inf + finite = inf
+						  ((eq sgn '$zero) '$und) ;zeroa x inf = und
+						  ((eq sgn '$complex) '$infinity)
+						  (t ee))))               ;give up
+				((nonzero-p cf-ind) '$ind) ; finite x ind + freeof infinities and und = ind
+
+				((or (nonzero-p cf-zerob) (nonzero-p cf-zeroa))
+				  (cond (preserve-direction
+				           (let* ((cf (sub cf-zeroa cf-zerob)) (sgn ($asksign cf)))
+				         	(cond ((eq sgn '$neg) (add '$zerob (ridofab ee))) ;negative x zeroa + finite = zerob + finite
+					              ((eq sgn '$pos) (add '$zeroa (ridofab ee)))
+						          (t ee))))
+						(t (ridofab ee))))
+				
+				(t ee))))
+		 (t ee))))
 
 ;; Redefine simpinf and infsimp to just call simpab followed by ridofab. 
 (defun simpinf (e)
-   (ridofab (simpab e)))
+   (let ((preserve-direction nil)) (ridofab (simpab e))))
 
 (defun infsimp (e)
-   (ridofab (simpab e)))
+   (let ((preserve-direction nil)) (ridofab (simpab e))))
 
-(defun eq-ab (a b)
-  (eql (ridofab a) (ridofab b)))
-
-(defun $test_plus_comm ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
-     (dolist (a L)
-      (dolist (b L)
-        ;; test a+b = b+a
-        (let ((ans1 (add-extended-real a b))
-              (ans2 (add-extended-real b a)))
-        (when (not (eq-ab ans1 ans2))
-          (push (ftake 'mlist a b) bad)))))
-    (fapply 'mlist bad)))
-
-(defun $test_plus_assoc ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
-     (dolist (a L)
-      (dolist (b L)
-        (dolist (c L)
-        ;; test a+(b+c) = (a+b)+c
-        (let ((ans1 (add-extended-real a (add-extended-real b c)))
-              (ans2 (add-extended-real (add-extended-real a b) c)))
-        (when (not (eq-ab ans1 ans2))
-          (push (ftake 'mlist a b c) bad))))))
-    (fapply 'mlist bad)))
-
-(defun $test_mult_comm ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
-     (dolist (a L)
-      (dolist (b L)
-        ;; test a+b = b+a
-        (let ((ans1 (mult-extended-real a b))
-              (ans2 (mult-extended-real b a)))
-        (when (not (eq-ab ans1 ans2))
-          (push (ftake 'mlist a b) bad)))))
-    (fapply 'mlist bad)))
-
-(defun $test_mult_assoc ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
-     (dolist (a L)
-      (dolist (b L)
-        (dolist (c L)
-        ;; test a*(b*c) = (a*b)*c
-        (let ((ans1 (mult-extended-real a (mult-extended-real b c)))
-              (ans2 (mult-extended-real (mult-extended-real a b) c)))
-        (when (not (eq-ab ans1 ans2))
-          (push (ftake 'mlist a b c) bad))))))
-    (fapply 'mlist bad)))
-
-(defun $test_dist ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
-     (dolist (a L)
-      (dolist (b L)
-        (dolist (c L)
-        ;; test a*(b+c) = a*b + a*c
-        (let ((ans1 (mult-extended-real a (add-extended-real b c)))
-              (ans2 (add-extended-real 
-                        (mult-extended-real a b)
-                        (mult-extended-real a c))))
-        (when (not (eq-ab ans1 ans2))
-          (push (ftake 'mlist a b c) bad))))))
-    (fapply 'mlist bad)))
-
-
-(defun $test_exp () ;test a^b * a^c = a^(b+c)
-(let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity)) (bad nil))
-     (dolist (a L)
-      (dolist (b L)
-        (dolist (c L)
-        ;; test a^(b+c) = a^b * a^c
-        (let ((ans1 (mexpt-extended a (add-extended-real b c)))
-              (ans2 (mult-extended-real 
-                        (mexpt-extended a b)
-                        (mexpt-extended a c))))
-        (when (not (eq-ab ans1 ans2))
-          (push (ftake 'mlist a b c) bad))))))
-    (fapply 'mlist bad)))

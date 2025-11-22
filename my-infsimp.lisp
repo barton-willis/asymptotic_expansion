@@ -13,31 +13,28 @@ This code has three internal functions. They are simpinf, infsimp, and simpab. T
 simpab. The identical functions simpinf and infsimp call simpab followed by setting both
 zeroa and zerob to zero. 
 
-Addition and multiplication of extended real numbers are commutative and associative. This assumes that
-zerob+zeroa = 0.
+Addition and multiplication of extended real numbers are commutative and associative. There are 72 violations
+of distributivity,but I think that is too many. One correct violation is infinity * (inf + minf) = infinity * und =und,
+but infinity*inf + infinity*minf = infinity + infinity = infinity.  The current violations are:
 
-There are 62 violations of distributivity, illustrated by the following list of lists. The first entry represents 
-the expression infinity*(infinity + ind), which simplifies to infinity*infinity = infinity. However, distributing 
-yields infinity^2 + infinity*ind = infinity + und = und.
-
-Unfortunately, at the top level of limit, Maxima calls expand(XXX, 1, 0) on the input XXX. As a result, 
-limit(minf*(minf + zerob)) is effectively evaluated as limit(minf*minf + minf*zerob) = und, rather than 
-the correct value inf.
-
-[[infinity, infinity, ind], [infinity, infinity, zeroa],
-[infinity, infinity, zerob], [infinity, inf, inf], [infinity, inf, ind],
-[infinity, inf, zeroa], [infinity, inf, zerob], [infinity, ind, infinity],
-[infinity, ind, inf], [infinity, ind, minf], [infinity, zeroa, infinity],
-[infinity, zeroa, inf], [infinity, zeroa, minf], [infinity, zerob, infinity],
-[infinity, zerob, inf], [infinity, zerob, minf], [infinity, minf, ind],
-[infinity, minf, zeroa], [infinity, minf, zerob], [infinity, minf, minf],
-[inf, infinity, ind], [inf, infinity, zeroa], [inf, infinity, zerob],
-[inf, inf, ind], [inf, inf, zeroa], [inf, inf, zerob], [inf, ind, infinity],
-[inf, ind, inf], [inf, ind, minf], [inf, zeroa, infinity], [inf, zeroa, inf],
+(%o1) [[infinity, infinity, inf], [infinity, infinity, ind],
+[infinity, infinity, zeroa], [infinity, infinity, zerob],
+[infinity, infinity, minf], [infinity, inf, infinity], [infinity, inf, ind],
+[infinity, inf, zeroa], [infinity, inf, zerob], [infinity, inf, minf],
+[infinity, ind, infinity], [infinity, ind, inf], [infinity, ind, minf],
+[infinity, zeroa, infinity], [infinity, zeroa, inf], [infinity, zeroa, minf],
+[infinity, zerob, infinity], [infinity, zerob, inf], [infinity, zerob, minf],
+[infinity, minf, infinity], [infinity, minf, inf], [infinity, minf, ind],
+[infinity, minf, zeroa], [infinity, minf, zerob], [inf, infinity, ind],
+[inf, infinity, zeroa], [inf, infinity, zerob], [inf, inf, ind],
+[inf, inf, zeroa], [inf, inf, zerob], [inf, ind, infinity], [inf, ind, inf],
+[inf, ind, minf], [inf, zeroa, infinity], [inf, zeroa, inf],
 [inf, zeroa, minf], [inf, zerob, infinity], [inf, zerob, inf],
 [inf, zerob, minf], [inf, minf, ind], [inf, minf, zeroa], [inf, minf, zerob],
-[ind, zeroa, zerob], [ind, zerob, zeroa], [zeroa, zeroa, zerob],
-[zeroa, zerob, zeroa], [zerob, zeroa, zerob], [zerob, zerob, zeroa],
+[ind, zeroa, zeroa], [ind, zeroa, zerob], [ind, zerob, zeroa],
+[ind, zerob, zerob], [zeroa, zeroa, zeroa], [zeroa, zeroa, zerob],
+[zeroa, zerob, zeroa], [zeroa, zerob, zerob], [zerob, zeroa, zeroa],
+[zerob, zeroa, zerob], [zerob, zerob, zeroa], [zerob, zerob, zerob],
 [minf, infinity, ind], [minf, infinity, zeroa], [minf, infinity, zerob],
 [minf, inf, ind], [minf, inf, zeroa], [minf, inf, zerob],
 [minf, ind, infinity], [minf, ind, inf], [minf, ind, minf],
@@ -45,51 +42,47 @@ the correct value inf.
 [minf, zerob, infinity], [minf, zerob, inf], [minf, zerob, minf],
 [minf, minf, ind], [minf, minf, zeroa], [minf, minf, zerob]]
 
-Testsuite: Causes one asksign involving a gensym running rtest_simplify_sum.mac. 
-These failures are not semantic:
 
-Error summary:
-Error(s) found:
-   rtest_sqrt.mac problem:    (9)
-   rtest_limit.mac problems:    (201 232)
-   rtest_trace.mac problem:    (87)
-   rtest_limit_extra.mac problem:    (94)
+The semantic testsuite failures are:
 
-Tests that were expected to fail but passed:
-   rtest_limit_extra.mac problems:    (125 126 127 267)
- 
-5 tests failed out of 19,366 total tests.
+********************* rtestsum.mac: Problem 278 (line 925) ********************
+
+Input:
+(kill(f), block([x : product(sum(f(i), i, 1, inf), j, 1, inf)],
+                                                             inf  inf
+                                                           ─┬───┬─____
+                                                            │   │ ╲
+                              block([simp : false], is(x =  │   │  ⟩    f(i)))))
+                                                            │   │ ╱
+                                                            j = 1 ‾‾‾‾
+                                                                  i = 1
 
 
-Specifically, these failures are:
+Result:
+sign: sign of und is undefined.
+error-catch
+
+This differed from the expected result:
+true
 
 ********************* rtest_sqrt.mac: Problem 9 (line 45) *********************
 
 Input:
 limit([sqrt(inf), sqrt(- inf), sqrt(minf), sqrt(- minf), sqrt(infinity)])
 
+
 Result:
-[inf, %i inf, und, inf, infinity]
+[inf, %i inf, %i inf, inf, infinity]
 
 This differed from the expected result:
 [inf, infinity, infinity, inf, infinity]
 
-******************* rtest_limit.mac: Problem 201 (line 762) *******************
-
-Input:
-limit(ind inf)
-
-Result:
-und
-
-This differed from the expected result:
-ind inf
-
-******************* rtest_limit.mac: Problem 232 (line 877) *******************
+******************* rtest_limit.mac: Problem 232 (line 874) *******************
 
 Input:
         1/x
 limit((x    - 1) sqrt(x), x, 0, minus)
+
 
 Result:
 %i inf
@@ -97,18 +90,107 @@ Result:
 This differed from the expected result:
 infinity
 
+******************** rtest_trace.mac: Problem 87 (line 342) *******************
+
+Input:
+(untrace(rischint), trace(integrate, defint, limit, antideriv),
+with_stdout(S, block([display2d : false],
+integrate(exp(- x) cos(x), x, 0, inf))), get_output_stream_string(S))
+
+
+Result:
+1 Call   integrate [%e^-x*cos(x),x,0,inf]
+ 1 Call   defint [%e^-x*cos(x),x,0,inf]
+  1 Call   limit [0]
+  1 Return limit 0
+  1 Call   limit [%e^-x,x,inf]
+  1 Return limit 0
+  1 Call   limit [0]
+  1 Return limit 0
+  1 Call   antideriv [%e^-x*cos(x),x]
+  1 Return antideriv (%e^-x*(sin(x)-cos(x)))/2
+  1 Call   limit [0]
+  1 Return limit 0
+  1 Call   limit [(%e^-x*sin(x))/2-(%e^-x*cos(x))/2,x,0,plus]
+  1 Return limit -(1/2)
+  1 Call   limit [(%e^-x*sin(x))/2-(%e^-x*cos(x))/2,x,inf,minus]
+  1 Return limit 0
+ 1 Return defint 1/2
+1 Return integrate 1/2
+
+This differed from the expected result:
+1 Call   integrate [%e^-x*cos(x),x,0,inf]
+ 1 Call   defint [%e^-x*cos(x),x,0,inf]
+  1 Call   limit [0]
+  1 Return limit 0
+  1 Call   limit [%e^-x,x,inf]
+  1 Return limit 0
+  1 Call   limit [0]
+  1 Return limit 0
+  1 Call   antideriv [%e^-x*cos(x),x]
+  1 Return antideriv (%e^-x*(sin(x)-cos(x)))/2
+  1 Call   limit [0]
+  1 Return limit 0
+  1 Call   limit [(%e^-x*sin(x))/2-(%e^-x*cos(x))/2,x,0,plus]
+   2 Call   limit [zerob]
+   2 Return limit 0
+  1 Return limit -(1/2)
+  1 Call   limit [(%e^-x*sin(x))/2-(%e^-x*cos(x))/2,x,inf,minus]
+  1 Return limit 0
+ 1 Return defint 1/2
+1 Return integrate 1/2
+
+99/100 tests passed
+
+The following 1 problem failed: (87)
+
+Running tests in rtest_limit_extra:
 ***************** rtest_limit_extra.mac: Problem 94 (line 321) ****************
 
 Input:
         1/x
 limit((x    - 1) sqrt(x), x, 0, minus)
 
+
 Result:
 %i inf
 
 This differed from the expected result:
 infinity
 
+**************** rtest_limit_gruntz.mac: Problem 93 (line 342) ****************
+
+Input:
+block([ans1, ans2, expr], assume(r > 0, p > 0, m < - 1),
+declare(m, noninteger), declare(p, noninteger),
+         2 n (n - r + 1)  c              n (n - r + 2)   c
+       (─────────────────)  + (r - 1) (─────────────────)  - n
+        n + r (n - r + 1)              n + r (n - r + 1)
+expr : ───────────────────────────────────────────────────────,
+                                c
+                               n  - n
+expr : subst(c + 1, c, expr), ans1 : limit(subst(m, c, expr), n, inf),
+ans2 : limit(subst(p, c, expr), n, inf), forget(r > 0, p > 0, m < - 1),
+remove(m, noninteger), remove(p, noninteger), [ans1, ans2, factor(ans2)])
+
+
+Result:
+                      n (- r + n + 2)   m + 1
+[limit    ((r - 1) (───────────────────)
+ n -> inf           (- r + n + 1) r + n
+    m + 1    n (- r + n + 1)   m + 1        m + 1
+ + 2      (───────────────────)      - n)/(n      - n),
+           (- r + n + 1) r + n
+         - p - 1    p + 1        - p - 1          - p - 1
+r (r + 1)        + 2      (r + 1)        - (r + 1)       ,
+       - p - 1       p + 1
+(r + 1)        (r + 2      - 1)]
+
+This differed from the expected result:
+             - p - 1    p + 1        - p - 1          - p - 1
+[1, r (r + 1)        + 2      (r + 1)        - (r + 1)       ,
+                                                      - p - 1       p + 1
+                                               (r + 1)        (r + 2      - 1)]
 
 |#
 (in-package :maxima)
@@ -340,27 +422,6 @@ infinity
          ((eq e '$inf) 0)
          (t (ftake '%imagpart e))))
 
-(defvar *janet* nil)
-(defun linearize-extended-real-xxx (e)
-  (mtell "Top linearize ~%")
-  (let ((fn (if (consp e) (gethash (mop e) *extended-real-eval*) nil)))
-   (cond ((or ($mapatom e) (not (amongl *extended-reals* e))) e) ;early bailout might boost speed
-         ((mtimesp e) (mul-extended (cdr e)))
-         ((mexptp e) (let ((preserve-direction t)) (mexpt-extended (second e) (third e))))
-         ;; When the operator of e has an *extended-real-eval* routine, map 
-		 ;; linearize-extended-real over the arguments of e and dispatch fn.
-         (fn 
-		   (let ((zzz (funcall fn (mapcar #'simpab (cdr e)))))
-		   	 (when (not (alike1 zzz e))
-			 	(push (ftake 'mlist zzz e) *janet*)))		 
-		 (funcall fn (mapcar #'simpab (cdr e))))
-         (($subvarp (mop e)) ;subscripted function
-		      (subfunmake 
-		      (subfunname e) 
-			        (mapcar #'linearize-extended-real (subfunsubs e)) 
-			        (mapcar #'linearize-extended-real (subfunargs e))))
-         (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
-
 (defun linearize-extended-real (e)
   "Partially do the extended real number arithmetic in the expression `e`. Specifically, if `e` is a 
   product, return either a Z or Z x extended real, where Z is finite; if `e` is exponential expression, 
@@ -372,19 +433,13 @@ infinity
   (let ((fn (and (consp e) (gethash (mop e) *extended-real-eval*))))
     (cond
      ;; Early bailout: atomic or not free of extended reals, return `e`
-     ((or ($mapatom e) (not (amongl *extended-reals* e)))  e)
+     ((or ($mapatom e) (not (amongl *extended-reals* e))) e)
      ;; Multiplication of extended reals
      ((mtimesp e) (mul-extended (cdr e)))
      ;; Exponentiation involving extended reals
      ((mexptp e) (let ((preserve-direction t)) (mexpt-extended (second e) (third e))))
      ;; Known extended-real operator: apply simpab to args and dispatch fn
-     (fn 
-	      (let ((zzz (funcall fn (mapcar #'simpab (cdr e)))))
-		   	 (mtell "zzz = ~M ; e = ~M ~%" zzz e)
-		   	 (when (not (alike1 zzz e))
-			 	(push (ftake 'mlist zzz e) *janet*)))	
-	 
-	 (funcall fn (mapcar #'simpab (cdr e))))
+     (fn (funcall fn (mapcar #'simpab (cdr e))))
      ;; Subscripted function: recursively linearize subscripts and arguments
      (($subvarp (mop e))
       (subfunmake
@@ -410,7 +465,7 @@ infinity
 		                     (mapcar #'(lambda (q) (coeff ee q 1)) '($minf $zerob $zeroa $ind $inf $infinity $und))
 
           ;; When the coefficient of minf is negative, promote the minus infinity term to the infinity term
-          (when (eq t (mgrp 0 cf-minf))
+      (when (eq t (mgrp 0 cf-minf))
 		     (setq cf-inf (sub cf-inf cf-minf)
                    cf-minf 0))
 
@@ -419,9 +474,14 @@ infinity
 		           cf-inf 0))
           ;; Using the signs of the various coefficients, simplify
 		  (cond ((nonzero-p cf-und) '$und) ; und x anything + finite = und
-		        ((nonzero-p cf-infinity) '$infinity) ; infinity x freeof und + finite = 
+		  
 				
+        ;; inf + minf = und, inf + infinity = und, and minf + infinty = und.
 				((and (nonzero-p cf-inf) (nonzero-p cf-minf)) '$und)
+        ((and (nonzero-p cf-inf) (nonzero-p cf-infinity)) '$und)
+        ((and (nonzero-p cf-minf) (nonzero-p cf-infinity)) '$und)
+        ((nonzero-p cf-infinity) '$infinity) ; infinity x freeof und + finite = 
+
 				;; Effectively, we convert a*inf + b*minf to (a-b)*inf
 				((or (nonzero-p cf-inf) (nonzero-p cf-minf))
 				 (let* ((cf (sub cf-inf cf-minf)) (sgn ($csign cf)));;; ($asksign cf)))
@@ -450,3 +510,78 @@ infinity
 (defun infsimp (e)
    (let ((preserve-direction nil)) (ridofab (simpab e))))
 
+(defun eq-ab (a b)
+  (eql (ridofab a) (ridofab b)))
+
+
+(defun add-extended-real (a b)
+  (simpab `((mplus simp) ,a ,b)))
+
+(defun $test_plus_comm ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
+        (bad nil))
+    (dolist (a L)
+      (dolist (b L)
+        ;; test a + b = b + a
+        (let ((ans1 (add-extended-real a b))
+              (ans2 (add-extended-real b a)))
+          (when (not (eq-ab ans1 ans2))
+            (push (ftake 'mlist a b) bad)))))
+  (fapply 'mlist bad)))
+
+
+(defun $test_plus_assoc ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
+        (bad nil))
+    (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+          ;; test a + (b + c) = (a + b) + c
+          (let ((ans1 (add-extended-real a (add-extended-real b c)))
+                (ans2 (add-extended-real (add-extended-real a b) c)))
+            (when (not (eq-ab ans1 ans2))
+              (push (ftake 'mlist a b c) bad))))))
+  (fapply 'mlist bad)))
+
+
+(defun $test_mult_comm ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
+        (bad nil))
+    (dolist (a L)
+      (dolist (b L)
+        ;; test a * b = b * a
+        (let ((ans1 (mul-extended-real a b))
+              (ans2 (mul-extended-real b a)))
+          (when (not (eq-ab ans1 ans2))
+            (push (ftake 'mlist a b) bad)))))
+  (fapply 'mlist bad)))
+
+
+(defun $test_mult_assoc ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
+        (bad nil))
+    (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+          ;; test a * (b * c) = (a * b) * c
+          (let ((ans1 (mul-extended-real a (mul-extended-real b c)))
+                (ans2 (mul-extended-real (mul-extended-real a b) c)))
+            (when (not (eq-ab ans1 ans2))
+              (push (ftake 'mlist a b c) bad))))))
+  (fapply 'mlist bad)))
+
+
+(defun $test_distn ()
+  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
+        (bad nil))
+    (dolist (a L)
+      (dolist (b L)
+        (dolist (c L)
+          ;; test a * (b + c) = a*b + a*c
+          (let ((ans1 (mul-extended-real a (add-extended-real b c)))
+                (ans2 (add-extended-real
+                       (mul-extended-real a b)
+                       (mul-extended-real a c))))
+            (when (not (eq-ab ans1 ans2))
+              (push (ftake 'mlist a b c) bad))))))
+  (fapply 'mlist bad)))

@@ -6,14 +6,14 @@
 #|  
 Maxima’s general simplifier is responsible for incorrectly simplifying inf - inf to 0, 0*inf to 0, and 
 several other such bugs. This code does not fix these bugs, but it does rework the Maxima functions 
-simpfinf, infsimp, and simpab. The one-argument limit function is the sole user interface to this code. 
+simpinf, infsimp, and simpab. The one-argument limit function is the sole user interface to this code. 
 For example, limit(ind^2 + %pi) evaluates to ind, and limit(inf^2 + zerob) evaluates to inf. 
 
 This code has three internal functions. They are simpinf, infsimp, and simpab. The main function is 
 simpab. The identical functions simpinf and infsimp call simpab followed by setting both
 zeroa and zerob to zero. 
 
-Addition and multiplication of extended real numbers are commutative and associative. There are 72 violations
+Addition and multiplication of extended real numbers are commutative and associative,but there are 72 violations
 of distributivity. The violations are (the first member represents infinity*(infinity +inf) = infinity*und =
 und, but infinity*infinity+infinity*inf = infinity + infinity = infinity.)
 
@@ -232,25 +232,25 @@ This differed from the expected result:
          (list '$ind '$ind '$ind)))
 
 (defun mul-extended-real (a b)
-  "Multiply `a` and `b`, where both `a` and `b` are either extended reals or one. When `a` and `b` are
-  extended reals, look up the product in the *extended-real-mult-table* hashtable. The table 
-  is symmetric, so we look for both (a,b) and if that fails, we look for (b,a). When both lookups
-  fail, return und."
-  (cond ((onep a) b)
-        ((onep b) a)
-		(t
-          (gethash (list a b) *extended-real-mult-table* 
-	         (gethash (list b a) *extended-real-mult-table* '$und)))))
+  "Multiply `a` and `b`, where each is either an extended real or one.
+   If both are extended reals, look up their product in *extended-real-mult-table*.
+   The table is symmetric: first try `(a,b)`, then `(b,a)`. If neither is found, return `$und`."
+  (cond
+    ((onep a) b)
+    ((onep b) a)
+    (t (or (gethash (list a b) *extended-real-mult-table*)
+           (gethash (list b a) *extended-real-mult-table*)
+           '$und))))
 
 (defun mul-extended (l)
-  "Map `linearize-extended-real` on the CL list `l`, then separately multiply the members of 
-   `l` that are extended reals and those that are not. Finally, return the product of the extended
-   reals times the non-extended reals, but do not simplify this product futher--for example, return
-   42 x inf, not inf.
+  "Map `simpab` on the CL list `l`, then separately multiply the members of `l` that are extended 
+   reals and those that are not. Finally, return the product of the extended reals times the non-extended 
+   reals, but do not simplify this product further--for example, return 42 x inf, not inf.
 
    The product of the non-extended reals is assumed to be nonzero."
   (let ((extended 1) 
-        (non-extended 1))
+        (non-extended 1)
+        (preserve-direction t))
 	  (dolist (lk l)
         (setq lk (simpab lk))
         (if (extended-real-p lk) 
@@ -281,7 +281,7 @@ This differed from the expected result:
 
    (list '$infinity '$minf '$infinity) ;infinity^minf = infinity
    (list '$infinity '$inf '$infinity)  ;infinity^inf = infinity
-   (list '$infinity '$infinity '$infinity))) ;infinity^infinty = infinity
+   (list '$infinity '$infinity '$infinity))) ;infinity^infinity = infinity
 
 (defvar *missing* nil)
 (defun mexpt-extended (a b)
@@ -340,8 +340,8 @@ This differed from the expected result:
          ((eq z '$inf) '$inf)      ; exp(inf) = inf
          ((eq z '$infinity) '$und) ; exp(infinity) = und
          (t 
-              (push (ftake 'mlist a b) *missing*)
-         (ftake 'mexpt a b))))))) ; fall back
+          (push (ftake 'mlist a b) *missing*)
+          (ftake 'mexpt a b))))))) ; fall back
 
 ;; The hashtable *extended-real-eval* provides a mechanism for simplifying F(extended real); for
 ;; example log(inf) = inf and signum(zeroa) = 1.
@@ -449,7 +449,9 @@ This differed from the expected result:
      ;; General fallback: apply operator of `e` to linearized args
      (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
 
+(defvar *n* 0)
 (defun simpab (e)
+    (incf *n* 1)
     ;; In the first stage, we attempt to linearize each term to the form either extended x finite
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))

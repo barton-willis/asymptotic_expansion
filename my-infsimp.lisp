@@ -158,40 +158,6 @@ Result:
 This differed from the expected result:
 infinity
 
-**************** rtest_limit_gruntz.mac: Problem 93 (line 342) ****************
-
-Input:
-block([ans1, ans2, expr], assume(r > 0, p > 0, m < - 1),
-declare(m, noninteger), declare(p, noninteger),
-         2 n (n - r + 1)  c              n (n - r + 2)   c
-       (─────────────────)  + (r - 1) (─────────────────)  - n
-        n + r (n - r + 1)              n + r (n - r + 1)
-expr : ───────────────────────────────────────────────────────,
-                                c
-                               n  - n
-expr : subst(c + 1, c, expr), ans1 : limit(subst(m, c, expr), n, inf),
-ans2 : limit(subst(p, c, expr), n, inf), forget(r > 0, p > 0, m < - 1),
-remove(m, noninteger), remove(p, noninteger), [ans1, ans2, factor(ans2)])
-
-
-Result:
-                      n (- r + n + 2)   m + 1
-[limit    ((r - 1) (───────────────────)
- n -> inf           (- r + n + 1) r + n
-    m + 1    n (- r + n + 1)   m + 1        m + 1
- + 2      (───────────────────)      - n)/(n      - n),
-           (- r + n + 1) r + n
-         - p - 1    p + 1        - p - 1          - p - 1
-r (r + 1)        + 2      (r + 1)        - (r + 1)       ,
-       - p - 1       p + 1
-(r + 1)        (r + 2      - 1)]
-
-This differed from the expected result:
-             - p - 1    p + 1        - p - 1          - p - 1
-[1, r (r + 1)        + 2      (r + 1)        - (r + 1)       ,
-                                                      - p - 1       p + 1
-                                               (r + 1)        (r + 2      - 1)]
-
 |#
 (in-package :maxima)
 ;;; Code for simpab, simpinf, and infsimp
@@ -201,9 +167,14 @@ This differed from the expected result:
   (and (symbolp e) (member e *extended-reals*)))
 
 (defun nonzero-p (e)
-  "Return `t` if `e` is not `eql` to 0, nil otherwise. This function does a syntatic, not semantic check 
+  "Return `t` if `e` is not `eql` to 0, nil otherwise. This function does a syntactic, not semantic check 
    for a vanishing input. In particular, this function returns nil for both `zerob` and `zeroa`."
   (not (eql e 0)))
+
+(defun maybe-asksign (e)
+  (if *getsignl-asksign-ok*
+    ($asksign e)
+    ($csign e)))
 
 ;; We use a hashtable to represent the multiplication table for extended
 ;; real numbers. The table is symmetric, so we list only its "upper" half.
@@ -219,8 +190,8 @@ This differed from the expected result:
          (list '$minf '$infinity '$infinity)
 
          (list '$zerob '$zerob '$zeroa)
-         (list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
-         (list '$zeroa '$ind '$ind)
+         ;(list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
+         ;(list '$zeroa '$ind '$ind)
          (list '$zerob '$zeroa '$zerob)
          (list '$zeroa '$zeroa '$zeroa)
          
@@ -245,17 +216,15 @@ This differed from the expected result:
 (defun mul-extended (l)
   "Map `simpab` on the CL list `l`, then separately multiply the members of `l` that are extended 
    reals and those that are not. Finally, return the product of the extended reals times the non-extended 
-   reals, but do not simplify this product further--for example, return 42 x inf, not inf.
-
-   The product of the non-extended reals is assumed to be nonzero."
+   reals, but do not simplify this product further--for example, return 42 x inf, not inf."
   (let ((extended 1) 
         (non-extended 1)
         (preserve-direction t))
 	  (dolist (lk l)
         (setq lk (simpab lk))
         (if (extended-real-p lk) 
-		     (setq extended (mul-extended-real lk  extended))
-			 (setq non-extended (mul non-extended lk))))
+		        (setq extended (mul-extended-real lk  extended))
+			      (setq non-extended (mul non-extended lk))))
 	  (mul extended non-extended)))
 
 (defvar *extended-real-mexpt-table* (make-hash-table :test #'equal))
@@ -283,10 +252,10 @@ This differed from the expected result:
    (list '$infinity '$inf '$infinity)  ;infinity^inf = infinity
    (list '$infinity '$infinity '$infinity))) ;infinity^infinity = infinity
 
-(defvar *missing* nil)
 (defun mexpt-extended (a b)
-  (setq a (simpab a))
-  (setq b (simpab b))
+  (let ((preserve-direction t))
+    (setq a (simpab a))
+    (setq b (simpab b))
   (cond
     ;; Lookup in table
     ((and
@@ -294,9 +263,21 @@ This differed from the expected result:
        (member b *extended-reals*)
        (gethash (list a b) *extended-real-mexpt-table* '$und)))
 
+    ((and (integerp b) 
+          ($polynomialp a (ftake 'mlist '$zeroa) #'(lambda (q) (freeofl q *extended-reals*)))
+          (nonzero-p (ridofab a)))
+        (ridofab (ftake 'mexpt a b)))
+      ;($ratdisrep ($taylor (ftake 'mexpt a b) '$zeroa 0 1)))
+
+    ((and (integerp b) 
+          ($polynomialp a (ftake 'mlist '$zerob) #'(lambda (q) (freeofl q *extended-reals*)))
+          (nonzero-p (ridofab a)))
+       (ridofab (ftake 'mexpt a b)))    
+     ;; ($ratdisrep ($taylor (ftake 'mexpt a b) '$zerob 0 1)))
+
     ;; Fallback for non-extended reals
-    ((and (not (member a *extended-reals*))
-          (not (member b *extended-reals*)))
+    ((and (freeofl a *extended-reals*)
+          (freeofl b *extended-reals*))
      (ftake 'mexpt a b))
 
     ;; Special cases
@@ -339,9 +320,7 @@ This differed from the expected result:
          ((eq z '$und) '$und)      ; exp(und) = und
          ((eq z '$inf) '$inf)      ; exp(inf) = inf
          ((eq z '$infinity) '$und) ; exp(infinity) = und
-         (t 
-          (push (ftake 'mlist a b) *missing*)
-          (ftake 'mexpt a b))))))) ; fall back
+         (t (ftake 'mexpt a b)))))))) ; fall back
 
 ;; The hashtable *extended-real-eval* provides a mechanism for simplifying F(extended real); for
 ;; example log(inf) = inf and signum(zeroa) = 1.
@@ -455,7 +434,6 @@ This differed from the expected result:
     ;; In the first stage, we attempt to linearize each term to the form either extended x finite
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))
-
 	;; When the linearization is successful, we do additional simplifications on expressions that are
 	;; affine in an extended real. We check for an affine expression using polynomialp.
 	(cond (($polynomialp ee (fapply 'mlist *extended-reals*) 
@@ -486,7 +464,7 @@ This differed from the expected result:
 
 				;; Effectively, we convert a*inf + b*minf to (a-b)*inf
 				((or (nonzero-p cf-inf) (nonzero-p cf-minf))
-				 (let* ((cf (sub cf-inf cf-minf)) (sgn ($csign cf)));;; ($asksign cf)))
+				 (let* ((cf (sub cf-inf cf-minf)) (sgn (maybe-asksign cf)));;; ($asksign cf)))
 				 	(cond ((eq sgn '$neg) '$minf) ;negative x inf + finite = minf
 					      ((eq sgn '$pos) '$inf)  ;pos x inf + finite = inf
 						  ((eq sgn '$zero) '$und) ;zeroa x inf = und
@@ -496,7 +474,7 @@ This differed from the expected result:
 
 				((or (nonzero-p cf-zerob) (nonzero-p cf-zeroa))
 				  (cond (preserve-direction
-				           (let* ((cf (sub cf-zeroa cf-zerob)) (sgn ($asksign cf)))
+				           (let* ((cf (sub cf-zeroa cf-zerob)) (sgn (maybe-asksign cf))) ;;;;(sgn ($asksign cf)))
 				         	(cond ((eq sgn '$neg) (add '$zerob (ridofab ee))) ;negative x zeroa + finite = zerob + finite
 					              ((eq sgn '$pos) (add '$zeroa (ridofab ee)))
 						          (t ee))))
@@ -507,14 +485,13 @@ This differed from the expected result:
 
 ;; Redefine simpinf and infsimp to just call simpab followed by ridofab. 
 (defun simpinf (e)
-   (let ((preserve-direction nil)) (ridofab (simpab e))))
+   (let (($simp t) (preserve-direction nil)) (ridofab (simpab e))))
 
 (defun infsimp (e)
-   (let ((preserve-direction nil)) (ridofab (simpab e))))
+   (let (($simp t) (preserve-direction nil)) (ridofab (simpab e))))
 
 (defun eq-ab (a b)
   (eql (ridofab a) (ridofab b)))
-
 
 (defun add-extended-real (a b)
   (simpab `((mplus simp) ,a ,b)))

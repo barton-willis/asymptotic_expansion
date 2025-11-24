@@ -43,27 +43,8 @@ und, but infinity*infinity+infinity*inf = infinity + infinity = infinity.)
 [minf, minf, ind], [minf, minf, zeroa], [minf, minf, zerob]]
 
 
-The semantic testsuite failures are:
+The semantic testsuite failures are (this requires a tweak in limit as well)
 
-********************* rtestsum.mac: Problem 278 (line 925) ********************
-
-Input:
-(kill(f), block([x : product(sum(f(i), i, 1, inf), j, 1, inf)],
-                                                             inf  inf
-                                                           ─┬───┬─____
-                                                            │   │ ╲
-                              block([simp : false], is(x =  │   │  ⟩    f(i)))))
-                                                            │   │ ╱
-                                                            j = 1 ‾‾‾‾
-                                                                  i = 1
-
-
-Result:
-sign: sign of und is undefined.
-error-catch
-
-This differed from the expected result:
-true
 
 ********************* rtest_sqrt.mac: Problem 9 (line 45) *********************
 
@@ -171,10 +152,13 @@ infinity
    for a vanishing input. In particular, this function returns nil for both `zerob` and `zeroa`."
   (not (eql e 0)))
 
+;; Maybe there should be an askcsign that has the option of saving the result in the 
+;; current environment.
 (defun maybe-asksign (e)
+  "Dispatch to either $asksign or $csign depending on *getsignl-asksign-ok*."
   (if *getsignl-asksign-ok*
-    ($asksign e)
-    ($csign e)))
+      ($asksign e)
+      ($csign e)))
 
 ;; We use a hashtable to represent the multiplication table for extended
 ;; real numbers. The table is symmetric, so we list only its "upper" half.
@@ -428,10 +412,8 @@ infinity
      ;; General fallback: apply operator of `e` to linearized args
      (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
 
-(defvar *n* 0)
 (defun simpab (e)
-    (incf *n* 1)
-    ;; In the first stage, we attempt to linearize each term to the form either extended x finite
+  ;; In the first stage, we attempt to linearize each term to the form either extended x finite
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))
 	;; When the linearization is successful, we do additional simplifications on expressions that are
@@ -497,8 +479,7 @@ infinity
   (simpab `((mplus simp) ,a ,b)))
 
 (defun $test_plus_comm ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
-        (bad nil))
+  (let ((L *extended-reals*) (bad nil))
     (dolist (a L)
       (dolist (b L)
         ;; test a + b = b + a
@@ -510,8 +491,7 @@ infinity
 
 
 (defun $test_plus_assoc ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
-        (bad nil))
+  (let ((L *extended-reals*) (bad nil))
     (dolist (a L)
       (dolist (b L)
         (dolist (c L)
@@ -524,8 +504,7 @@ infinity
 
 
 (defun $test_mult_comm ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
-        (bad nil))
+  (let ((L *extended-reals*)  (bad nil))
     (dolist (a L)
       (dolist (b L)
         ;; test a * b = b * a
@@ -537,8 +516,7 @@ infinity
 
 
 (defun $test_mult_assoc ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
-        (bad nil))
+  (let ((L *extended-reals*) (bad nil))
     (dolist (a L)
       (dolist (b L)
         (dolist (c L)
@@ -550,9 +528,8 @@ infinity
   (fapply 'mlist bad)))
 
 
-(defun $test_distn ()
-  (let ((L (list '$minf '$zerob '$zeroa '$ind '$und '$inf '$infinity))
-        (bad nil))
+(defun $test_distributivity ()
+  (let ((L *extended-reals*) (bad nil))
     (dolist (a L)
       (dolist (b L)
         (dolist (c L)

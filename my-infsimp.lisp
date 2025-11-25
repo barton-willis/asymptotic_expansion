@@ -174,8 +174,8 @@ infinity
          (list '$minf '$infinity '$infinity)
 
          (list '$zerob '$zerob '$zeroa)
-         ;(list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
-         ;(list '$zeroa '$ind '$ind)
+         (list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
+         (list '$zeroa '$ind '$ind)
          (list '$zerob '$zeroa '$zerob)
          (list '$zeroa '$zeroa '$zeroa)
          
@@ -250,14 +250,14 @@ infinity
     ((and (integerp b) 
           ($polynomialp a (ftake 'mlist '$zeroa) #'(lambda (q) (freeofl q *extended-reals*)))
           (nonzero-p (ridofab a)))
-        (ridofab (ftake 'mexpt a b)))
-      ;($ratdisrep ($taylor (ftake 'mexpt a b) '$zeroa 0 1)))
+        ;(ridofab (ftake 'mexpt a b)))
+      ($ratdisrep ($taylor (ftake 'mexpt a b) '$zeroa 0 1)))
 
     ((and (integerp b) 
           ($polynomialp a (ftake 'mlist '$zerob) #'(lambda (q) (freeofl q *extended-reals*)))
           (nonzero-p (ridofab a)))
-       (ridofab (ftake 'mexpt a b)))    
-     ;; ($ratdisrep ($taylor (ftake 'mexpt a b) '$zerob 0 1)))
+       ;(ridofab (ftake 'mexpt a b)))    
+      ($ratdisrep ($taylor (ftake 'mexpt a b) '$zerob 0 1)))
 
     ;; Fallback for non-extended reals
     ((and (freeofl a *extended-reals*)
@@ -412,13 +412,17 @@ infinity
      ;; General fallback: apply operator of `e` to linearized args
      (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
 
+(defvar *n* 0)
 (defun simpab (e)
+  (incf *n* 1)
   ;; In the first stage, we attempt to linearize each term to the form either extended x finite
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))
 	;; When the linearization is successful, we do additional simplifications on expressions that are
 	;; affine in an extended real. We check for an affine expression using polynomialp.
-	(cond (($polynomialp ee (fapply 'mlist *extended-reals*) 
+	(cond 
+      ((or ($mapatom e) (mnump e)) e) 
+      (($polynomialp ee (fapply 'mlist *extended-reals*) 
 	                       #'(lambda (q) (not (amongl *extended-reals* q)))
 						   #'(lambda (q) (or (eql q 0) (eql q 1))))
 

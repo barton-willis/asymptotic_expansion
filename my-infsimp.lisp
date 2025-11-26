@@ -160,6 +160,30 @@ infinity
       ($asksign e)
       ($csign e)))
 
+;; Maybe I could make this faster by using a hashtable for the symbols instead of a CL list. 
+;; But testing shows that at least for running the testsuite, this function only takes about
+;; 0.1 second total.
+(defun expression-free-of-symbols-p (e symbols)
+ "Return true if no symbol in the list `symbols` appears in a nonfunctional
+  position in the Maxima expression `e`.
+
+  The operator of a form is considered a functional position and is ignored; only arguments are checked. 
+  Thus `sin(x)` is free of `sin`, but `f(sin)` is not. For a subscripted function (for example li[2](x)), 
+  only the `x` is checked.
+  
+  Subscripted expressions are treated as atomic and are always free. Thus `a[inf]` is free of
+  both `a` and `inf`.
+
+  Checks are syntactic: for example `limit(e, x, inf)` is not free of `inf`.
+  
+  The second argument `symbols` must be a CL list of symbols, but that condition is not checked by this code."
+  (cond
+    ((mnump e) t) ; includes integers, Maxima rationals, floats, and big floats
+    ((symbolp e) (not (member e symbols :test #'eq)))
+    (($subvarp (mop e)) (every (lambda (q) (expression-free-of-symbols-p q symbols)) (subfunargs e)))
+    (($subvarp e) t) ; Maxima-specific mapatom; example: a[1] is free of a
+    (t (every (lambda (q) (expression-free-of-symbols-p q symbols)) (cdr e)))))
+
 ;; We use a hashtable to represent the multiplication table for extended
 ;; real numbers. The table is symmetric, so we list only its "upper" half.
 ;; When a value isn't found in the hashtable, mult-extended-real returns `und`,
@@ -220,14 +244,6 @@ infinity
    (list '$minf '$inf '$infinity)      ;minf^inf = infinity
    (list '$minf '$infinity '$infinity) ;minf^infinity = infinity
 
-   (list '$zerob '$ind '$ind)          ;zerob^ind = ind (not sure)
-   (list '$zerob '$inf 0)              ;zerob^inf = 0 (not sure)
-   (list '$zerob '$infinity 0)         ;zerob^infinity = 0 (not sure)
-
-   (list '$zeroa '$ind '$ind)          ;zeroa^ind = ind
-   (list '$zeroa '$inf 0)              ;zeroa^inf = 0  
-   (list '$zeroa '$infinity 0)         ;zeroa^infinity = 0
-
    (list '$inf '$minf 0)               ;inf^minf = 0
    (list '$inf '$inf '$inf)            ;inf^inf = inf
    (list '$inf '$infinity '$infinity)  ;inf^infinity = infinity
@@ -248,20 +264,20 @@ infinity
        (gethash (list a b) *extended-real-mexpt-table* '$und)))
 
     ((and (integerp b) 
-          ($polynomialp a (ftake 'mlist '$zeroa) #'(lambda (q) (freeofl q *extended-reals*)))
+          ($polynomialp a (ftake 'mlist '$zeroa) #'(lambda (q) (expression-free-of-symbols-p  q *extended-reals*)))                            
           (nonzero-p (ridofab a)))
         ;(ridofab (ftake 'mexpt a b)))
       ($ratdisrep ($taylor (ftake 'mexpt a b) '$zeroa 0 1)))
 
     ((and (integerp b) 
-          ($polynomialp a (ftake 'mlist '$zerob) #'(lambda (q) (freeofl q *extended-reals*)))
+          ($polynomialp a (ftake 'mlist '$zerob) #'(lambda (q) (expression-free-of-symbols-p  q *extended-reals*))) 
           (nonzero-p (ridofab a)))
        ;(ridofab (ftake 'mexpt a b)))    
       ($ratdisrep ($taylor (ftake 'mexpt a b) '$zerob 0 1)))
 
     ;; Fallback for non-extended reals
-    ((and (freeofl a *extended-reals*)
-          (freeofl b *extended-reals*))
+    ((and (expression-free-of-symbols-p  a *extended-reals*)
+          (expression-free-of-symbols-p  b *extended-reals*))
      (ftake 'mexpt a b))
 
     ;; Special cases
@@ -396,7 +412,7 @@ infinity
   (let ((fn (and (consp e) (gethash (mop e) *extended-real-eval*))))
     (cond
      ;; Early bailout: atomic or not free of extended reals, return `e`
-     ((or ($mapatom e) (not (amongl *extended-reals* e))) e)
+     ((or ($mapatom e) (expression-free-of-symbols-p  e *extended-reals*)) e)
      ;; Multiplication of extended reals
      ((mtimesp e) (mul-extended (cdr e)))
      ;; Exponentiation involving extended reals
@@ -412,18 +428,22 @@ infinity
      ;; General fallback: apply operator of `e` to linearized args
      (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
 
-(defvar *n* 0)
+
+
+(defvar *simpab* nil)
 (defun simpab (e)
-  (incf *n* 1)
+  (when (expression-free-of-symbols-p  e *extended-reals*)
+    (push e *simpab*))
+ 
   ;; In the first stage, we attempt to linearize each term to the form either extended x finite
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))
 	;; When the linearization is successful, we do additional simplifications on expressions that are
 	;; affine in an extended real. We check for an affine expression using polynomialp.
 	(cond 
-      ((or ($mapatom e) (mnump e)) e) 
+      ((expression-free-of-symbols-p  e *extended-reals*) e)
       (($polynomialp ee (fapply 'mlist *extended-reals*) 
-	                       #'(lambda (q) (not (amongl *extended-reals* q)))
+               #'(lambda (q) (expression-free-of-symbols-p  q *extended-reals*))
 						   #'(lambda (q) (or (eql q 0) (eql q 1))))
 
         ;; Find the coefficients of each of the extended reals.

@@ -198,8 +198,8 @@ infinity
          (list '$minf '$infinity '$infinity)
 
          (list '$zerob '$zerob '$zeroa)
-         (list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
-         (list '$zeroa '$ind '$ind)
+         ;(list '$zerob '$ind '$ind) ;maybe would be OK to define zeroa x ind = 0 & zerob x ind = 0
+        ; (list '$zeroa '$ind '$ind)
          (list '$zerob '$zeroa '$zerob)
          (list '$zeroa '$zeroa '$zeroa)
          
@@ -370,37 +370,6 @@ infinity
         ((eq e '$inf) 1)  ;erf(inf) = 1
         (t (ftake '%erf e))))
 
-;; Apply the floor function to an extended real.
-(def-extended-real-evaluator floor (e)
-  (setq e (car e))
-  (cond ((eq e '$minf) '$minf)
-        ((eq e '$zerob) -1)
-        ((eq e '$zeroa) 0)
-        ((eq e '$ind) '$ind)
-        ((eq e '$und) '$und)
-        ((eq e '$inf) '$inf)
-        (t (ftake '$floor e))))
-
-(def-extended-real-evaluator realpart (e)
-  (setq e (car e))
-   (cond ((eq e '$minf) '$minf)
-         ((eq e '$zerob) '$zerob)
-         ((eq e '$zeroa) '$zeroa)
-         ((eq e '$ind) '$ind)
-         ((eq e '$und) '$und)
-         ((eq e '$inf) '$inf)
-         (t (ftake '%realpart e))))
-
-(def-extended-real-evaluator imagpart (e)
-  (setq e (car e))
-   (cond ((eq e '$minf) 0)
-         ((eq e '$zerob) 0)
-         ((eq e '$zeroa) 0)
-         ((eq e '$ind) '$ind) ;not sure
-         ((eq e '$und) '$und)
-         ((eq e '$inf) 0)
-         (t (ftake '%imagpart e))))
-
 (defun linearize-extended-real (e)
   "Partially do the extended real number arithmetic in the expression `e`. Specifically, if `e` is a 
   product, return either a Z or Z x extended real, where Z is finite; if `e` is exponential expression, 
@@ -428,13 +397,7 @@ infinity
      ;; General fallback: apply operator of `e` to linearized args
      (t (fapply (caar e) (mapcar #'linearize-extended-real (cdr e)))))))
 
-
-
-(defvar *simpab* nil)
 (defun simpab (e)
-  (when (expression-free-of-symbols-p  e *extended-reals*)
-    (push e *simpab*))
- 
   ;; In the first stage, we attempt to linearize each term to the form either extended x finite
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))

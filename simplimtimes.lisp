@@ -121,6 +121,7 @@ Most wanted bug:
       (list '$zerob '$imaginary 0)
       (list '$zerob '$complex 0)
 
+      ;; zeroa x {neg, nz, zero, pz, pn, pos, pnz, imaginary, complex} is a zero
       (list '$zeroa '$pos '$zeroa)
 	    (list '$zeroa '$neg '$zerob)
       (list '$zeroa '$nz 0)
@@ -131,18 +132,19 @@ Most wanted bug:
       (list '$zeroa '$imaginary 0)
       (list '$zeroa  '$complex 0)
 
-      ;; ind x {neg, nz, zero, pz, pos, pnz, imaginary, complex} either 0 or ind
+      ;; ind x {neg, nz, zero, pz, pn, pos, pnz, imaginary, complex} either 0 or ind
 	    (list '$ind '$zero 0)
       (list '$ind '$neg '$ind)
       (list '$ind '$nz '$ind)
       (list '$ind '$pz '$ind)
+      (list '$ind '$pn '$ind)
       (list '$ind '$pos '$ind)
       (list '$ind '$pnz '$ind)
       (list '$ind '$imaginary '$ind)
       (list '$ind '$complex '$ind)))
 
 (defun mul-sign-extended-real (sgn x)
-    (cond ((eql x 0) 0)
+    (cond ((eql x 0) 0) ; 0 x {any sign} = 0
           (t (gethash (list x sgn) *extended-real-times-sign-mult-table* '$und))))
 
 ;; Return the limit as var -> val of the product of the terms of the Common Lisp list of terms e.

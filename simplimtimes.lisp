@@ -40,10 +40,10 @@ Most wanted bug:
 
 (defvar *times* nil)
 
-(defmfun $show_d ()
+(defmfun $show_oops ()
   (fapply 'mlist *times*))
 
-(defmfun $reset_d ()
+(defmfun $reset_oops ()
   (setq *times* nil))
 
 (defun simplimtimes (e)
@@ -145,7 +145,6 @@ Most wanted bug:
     (cond ((eql x 0) 0)
           (t (gethash (list x sgn) *extended-real-times-sign-mult-table* '$und))))
 
-(defvar *zero* nil)    
 ;; Return the limit as var -> val of the product of the terms of the Common Lisp list of terms e.
 ;; The members of e can be explicit extended real numbers. Here is what we do:
 
@@ -163,6 +162,13 @@ Most wanted bug:
         (finite-terms nil)) ; all other terms, (real numbers)
 
     (dolist (ek e)
+
+      ;; not sure about this
+      (when (alike ek (mul -1 '$zeroa))
+          (setq ek '$zerob))
+      (when (alike ek (mul -1 '$zerob))
+          (setq ek '$zeroa)) 
+
       (cond
         ((memq ek '($minf $inf $infinity))
          (push (cons ek ek) const-inf-terms))
@@ -173,6 +179,14 @@ Most wanted bug:
         (t
 	       (setq ek (infsimp ek))
          (let ((lim (limit ek var val 'think)))
+
+           ;; needed for limit(exp(x)*(gamma(x + exp(- x)) - gamma(x)), x, inf);
+           (when (eql 0 lim)
+             (let ((sgn ($csign ek)))
+               (setq lim (cond ((eq sgn '$neg) '$zerob)
+                               ((eq sgn '$pos) '$zeroa)
+                               (t 0)))))
+
            (cond ((memq lim '($minf $inf $infinity))
                     (push (cons lim ek) inf-terms))
                  ((or (eq lim '$ind) (eq lim nil) (eq lim t))

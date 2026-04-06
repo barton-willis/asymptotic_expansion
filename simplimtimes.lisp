@@ -163,7 +163,6 @@ Most wanted bug:
         (finite-terms nil)) ; all other terms, (real numbers)
 
     (dolist (ek e)
-	  (setq ek (infsimp ek))
       (cond
         ((memq ek '($minf $inf $infinity))
          (push (cons ek ek) const-inf-terms))
@@ -172,6 +171,7 @@ Most wanted bug:
 		       (push (cons ek ek) const-zero-terms))
 
         (t
+	       (setq ek (infsimp ek))
          (let ((lim (limit ek var val 'think)))
            (cond ((memq lim '($minf $inf $infinity))
                     (push (cons lim ek) inf-terms))

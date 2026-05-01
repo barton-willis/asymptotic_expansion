@@ -1,0 +1,121 @@
+/* constants */
+map('limit, [-5,%pi, %pi+e, 2/3,(x+8)^9, p/q, cos(x)]);
+[-5,%pi,e+%pi,2/3,(x+8)^9,p/q,cos(x)]$
+
+/* subscripted variables and functions */
+map('limit,[a[5], li[2](32)]);
+[a[5],li[2](32)]$
+
+
+/* CRE */
+map('limit,[rat(1/4), rat(x),rat(x*y)]);
+ [1/4,x,x*y]$
+
+ /* extended reals */
+map('limit, [minf,zerob, zeroa, ind, und, inf,infinity]);
+[minf,0,0,ind,und,inf,infinity]$
+
+/* negations */
+map('limit, [-minf,-zerob, -zeroa, -ind, -und, -inf,-infinity]);
+[inf,0,0,ind,und,minf,infinity]$
+
+/* multiples of extended reals*/
+map('limit, [23*minf,42*zerob, %pi*zeroa, 28*ind, ind/14, %e*inf,99*infinity]);
+[minf,0,0,ind,ind,inf,infinity]$
+
+map('limit, [-23*minf,-42*zerob, -%pi*zeroa, -28*ind, -ind/14, -%e*inf,-99*infinity]);
+[inf,0,0,ind,ind,minf,infinity]$
+
+/* powers involving extended reals */
+outermap(lambda([a,b], limit(a^b)),[minf,zerob,zeroa, ind, inf,infinity,und],[minf,zerob,zeroa, ind,inf,infinity,und]);
+[[0,und,und,und,infinity,infinity,und], 
+[und,und,und,und,und,und,und],
+[und,und,und,und,und,und,und],
+[und,und,und,und,und,und,und],
+[0,und,und,und,inf,infinity,und],
+[infinity,und,und,und,infinity,infinity,und],
+[und,und,und,und,und,und,und]]$
+
+map('limit, [1/minf, 1/zerob, 1/zeroa, 1/ind, 1/inf, 1/infinity, 1/und]);
+[0, minf, inf, und, 0, 0, und]$
+
+map('limit, [minf^2, zerob^2, zeroa^2, ind^2, inf^2, infinity^2, und^2]);
+[inf, 0, 0, ind, inf, infinity, und]$
+
+map('limit, [minf^3, zerob^3, zeroa^3, ind^3, inf^3, infinity^3, und^3]);
+[minf, 0, 0, ind, inf, infinity, und]$
+
+map('limit, [exp(minf),exp(zerob),exp(zeroa), exp(ind),exp(inf),exp(infinity),exp(und)]);
+[0, 1, 1, ind, inf, und, und]$
+
+/* linear combinations */
+outermap(lambda([p,q], limit(p+q)), [minf,zerob, zeroa, ind, und, inf,infinity], [minf,zerob, zeroa, ind, und, inf,infinity]);
+[[minf, minf, minf, minf, und, und, und],
+[minf, 0, 0, ind, und, inf, infinity], 
+[minf, 0, 0, ind, und, inf, infinity],
+[minf, ind, ind, ind, und, inf, infinity],
+[und, und, und, und, und, und, und], 
+[und, inf, inf, inf, und, inf, und],
+[und, infinity, infinity, infinity, und, und, infinity]]$
+
+outermap(lambda([p,q], limit(p+q+6)), [minf,zerob, zeroa, ind, und, inf,infinity], [minf,zerob, zeroa, ind, und, inf,infinity]);
+[[minf, minf, minf, minf, und, und, und],
+[minf, 6, 6, ind, und, inf, infinity], 
+[minf, 6, 6, ind, und, inf, infinity],
+[minf, ind, ind, ind, und, inf, infinity],
+[und, und, und, und, und, und, und], 
+[und, inf, inf, inf, und, inf, und],
+[und, infinity, infinity, infinity, und, und, infinity]]$
+
+outermap(lambda([p,q], limit(2*p+3*q)), [minf,zerob, zeroa, ind, und, inf,infinity], [minf,zerob, zeroa, ind, und, inf,infinity]);
+[[minf, minf, minf, minf, und, und, und],
+[minf, 0, 0, ind, und, inf, infinity], [minf, 0, 0, ind, und, inf, infinity],
+[minf, ind, ind, ind, und, inf, infinity],
+[und, und, und, und, und, und, und], [und, inf, inf, inf, und, inf, und],
+[und, infinity, infinity, infinity, und, und, infinity]]$
+
+/* linear combinations of infinities */
+limit(minf*inf*29 + minf);
+minf$
+
+limit(minf*inf*29 + 42*minf);
+minf$
+
+limit(minf*inf*29 + minf);
+minf$
+
+limit(-minf*inf*29 - 42*minf);
+inf$
+
+limit(-minf*inf*29 - minf);
+inf$
+
+limit(42*inf*minf + inf);
+und$
+
+5*inf -(5 + 1/inf)*inf;
+und$
+
+block([ans],
+  assume(x < 0),
+  ans : limit(x*inf + (x + 1/inf)*inf),
+  forget(x < 0),
+  ans);
+und$
+
+block([ans],
+  assume(x > 0),
+  ans : limit(x*inf + (x + 1/inf)*inf),
+  forget(x  > 0),
+  ans);
+und$
+
+/* extended real evaluation of log, signum, and erf */
+
+map(lambda([q], limit(log(q))),[minf, zerob,zeroa, ind, inf,infinity,und]);
+[infinity, infinity, minf, und, inf, infinity, und]$
+
+map(lambda([q], limit(erf(q))),[minf, zerob,zeroa, ind, inf,infinity,und]);
+[- 1, 0, 0, ind, 1, und, und]$
+
+map(lambda([q], limit(signum(q))),[minf, zerob,zeroa, ind, inf,infinity,und]);

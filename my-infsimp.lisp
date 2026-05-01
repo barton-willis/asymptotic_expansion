@@ -263,6 +263,12 @@ infinity
        (member b *extended-reals*)
        (gethash (list a b) *extended-real-mexpt-table* '$und)))
 
+    ;; X^und = und & und^X = und, where X is any expression
+    ((or (eq a '$und) (eq b '$und)) '$und)
+
+    ;; {zerob, 0, zeroa}^extended real = und, where
+    ((and (eql (ridofab a) 0) (member b *extended-reals*)) '$und)
+
     ((and (integerp b) 
           ($polynomialp a (ftake 'mlist '$zeroa) #'(lambda (q) (expression-free-of-symbols-p  q *extended-reals*)))                            
           (nonzero-p (ridofab a)))
@@ -305,13 +311,17 @@ infinity
      (simpab (mul (power -1 b) (power '$zeroa b))))
 
     ((and (eq a '$infinity) (eq t (mgrp b 0))) '$infinity) ; infinity^pos = infinity
+    
+    ((and (eq a '$infinity) (eq t (mgrp 0 b))) 0) ; infinity^neg =  0
+    
     ((and (eq a '$inf) (eq t (mgrp b 0))) '$inf) ; inf^pos = infinity
     
-    ((and (eql a -1) (eq b '$inf)) '$und) ; (-1)^inf = und
+    ((and (eql a -1) (or (eq b '$inf) (eq b '$minf))) '$und) ; (-1)^inf = und & (-1)^minf
+
+    ((and (nonzero-p a) (or (eql b 0) (eq b '$zerob) (eq b '$zeroa))) 1)
     ;; General fallback via exponentiation
     (t
      (let ((z (simpab (mul b (ftake '%log a)))))
-    
        (cond
          ((eq z '$minf) 0)         ; exp(minf) = 0
          ((eq z '$zerob) 1)        ; exp(zerob) = 1
@@ -368,6 +378,7 @@ infinity
         ((eq e '$ind) '$ind) ;erf(ind) = ind
         ((eq e '$und) '$und) ;erf(und) = und
         ((eq e '$inf) 1)  ;erf(inf) = 1
+        ((eq e '$infinity) '$und) ; erf(infinity) = und
         (t (ftake '%erf e))))
 
 (defun linearize-extended-real (e)
@@ -378,14 +389,14 @@ infinity
 
   For an expression such as `42 x inf`, this function does not simplify it to `inf`.  Such simplifications
   are done by the function `simpab`."
-  (let ((fn (and (consp e) (gethash (mop e) *extended-real-eval*))))
+  (let ((preserve-direction t) (fn (and (consp e) (gethash (mop e) *extended-real-eval*))))
     (cond
      ;; Early bailout: atomic or not free of extended reals, return `e`
      ((or ($mapatom e) (expression-free-of-symbols-p  e *extended-reals*)) e)
      ;; Multiplication of extended reals
      ((mtimesp e) (mul-extended (cdr e)))
      ;; Exponentiation involving extended reals
-     ((mexptp e) (let ((preserve-direction t)) (mexpt-extended (second e) (third e))))
+     ((mexptp e) (mexpt-extended (second e) (third e)))
      ;; Known extended-real operator: apply simpab to args and dispatch fn
      (fn (funcall fn (mapcar #'simpab (cdr e))))
      ;; Subscripted function: recursively linearize subscripts and arguments
@@ -402,7 +413,7 @@ infinity
 	;; or simply finite, where is one of Maxima's extended reals and finite is a product of non-extended reals.
 	(let ((ee (linearize-extended-real e)))
 	;; When the linearization is successful, we do additional simplifications on expressions that are
-	;; affine in an extended real. We check for an affine expression using polynomialp.
+	;; affine in the extended reals. We check for an affine expression using polynomialp.
 	(cond 
       ((expression-free-of-symbols-p  e *extended-reals*) e)
       (($polynomialp ee (fapply 'mlist *extended-reals*) 
@@ -462,6 +473,13 @@ infinity
 (defun eq-ab (a b)
   (eql (ridofab a) (ridofab b)))
 
+;; for testing only
+(defun $extended_power (a b)
+  (mexpt-extended a b))
+
+(defun $add_extended (a b)
+ (simpab `((mplus simp) ,a ,b)))
+ 
 (defun add-extended-real (a b)
   (simpab `((mplus simp) ,a ,b)))
 

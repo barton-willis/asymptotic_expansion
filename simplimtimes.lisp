@@ -1,57 +1,58 @@
-#|
-Error summary: Using the hacked approx-alike that uses an extra ratsimp--I think the share
-tests that now pass are simply due to this extra ratsimp, not a real bug fix:
-Error(s) found:
-    rtest15.mac problem:    (425)
-    rtestint.mac problem:    (241)
-    rtest_limit.mac problems:    (178 179 232)
-    rtest_limit_extra.mac problems:    (94 308 309 411)
-    rtest_limit_gruntz.mac problem:    (27)
-Tests that were expected to fail but passed:
-    rtest_limit.mac problem:    (113)
-    rtest_limit_extra.mac problems:    (268 269 270)
-    rtest_limit_gruntz.mac problem:   (38)
-10 tests failed out of 14,765 total tests.
-
-Most wanted bug:
-
- limit(exp(x)*(gamma(x + exp(- x)) - gamma(x)), x, inf);
- |#
-
 (in-package :maxima)
 
 (declare-top (special origval
 		      *indicator numer denom exp var val
-		      taylored logcombed
+		      taylored logcombed *integer-info* *old-integer-info*
 		      $exponentialize lhp? lhcount
 		      loginprod? context limit-assumptions
 		      limit-top))
 
-(defvar *debug-limit* nil)
-
-;; Until simplimtimes runs the testsuite & share testsuites without failures and no
-;; calls to asksign, let's dispatch both the old and new simplimtimes functions. When
-;; the old and new disagree, save this data in list *times*.
-
-;; Save original simplimtimes only once
+(mfuncall '$declare '*complex-infinitesimal* '$complex)
+(mfuncall '$assume (ftake '$notequal '*complex-infinitesimal* 0))
 (unless (fboundp 'old-simplimtimes)
   (setf (symbol-function 'old-simplimtimes)
         (symbol-function 'simplimtimes)))
 
-(defvar *times* nil)
-
-(defmfun $show_oops ()
-  (fapply 'mlist *times*))
-
-(defmfun $reset_oops ()
-  (setq *times* nil))
-
+(defvar *lal* nil)
+(defvar *yikes* nil)
 (defun simplimtimes (e)
   (let ((old (old-simplimtimes e))
         (new (new-simplimtimes e)))
+
+
+    (when (not preserve-direction)
+      (setq old (ridofab old))
+      (setq new (ridofab new)))
+
     (when (not (alike1 old new))
-       (push (ftake 'mlist (fapply 'mtimes e) var val old new) *times*))
+      (push (ftake 'mlist (fapply 'mlist e) old new var val) *yikes*))
+    
     new))
+
+(defun $report ()
+  (fapply 'mlist *yikes*))
+
+(defun xsign (e)
+   (let ((cntx ($supcontext)))
+    (unwind-protect
+        (progn
+          ;; Set up assumptions for the super context
+          (assume (ftake 'mgreaterp '$zeroa 0))
+          (assume (ftake 'mgreaterp 0 '$zerob))
+          (assume (ftake 'mgreaterp (div 1 100) '$zeroa))
+          (assume (ftake 'mgreaterp '$zerob (div -1 100)))
+          ;; Determine which function to call based on *getsignl-asksign-ok*
+          ($csign e))
+      ;; remove the super context
+      ($killcontext cntx))))  
+
+
+
+(defparameter *debug-limit* nil)
+
+(defun debug-mtell (&rest args)
+  (when *debug-limit*
+    (apply #'mtell args)))
 
 ;; We use a hashtable to represent the multiplication table for extended
 ;; real numbers. The table is symmetric, so we list only its "upper" half.
@@ -61,7 +62,9 @@ Most wanted bug:
 ;; This multiplication is commutative and associative, but not distributive. For example, 
 ;; inf*(inf + zeroa) = inf, but inf * inf + inf * zeroa = und.
 (defvar *extended-real-mult-table* (make-hash-table :test #'equal))
-(mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a)))
+(mapcar #'(lambda (a) 
+      (setf (gethash (list (first a) (second a)) *extended-real-mult-table*) (third a))
+      (setf (gethash (list (second a) (first a)) *extended-real-mult-table*) (third a)))
    (list (list '$minf '$minf '$inf)
          (list '$minf '$inf '$minf)
          (list '$minf '$infinity '$infinity)
@@ -75,16 +78,34 @@ Most wanted bug:
          (list 0 0 0)
          
          (list '$inf '$inf '$inf)
+         (list '$inf '$minf '$minf)
          (list '$inf '$infinity '$infinity)
 
          (list '$infinity '$infinity '$infinity)
-
+         (list '$infinity '$inf '$infinity)
+         (list '$ind 0 0)
+         (list '$ind '$zerob 0)
+         (list '$ind '$zeroa 0)
          (list '$ind '$ind '$ind)))
 
 (defun mul-extended-real (a b)
   "Multiply `a` and `b`, where each is either an extended real or one.
    If both are extended reals, look up their product in *extended-real-mult-table*.
    The table is symmetric: first try `(a,b)`, then `(b,a)`. If neither is found, return `$und`."
+
+
+  (when (not (member a '($minf $zerob $zeroa $ind '$und '$inf '$infinity)))
+     (setq a (infsimp a)))
+
+(when (not (member b '($minf $zerob $zeroa $ind '$und '$inf '$infinity)))
+     (setq b (infsimp b)))
+
+  (when (and
+            (not (onep a))
+            (not (onep b))
+            (not (gethash (list a b) *extended-real-mult-table*))
+            (not (gethash (list a b) *extended-real-mult-table*)))
+      (push (ftake 'mlist a b) *lal*))
   (cond
     ((onep a) b)
     ((onep b) a)
@@ -96,7 +117,7 @@ Most wanted bug:
 (mapcar #'(lambda (a) (setf (gethash (list (first a) (second a)) *extended-real-times-sign-mult-table*) (third a)))
 (list (list '$minf '$neg '$inf)
       (list '$minf '$pos '$minf)
-	    (list '$minf '$imaginary '$infinity) ; not sure
+      (list '$minf '$imaginary '$infinity) ; not sure
 	    (list '$minf '$complex '$infinity)   ;not sure
 
 	    (list '$inf '$neg '$minf)
@@ -104,10 +125,10 @@ Most wanted bug:
 	    (list '$inf '$imaginary '$infinity) ;not sure
 	    (list '$inf '$complex '$infinity)   ;not sure
 
-	    (list '$infinity '$neg '$infinity)
+      (list '$infinity '$neg '$infinity)
       (list '$infinity '$pos '$infinity)
-	    (list '$infinity '$pn '$infinity) ;not sure
-	    (list '$infinity '$imaginary '$infinity)
+      (list '$infinity '$pn '$infinity) ;not sure
+      (list '$infinity '$imaginary '$infinity)
 	    (list '$infinity '$complex '$infinity)
 
       ;; zerob x {neg, nz, zero, pz, pn, pos, pnz, imaginary, complex} is a zero
@@ -130,7 +151,7 @@ Most wanted bug:
       (list '$zeroa '$pn 0)
       (list '$zeroa '$pnz 0)
       (list '$zeroa '$imaginary 0)
-      (list '$zeroa  '$complex 0)
+      (list '$zeroa '$complex 0)
 
       ;; ind x {neg, nz, zero, pz, pn, pos, pnz, imaginary, complex} either 0 or ind
 	    (list '$ind '$zero 0)
@@ -143,9 +164,18 @@ Most wanted bug:
       (list '$ind '$imaginary '$ind)
       (list '$ind '$complex '$ind)))
 
+
+(defmfun $jqm ()
+  (fapply 'mlist *lal*))
+
 (defun mul-sign-extended-real (sgn x)
+
     (cond ((eql x 0) 0) ; 0 x {any sign} = 0
-          (t (gethash (list x sgn) *extended-real-times-sign-mult-table* '$und))))
+          (t 
+          
+           (when (not (gethash (list x sgn) *extended-real-times-sign-mult-table*))
+            (push (ftake 'mlist x sgn) *lal*))
+          (gethash (list x sgn) *extended-real-times-sign-mult-table* '$und))))
 
 ;; Return the limit as var -> val of the product of the terms of the Common Lisp list of terms e.
 ;; The members of e can be explicit extended real numbers. Here is what we do:
@@ -154,6 +184,7 @@ Most wanted bug:
 ;;   (b) if there is a subexpression that is a zero x infinity indeterminate form,
 ;;       attempt to simplify it using try-lospital-quit and adjust the various lists of terms
 ;;   (c) use the limit of product is product of limits rule using extended real number arithmetic.
+
 (defun new-simplimtimes (e)
   (let ((const-inf-terms nil) ; terms that are explicitly either minf, inf, or infinity
         (const-zero-terms nil) ;terms that are explicitly either 0, zerob, or zeroa
@@ -162,15 +193,7 @@ Most wanted bug:
         (und-terms nil) ;terms whose limit is either und, nil, or true
         (zero-terms nil) ;terms whose limit is either zerob, 0, or zeroa
         (finite-terms nil)) ; all other terms, (real numbers)
-
     (dolist (ek e)
-
-      ;; not sure about this
-      (when (alike ek (mul -1 '$zeroa))
-          (setq ek '$zerob))
-      (when (alike ek (mul -1 '$zerob))
-          (setq ek '$zeroa)) 
-
       (cond
         ((memq ek '($minf $inf $infinity))
          (push (cons ek ek) const-inf-terms))
@@ -180,9 +203,10 @@ Most wanted bug:
 
         (t
 	       (setq ek (infsimp ek))
-         (let ((lim (limit ek var val 'think)))
-
-           ;; needed for limit(exp(x)*(gamma(x + exp(- x)) - gamma(x)), x, inf);
+         (let* ((lim (limit ek var val 'think)))
+           ;; When the limit is 0, use csign to attempt to decide if the result
+           ;; could be either zerob or zeroa. Alternatively, we could try zero-fixup.
+           ;; This hack is needed for limit(exp(x)*(gamma(x + exp(- x)) - gamma(x)), x, inf);
            (when (eql 0 lim)
              (let ((sgn ($csign ek)))
                (setq lim (cond ((eq sgn '$neg) '$zerob)
@@ -201,13 +225,13 @@ Most wanted bug:
                     (push (cons lim ek) finite-terms)))))))
 
 	;; attempt to condense und-terms
-	(when (and und-terms)
+	(when (and und-terms (cdr und-terms))
 		(let* ((xxx (fapply 'mtimes (mapcar #'cdr und-terms)))
 		       (w (limit1 xxx var val))) ; can be gruntz1
 		(cond ((or (eq w '$und) (eq w t) (eq w nil))
 		        (throw 'limit nil))
 
-              ((memq w '($minf $inf $infinity))
+          ((memq w '($minf $inf $infinity))
 			     (setq und-terms nil)
 				 (push (cons w xxx) inf-terms))
 
@@ -268,35 +292,45 @@ Most wanted bug:
                 (ind-x (fapply 'mtimes (mapcar #'cdr ind-terms)))
 			        	(zero-x (reduce #'mul-extended-real (mapcar #'car zero-terms) :initial-value 1))
                 (inf-x (reduce #'mul-extended-real (mapcar #'car inf-terms) :initial-value 1)))
+
+    
         
 		(cond 
-		    ;; infinite terms, no zero terms, and ind terms
+		    ;; infinite terms, no zero terms, and ind terms 
+        ;; this breaks integrate(x*sin(x)*exp(-x^2),x,minf,inf);
 		    ((and ind-terms inf-terms)
-			    ;(mtell "branch a ~%")
-				(mul-sign-extended-real ($csign (mul finite-x ind-x)) inf-x))
+            (debug-mtell "branch a ~%")
+		    		(mul-sign-extended-real ($csign (mul finite-x ind-x)) inf-x))
 
-            ;; ind terms, zero terms no infinite terms
+            ;; ind terms & zero terms no infinite terms
 			((and ind-terms zero-terms)
-			   ;(mtell "branch b ~%")
-         (mul-sign-extended-real ($csign (mul finite-x ind-x)) zero-x))
+			   (debug-mtell "branch b ~%")
+         (mul-sign-extended-real ($asksign (mul finite-x ind-x)) zero-x))
 
-            ;; ind terms, no infinite terms, no zero terms
+      ;; ind terms, no infinite terms, no zero terms
 			(ind-terms
-			     ;(mtell "branch c ~%")
+			     (debug-mtell "branch c ~%")
 			   '$ind)
 
             ;; infinite terms no zero terms no ind terms
 			(inf-terms 
-			    ;(mtell "branch d ~%")
-          ;(mtell "")
-			    (mul-sign-extended-real ($csign finite-x) inf-x))
+			    (debug-mtell "branch d sgn = ~M ; inf-x = ~M  ~%" ($csign finite-x) inf-x)
+			    (mul-sign-extended-real ($asksign finite-x) inf-x))
 
             ;; zero terms no infinite terms
 			(zero-terms
-			    ;(mtell "branch e ~%")
-			    (mul-sign-extended-real ($csign finite-x) zero-x))
+			    (debug-mtell "branch e sgn = ~M ; zero-x = ~M ~%" ($csign finite-x) zero-x)
+          (let ((z (risplit finite-x)))
+             (add 
+                (mul-sign-extended-real ($csign (car z)) zero-x)
+                (mul '$%i (mul-sign-extended-real ($csign (cdr z)) zero-x)))))
+;(mult finite-x zero-x))
+          ;(mul-sign-extended-real ($csign finite-x) zero-x))
 
 			;; just finite terms
 			(t 
-			  ; (mtell "branch f ~%")
+			   (debug-mtell "branch f ~%")
 			    finite-x)))))))
+
+(defun ridofab (e)
+  (maxima-substitute 0 '$zeroa (maxima-substitute 0 '$zerob (maxima-substitute 0 '*complex-infinitesimal* e))))

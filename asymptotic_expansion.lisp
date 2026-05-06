@@ -43,8 +43,6 @@
 
 (defmvar *asymptotic-max-order* 16)
 
-
-
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
 ;; expansion for the function with that key. Each function has
@@ -70,8 +68,6 @@
 ;; Not intended to be a user level function.
 (defmfun $asymptotic_expansion (e x pt n)
 	(asymptotic-expansion e x pt n))
-
-
 
 (defvar *xxx* (make-hash-table))
 (defvar *used* (make-hash-table))
@@ -115,7 +111,9 @@
 		(when fn
 		   (setf (gethash fff *used*) (+ 1 (gethash fff *used* 0))))
 		(cond (($mapatom e) e)
-			  (fn (apply fn (list args x pt n)))
+			  (fn 
+			     (let ((asy-args (mapcar #'(lambda (q) (asymptotic-expansion q x pt n)) args)))
+			        (apply fn (list asy-args x pt n))))
 	   	      (t 
 			    ;; For an arbitrary operator, likely it's OK to map 
 				;; asymptotic-expansion over the arguments. But I'm not

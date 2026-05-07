@@ -355,7 +355,7 @@
 		(t (ftake '%bessel_j v x)))))   
 
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
-(defun bessel-k-asymptotic (e x pt n)
+(def-asymptotic-rewrite-handler bessel_k (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (k 0) (a) (b) (cc 0))
 	    (cond ((eq '$inf ($limit z x pt))
 				(setq a (sub (div 1 2) v))
@@ -374,7 +374,6 @@
 		   (ftake 'mexpt '$%e (mul -1 z)) ;exp(-z)
 		   cc)))
 		(t (ftake '%bessel_k v x)))))   
-(setf (gethash '%bessel_k *asymptotic-rewrite-hash*) #'bessel-k-asymptotic)	
 
 ; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.

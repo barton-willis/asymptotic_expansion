@@ -33,8 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special var val taylored silent-taylor-flag limit
-   $taylordepth $taylor_logexpand $maxtaylororder $taylor_simplifer))
+(declare-top (special var val))
 
 
 (defmvar *asymptotic-max-order* 16)

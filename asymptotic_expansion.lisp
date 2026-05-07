@@ -36,10 +36,6 @@
 (declare-top (special var val lhp? taylored silent-taylor-flag limit
    $taylordepth $taylor_logexpand $maxtaylororder $taylor_simplifer))
 
-; Define *big* and *tiny* to be "big" and "tiny" numbers, respectively. There
-;; is no particular logic behind the choice *big* = 2^107 and *tiny* = 1/2^107.
-(defvar *big* (expt 2 107))
-(defvar *tiny* (div 1 (expt 2 107)))
 
 (defmvar *asymptotic-max-order* 16)
 
@@ -402,54 +398,6 @@
 		   cc)))
 		(t (ftake '%bessel_k v x)))))   
 (setf (gethash '%bessel_k *asymptotic-rewrite-hash*) #'bessel-k-asymptotic)	
-
-;; Is this worthwhile? Does it fix any bugs? Does it allow more limits to be
-;; evaluated?
-(defun atan-asymptotic (e x pt n)
-    (setq e (car e))
-	(let ((xxx ($limit e x pt))) ;try $limit, not limit
-	   (cond ((and (eq xxx '$inf))
-	          (unwind-protect 
-			    (progn
-           		   (mfuncall '$assume (ftake 'mlessp *big* x))
-	   		       ($ratdisrep ($taylor (ftake '%atan e) x '$inf n)))
-				(mfuncall '$forget (ftake 'mlessp *big* x))))   
-			 (t (ftake '%atan e)))))
-;(setf (gethash '%atan *asymptotic-rewrite-hash*) #'atan-asymptotic)
-
-(defun conjugate-asymptotic (e x pt n)
-	(setq e (car e))
-   	(let ((xxx ($limit e x pt))) ;try $limit, not limit
-		(if (eq xxx '$inf)
-          (ftake '$conjugate (asymptotic-rewrite (cadr e) x pt n))
-		  (ftake '$conjugate e))))
-;(setf (gethash '$conjugate *asymptotic-rewrite-hash*) #'conjugate-asymptotic)
-
-(defun asin-asymptotic (e x pt n)
-  (setq e (car e))
-  (let ((xxx ($limit e x pt))) ;try $limit, not limit
-	(setq e (ftake '%asin e))
-	(if (eq xxx '$inf)
-		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%asin *asymptotic-rewrite-hash*) #'asin-asymptotic)
-
-(defun acos-asymptotic (e x pt n)
-  (setq e (car e))
-  (let ((xxx ($limit e x pt))) ;try $limit, not limit
-	(setq e (ftake '%acos e))
-	(if (eq xxx '$inf)
-		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%acos *asymptotic-rewrite-hash*) #'acos-asymptotic)
-
-(defun asinh-asymptotic (e x pt n)
-  (setq e (car e))
-  (let ((xxx ($limit e x pt))) ;try $limit, not limit
-	(setq e (ftake '%asinh e))
-	(if (eq xxx '$inf)
-		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%asinh *asymptotic-rewrite-hash*) #'asinh-asymptotic)
-
-
 
 ; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.

@@ -92,6 +92,25 @@
 		(cond (($mapatom e) e)
 			  (fn (apply fn (list args x pt n)))
 	   	      (t e)))))
+
+(defun asymptotic-rewrite (e x pt n)
+	(let (($domain '$complex) 
+	      (fn nil) (args nil))
+        ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
+		;; subscripted and non subscripted functions. For a subscripted
+		;; function, args = (append subscripted args, regular args).
+        (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
+                   (setq fn (gethash (subfunname e) *asymptotic-rewrite-hash* nil))
+                   (setq args (append (subfunsubs e) (subfunargs e))))
+	            ((and (consp e) (consp (car e)))
+			        (setq fn (gethash (caar e) *asymptotic-rewrite-hash* nil))
+                    (setq args (cdr e))))
+
+		(cond (($mapatom e) e)
+			  (fn (apply fn (list args x pt n)))
+	   	      (t e))))
+
+
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
 ;; reaches a magic number (8), give up and return e. 
@@ -104,7 +123,7 @@
            ;; Try higher-order expansion
            (if (< n *asymptotic-max-order*)
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
-               (throw 'asymptotic-failure nil)))
+			   (fapply 'mplus e)))
           (t ans))))
 
 ;; Return the product of the result of mapping asymptotic-rewrite over the terms 

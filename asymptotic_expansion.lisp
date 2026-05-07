@@ -65,15 +65,6 @@
 (defmfun $asymptotic_expansion (e x pt n)
 	(asymptotic-rewrite e x pt n))
 
-(defvar *xxx* (make-hash-table))
-(defvar *used* (make-hash-table))
-
-(defun $missing()
-    (mtell "Missing operators: ~%")
-	(maphash #'(lambda (a b) (mtell "~M ~M ~%" a b)) *xxx*)
-    (mtell "Used operators: ~%")
-	(maphash #'(lambda (a b) (mtell "~M ~M ~%" a b)) *used*))
-
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
 ;; the expression tree and use hashtable to find operators with a
@@ -95,24 +86,19 @@
 		  ($domain '$complex) ;extra not sure about this
 		  ($m1pbranch t) ;not sure about this
 	      ($radexpand nil)
-	      (fn nil) (args nil) (lhp? nil) (fff))
+	      (fn nil) (args nil) (lhp? nil))
         ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
 		;; subscripted and non subscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
         (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
-		           (setq fff (subfunname e))
                    (setq fn (gethash (subfunname e) *asymptotic-rewrite-hash* nil))
                    (setq args (append (subfunsubs e) (subfunargs e))))
 	            ((and (consp e) (consp (car e)))
-				    (setq fff (caar e))
 			        (setq fn (gethash (caar e) *asymptotic-rewrite-hash* nil))
                     (setq args (cdr e))))
 
-		(when fn
-		   (setf (gethash fff *used*) (+ 1 (gethash fff *used* 0))))
 		(cond (($mapatom e) e)
-			  (fn 
-			        (apply fn (list args x pt n)))
+			  (fn (apply fn (list args x pt n)))
 	   	      (t e)))))
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 

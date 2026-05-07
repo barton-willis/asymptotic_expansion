@@ -77,14 +77,7 @@
 ;; fff is only used to enumerate the used operators--eventually delete this stuff
 (defun asymptotic-rewrite (e x pt n)
      (catch 'asymptotic-failure
-	(let (($gamma_expand nil) ;not sure about these option variables
-	      ($numer nil)
-		  ($float nil)
-		  ($%enumer nil)
-		  ($taylor_logexpand t)
-		  ($domain '$complex) ;extra not sure about this
-		  ($m1pbranch t) ;not sure about this
-	      ($radexpand nil)
+	(let (($domain '$complex) 
 	      (fn nil) (args nil))
         ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
 		;; subscripted and non subscripted functions. For a subscripted

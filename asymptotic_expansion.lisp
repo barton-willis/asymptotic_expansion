@@ -120,7 +120,7 @@
 (def-asymptotic-rewrite-handler mplus (e x pt n)
   (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
     (cond ((zerop1 ans)
-           ;; Try higher-order expansion
+           ;; Try higher-order expansion; if that fails, return the sum of the list e.
            (if (< n *asymptotic-max-order*)
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
 			   (fapply 'mplus e)))
@@ -393,7 +393,6 @@
 ;; the limit variable and pt for the limit point.
 (defun stirling0 (e &optional (x var) (pt val) (n 1))
   (let (($numer nil) ($float nil) (*asymptotic-max-order* (* 4 n)))
-    (catch 'asymptotic-failure
-      (or (asymptotic-rewrite e x pt n) e))))
+   (asymptotic-rewrite e x pt n)))
 
 

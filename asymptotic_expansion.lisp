@@ -33,7 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special var val lhp? taylored silent-taylor-flag limit
+(declare-top (special var val taylored silent-taylor-flag limit
    $taylordepth $taylor_logexpand $maxtaylororder $taylor_simplifer))
 
 
@@ -86,7 +86,7 @@
 		  ($domain '$complex) ;extra not sure about this
 		  ($m1pbranch t) ;not sure about this
 	      ($radexpand nil)
-	      (fn nil) (args nil) (lhp? nil))
+	      (fn nil) (args nil))
         ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
 		;; subscripted and non subscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).

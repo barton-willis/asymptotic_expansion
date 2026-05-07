@@ -3,8 +3,8 @@
 ;;; polylogarithm, and polygamma functions. 
 
 ;;; The purpose of this code is for computing limits. Specifically
-;;; limit(e,x,pt) = limit(asymptotic-expansion(e,x,pt),x,pt) is supposed to be
-;;; an identity. Possibly asymptotic-expansion could be promoted to a user level 
+;;; limit(e,x,pt) = limit(asymptotic-rewrite(e,x,pt),x,pt) is supposed to be
+;;; an identity. Possibly asymptotic-rewrite could be promoted to a user level 
 ;;; function, but for now it isn't intended to be a user level function.
 
 ;;; Copyright (C) 2022, 2023 Barton Willis
@@ -51,23 +51,23 @@
 ;; the limit point, and n is the truncation order. When these functions
 ;; cannot find the expansion, the returned value is a nounform
 ;; for the function.
-(defparameter *asymptotic-expansion-hash* (make-hash-table :test #'eq :size 16))
+(defparameter *asymptotic-rewrite-hash* (make-hash-table :test #'eq :size 16))
 
-(defmacro def-asymptotic-handler (op args &body body)
-  "Define a function OP-ASYMPTOTIC and register it in *asymptotic-expansion-hash*.
+(defmacro def-asymptotic-rewrite-handler (op args &body body)
+  "Define a function OP-ASYMPTOTIC and register it in *asymptotic-rewrite-hash*.
    OP is a Maxima operator symbol such as MTIMES or MPLUS."
   (let* ((fname (intern (format nil "~A-ASYMPTOTIC" op)))
          (op-sym (if (symbolp op) op (intern (string op)))))
     `(progn
        (defun ,fname ,args
          ,@body)
-       (setf (gethash ',op-sym *asymptotic-expansion-hash*)
+       (setf (gethash ',op-sym *asymptotic-rewrite-hash*)
              #',fname)
        ',fname)))
 
 ;; Not intended to be a user level function.
 (defmfun $asymptotic_expansion (e x pt n)
-	(asymptotic-expansion e x pt n))
+	(asymptotic-rewrite e x pt n))
 
 (defvar *xxx* (make-hash-table))
 (defvar *used* (make-hash-table))
@@ -84,8 +84,12 @@
 ;; specialized function for an asymptotic expansion. When we find such an
 ;; operator, dispatch the function from the hashtable.
 
+;; This code is supposed to preserve limits. By this I mean
+;; limit(XXX,x,pt) = limit(YYY,x,pt), where YYY is the result
+;; of applying asymptotic-rewrite to XXX.
+
 ;; fff is only used to enumerate the used operators--eventually delete this stuff
-(defun asymptotic-expansion (e x pt n)
+(defun asymptotic-rewrite (e x pt n)
      (catch 'asymptotic-failure
 	(let (($gamma_expand nil) ;not sure about these option variables
 	      ($numer nil)
@@ -96,85 +100,70 @@
 		  ($m1pbranch t) ;not sure about this
 	      ($radexpand nil)
 	      (fn nil) (args nil) (lhp? nil) (fff))
-        ;; Unify dispatching an *asymptotic-expansion-hash* function for both 
+        ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
 		;; subscripted and non subscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
         (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
 		           (setq fff (subfunname e))
-                   (setq fn (gethash (subfunname e) *asymptotic-expansion-hash* nil))
+                   (setq fn (gethash (subfunname e) *asymptotic-rewrite-hash* nil))
                    (setq args (append (subfunsubs e) (subfunargs e))))
 	            ((and (consp e) (consp (car e)))
 				    (setq fff (caar e))
-			        (setq fn (gethash (caar e) *asymptotic-expansion-hash* nil))
+			        (setq fn (gethash (caar e) *asymptotic-rewrite-hash* nil))
                     (setq args (cdr e))))
 
 		(when fn
 		   (setf (gethash fff *used*) (+ 1 (gethash fff *used* 0))))
 		(cond (($mapatom e) e)
 			  (fn 
-			     (let ((asy-args (mapcar #'(lambda (q) (asymptotic-expansion q x pt n)) args)))
-			        (apply fn (list asy-args x pt n))))
-	   	      (t 
-			    ;; For an arbitrary operator, likely it's OK to map 
-				;; asymptotic-expansion over the arguments. But I'm not
-				;; sure we win by doing so. Plus some of the limit code is
-				;; overly sensitive to syntactic changes to internal expressions--
-				;; so let's not make syntactic changes that don't matter.
-				(setf (gethash (caar e) *xxx*) (+ 1 (gethash (caar e) *xxx* 0)))
-			    e)))))
-;; For a sum, map asymptotic-expansion onto the summand and sum the result. When
+			        (apply fn (list args x pt n)))
+	   	      (t e)))))
+;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
 ;; reaches a magic number (8), give up and return e. 
 
 ;; The first argument e is a CL list of the summand. The second argument is the 
 ;; limit variable, the third is the point, and the last is the truncation level.
-(def-asymptotic-handler mplus (e x pt n)
-  (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e))))
+(def-asymptotic-rewrite-handler mplus (e x pt n)
+  (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
     (cond ((zerop1 ans)
            ;; Try higher-order expansion
            (if (< n *asymptotic-max-order*)
                (mplus-asymptotic e x pt (1+ n))
+               (fapply 'mplus e)))
+          (t ans))))
+
+(def-asymptotic-rewrite-handler mplus (e x pt n)
+  (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
+    (cond ((zerop1 ans)
+           ;; Try higher-order expansion
+           (if (< n *asymptotic-max-order*)
+               (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
                (throw 'asymptotic-failure nil)))
           (t ans))))
 
-;; Return the product of the result of mapping asymptotic-expansion over the terms 
+;; Return the product of the result of mapping asymptotic-rewrite over the terms 
 ;; in the CL list e.
-(def-asymptotic-handler mtimes (e x pt n)
-	(fapply 'mtimes (mapcar #'(lambda (s) (asymptotic-expansion s x pt n)) e)))
+(def-asymptotic-rewrite-handler mtimes (e x pt n)
+	(fapply 'mtimes (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e)))
 
-;; Map asymptotic-expansion onto the arguments of mexpt.
-(defun mexpt-asymptotic (e x pt n)
+;; Map asymptotic-rewrite onto the arguments of mexpt.
+(def-asymptotic-rewrite-handler mexpt (e x pt n)
 	(ftake 'mexpt 
-		    (asymptotic-expansion (car e) x pt n)
-			(asymptotic-expansion (cadr e) x pt n)))
-(setf (gethash 'mexpt *asymptotic-expansion-hash*) #'mexpt-asymptotic)
+		    (asymptotic-rewrite (car e) x pt n)
+			(asymptotic-rewrite (cadr e) x pt n)))
 
 ;; Could we do better? Maybe  
 ;;   log(x^2+x) -> log(x^2) + 1/x-1/(2*x^2)+1/(3*x^3)
-(defun log-asymptotic (e x pt n)
-	(ftake '%log (asymptotic-expansion (car e) x pt n)))
-
-(setf (gethash '%log *asymptotic-expansion-hash*) #'log-asymptotic)
-
-;; There are other cases: xxx is positive, for example.
-(defun mabs-asymptotic (e x pt n)
-   (setq e (car e))
-   (let ((xxx ($limit e x pt)))
-      (cond ((eq xxx '$ind)
-	         (ftake 'mabs e))	  
-	        ((eq t (mgrp xxx 0)) ;new!
-	         (asymptotic-expansion e x pt n))
-			((eq t (mgrp 0 xxx)) ;new!
-	         (asymptotic-expansion (mul -1 e) x pt n)) 
-	        (t (ftake 'mabs e)))))
-;;;;(setf (gethash 'mabs *asymptotic-expansion-hash*) #'mabs-asymptotic)
+(def-asymptotic-rewrite-handler %log (e x pt n)
+	(ftake '%log (asymptotic-rewrite (car e) x pt n)))
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
-(defun expintegral-ei-asymptotic (ee x pt n)
+(def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
     (let* ((e (car ee)) (lim ($limit e x pt)))
 	(cond ((eq '$inf lim)
 		(let ((s 0) (ds) (k 0))
-		  (setq e (asymptotic-expansion e x pt n))
+		  (setq e (asymptotic-rewrite e x pt n))
 		  ;;(exp(-e)/ e) sum(k!/e^k,k,0,n-1). I know: this is inefficient.
 		  (while (< k n)
 		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
@@ -184,7 +173,7 @@
 
 		;; see http://dlmf.nist.gov/6.6.E1
 		((zerop2 lim)
-		  (setq e (asymptotic-expansion e x pt n))
+		  (setq e (asymptotic-rewrite e x pt n))
 		  (let ((acc (add '$%gamma (ftake '%log e))) (k 0))
 		    ;; %gamma + log(e) + sum(e^k / (k * k!),k,1,n). Again, I know that this code
 			;; is a bit inefficient.
@@ -193,7 +182,6 @@
 				(setq acc (add acc (div (ftake 'mexpt e k) (mul k (ftake 'mfactorial k))))))
 			acc))
 	(t (ftake '%expintegral_ei ee)))))
-(setf (gethash '%expintegral_ei *asymptotic-expansion-hash*) #'expintegral-ei-asymptotic)	
 	  
 ;; See https://dlmf.nist.gov/6.12. Let's triple check for a Ei vs E1 flub.
 (defun expintegral-e1-asymptotic (e x pt n)
@@ -207,20 +195,20 @@
 			   (setq k (+ 1 k)))
 	 	      (mul s (div (ftake 'mexpt '$%e e) e)))
 		   (t (ftake '%expintegral_e1 e)))))
-(setf (gethash '%expintegral_e1 *asymptotic-expansion-hash*) #'expintegral-e1-asymptotic)
+(setf (gethash '%expintegral_e1 *asymptotic-rewrite-hash*) #'expintegral-e1-asymptotic)
 
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
-(defun gamma-asymptotic (e x pt n)
+(def-asymptotic-rewrite-handler %gamma (e x pt n)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (sratsimp (car e)))
-		(setq e (asymptotic-expansion e x pt n))
+		(setq e (asymptotic-rewrite e x pt n))
 		(when (eql pt 0)
 			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
-		        (setq e (asymptotic-expansion e x pt n))
+		        (setq e (asymptotic-rewrite e x pt n))
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)
@@ -238,12 +226,9 @@
 		 	     ($ratdisrep (tlimit-taylor e x (ridofab pt) n)))
 			  (t (ftake '%gamma e))))) ;give up		
 
-(setf (gethash '%gamma *asymptotic-expansion-hash*) 'gamma-asymptotic)
-
-(defun mfactorial-asymptotic (e x pt n)
-	(let ((fn (gethash '%gamma *asymptotic-expansion-hash*)))
+(def-asymptotic-rewrite-handler mfactorial (e x pt n)
+	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*)))
        (funcall fn (list (add 1 (car e))) x pt n)))
-(setf (gethash 'mfactorial *asymptotic-expansion-hash*) #'mfactorial-asymptotic)
 
 ;; For the case of non integer s, see the comment in specfn.lisp about the 
 ;; truncation value.
@@ -253,9 +238,9 @@
 
 ;; Maybe I should paste this code into li-asymptotic-expansion. But I don't think
 ;; that Maxima routes the minf case through li-asymptotic-expansion...
-(defun polylogarithm-asymptotic (e x pt n)
+(defun polylogarithm-asymptotic-rewrite (e x pt n)
 	(let (($numer nil) (s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
-	   (setq z (asymptotic-expansion z x pt n))
+	   (setq z (asymptotic-rewrite z x pt n))
 	   (setq xxx ($limit z x pt))
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
@@ -282,10 +267,10 @@
 			   (setq nn (min (mfuncall '$floor (div s 2)) n))
 	           (li-asymptotic-expansion nn s z))
 			(t (subfunmake '$li (list s) (list z))))))
-(setf (gethash '$li *asymptotic-expansion-hash*) 'polylogarithm-asymptotic)
+(setf (gethash '$li *asymptotic-rewrite-hash*) 'polylogarithm-asymptotic-rewrite)
 
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
-(defun psi-asymptotic (e x pt n)
+(defun psi-asymptotic-rewrite (e x pt n)
 	(let ((s 0) (k 0) ($zerobern t) (ds) (xxx) (m) (z))
 		(setq m (car e))
 	    (setq z (cadr e))
@@ -306,11 +291,11 @@
 				    (setq s (add s ds)))
 				(sub (ftake '%log z) s))	
 			  (t (subfunmake '$psi (list m) (list z))))))		 
-(setf (gethash '$psi *asymptotic-expansion-hash*) #'psi-asymptotic)
+(setf (gethash '$psi *asymptotic-rewrite-hash*) #'psi-asymptotic-rewrite)
 
 ;; See http://dlmf.nist.gov/7.11.E2. Missing the z --> -inf case.
 ;; Running the testsuite, this causes an asksign 
-(defun erfc-asymptotic (z x pt n)
+(def-asymptotic-rewrite-handler %erfc (z x pt n)
 	(setq z (car z))
 	(let ((s 0) (ds (div 1 z)) (k 0) (zz (mul 2 z z)) (xxx))
 	  (setq xxx ($limit z x pt))
@@ -328,24 +313,20 @@
 				 (setq k (+ k 1)))
 				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
 		  (t (ftake '%erfc z)))))		
-(setf (gethash '%erfc *asymptotic-expansion-hash*) #'erfc-asymptotic)
 
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
-;; look up the function in *asymptotic-expansion-hash*.
+;; look up the function in *asymptotic-rewrite-hash*.
 
-(defun erf-asymptotic (z x pt n)
+(def-asymptotic-rewrite-handler erf (z x pt n)
 	(let ((lim (limit (car z) x pt 'think))
-	      (fn (gethash '%erfc *asymptotic-expansion-hash*)))
+	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
 	(cond ((eq lim '$inf)
 	       (sub 1 (funcall fn z x pt n)))
 		  (t (fapply '%erf z)))))
-;; Running the testsuite, this causes an asksign on integrate( erf(x+a)-erf(x-a), x, minf, inf)
-;; (in rtestint).  For now, let's turn this off
-(setf (gethash '%erf *asymptotic-expansion-hash*) #'erf-asymptotic)	
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i
-(defun gamma-incomplete-asymptotic (e x pt n)
+(def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
 	(let* ((aaa (first e)) (z (second e)) (xxx (limit z x pt 'think)))
 		(cond 
           ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x
@@ -375,10 +356,9 @@
 						 (mul (ftake 'mexpt z (neg aaa)) s)))))
 	       ;; Case 3: fall back			
            (t (ftake '%gamma_incomplete aaa z)))))
-(setf (gethash '%gamma_incomplete *asymptotic-expansion-hash*) #'gamma-incomplete-asymptotic)		
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
-(defun bessel-j-asymptotic (e x pt n)
+(def-asymptotic-rewrite-handler %bessel_j (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0))
 	    (cond ((eq '$inf ($limit z x pt))
 				(setq ω (add z (div (mul '$%pi v) -2) (div '$%pi -4)))
@@ -400,7 +380,6 @@
 		   (ftake 'mexpt (div 2 (mul '$%pi x)) (div 1 2))
 		   (sub (mul cc (ftake '%cos ω)) (mul sc (ftake '%sin ω))))))
 		(t (ftake '%bessel_j v x)))))   
-(setf (gethash '%bessel_j *asymptotic-expansion-hash*) #'bessel-j-asymptotic)	
 
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
 (defun bessel-k-asymptotic (e x pt n)
@@ -422,7 +401,7 @@
 		   (ftake 'mexpt '$%e (mul -1 z)) ;exp(-z)
 		   cc)))
 		(t (ftake '%bessel_k v x)))))   
-(setf (gethash '%bessel_k *asymptotic-expansion-hash*) #'bessel-k-asymptotic)	
+(setf (gethash '%bessel_k *asymptotic-rewrite-hash*) #'bessel-k-asymptotic)	
 
 ;; Is this worthwhile? Does it fix any bugs? Does it allow more limits to be
 ;; evaluated?
@@ -436,15 +415,15 @@
 	   		       ($ratdisrep ($taylor (ftake '%atan e) x '$inf n)))
 				(mfuncall '$forget (ftake 'mlessp *big* x))))   
 			 (t (ftake '%atan e)))))
-;(setf (gethash '%atan *asymptotic-expansion-hash*) #'atan-asymptotic)
+;(setf (gethash '%atan *asymptotic-rewrite-hash*) #'atan-asymptotic)
 
 (defun conjugate-asymptotic (e x pt n)
 	(setq e (car e))
    	(let ((xxx ($limit e x pt))) ;try $limit, not limit
 		(if (eq xxx '$inf)
-          (ftake '$conjugate (asymptotic-expansion (cadr e) x pt n))
+          (ftake '$conjugate (asymptotic-rewrite (cadr e) x pt n))
 		  (ftake '$conjugate e))))
-;(setf (gethash '$conjugate *asymptotic-expansion-hash*) #'conjugate-asymptotic)
+;(setf (gethash '$conjugate *asymptotic-rewrite-hash*) #'conjugate-asymptotic)
 
 (defun asin-asymptotic (e x pt n)
   (setq e (car e))
@@ -452,7 +431,7 @@
 	(setq e (ftake '%asin e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%asin *asymptotic-expansion-hash*) #'asin-asymptotic)
+;(setf (gethash '%asin *asymptotic-rewrite-hash*) #'asin-asymptotic)
 
 (defun acos-asymptotic (e x pt n)
   (setq e (car e))
@@ -460,7 +439,7 @@
 	(setq e (ftake '%acos e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%acos *asymptotic-expansion-hash*) #'acos-asymptotic)
+;(setf (gethash '%acos *asymptotic-rewrite-hash*) #'acos-asymptotic)
 
 (defun asinh-asymptotic (e x pt n)
   (setq e (car e))
@@ -468,18 +447,18 @@
 	(setq e (ftake '%asinh e))
 	(if (eq xxx '$inf)
 		($ratdisrep ($taylor e x '$inf n)) e)))
-;(setf (gethash '%asinh *asymptotic-expansion-hash*) #'asinh-asymptotic)
+;(setf (gethash '%asinh *asymptotic-rewrite-hash*) #'asinh-asymptotic)
 
 
 
 ; Redefine the function stirling0. The function stirling0 does more than its
-;; name implies, so we will effectively rename it to asymptotic-expansion.
+;; name implies, so we will effectively rename it to asymptotic-rewrite.
 
 ;; The identifiers var and val look too similar to me--I'm going to use x for
 ;; the limit variable and pt for the limit point.
 (defun stirling0 (e &optional (x var) (pt val) (n 1))
   (let (($numer nil) ($float nil) (*asymptotic-max-order* (* 4 n)))
     (catch 'asymptotic-failure
-      (or (asymptotic-expansion e x pt n) e))))
+      (or (asymptotic-rewrite e x pt n) e))))
 
 

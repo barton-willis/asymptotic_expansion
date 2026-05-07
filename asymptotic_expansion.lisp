@@ -111,15 +111,6 @@
     (cond ((zerop1 ans)
            ;; Try higher-order expansion
            (if (< n *asymptotic-max-order*)
-               (mplus-asymptotic e x pt (1+ n))
-               (fapply 'mplus e)))
-          (t ans))))
-
-(def-asymptotic-rewrite-handler mplus (e x pt n)
-  (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
-    (cond ((zerop1 ans)
-           ;; Try higher-order expansion
-           (if (< n *asymptotic-max-order*)
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
                (throw 'asymptotic-failure nil)))
           (t ans))))

@@ -33,7 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special var val))
+(declare-top (special var val lhp?))
 
 
 (defmvar *asymptotic-max-order* 16)
@@ -62,7 +62,8 @@
 
 ;; Not intended to be a user level function.
 (defmfun $asymptotic_expansion (e x pt n)
-	(asymptotic-rewrite e x pt n))
+    (let ((LHP? nil))
+	(asymptotic-rewrite e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
@@ -78,7 +79,7 @@
 (defun asymptotic-rewrite (e x pt n)
      (catch 'asymptotic-failure
 	(let (($domain '$complex) 
-	      (fn nil) (args nil))
+	      (lhp? nil) (fn nil) (args nil))
         ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
 		;; subscripted and non subscripted functions. For a subscripted
 		;; function, args = (append subscripted args, regular args).
@@ -186,13 +187,14 @@
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (sratsimp (car e)))
-		(setq e (asymptotic-rewrite e x pt n))
+		
 		(when (eql pt 0)
 			(setq pt '$zeroa))
-		(setq xxx (let ((preserve-direction t)) (limit e x pt 'think)))
+		(setq xxx (let ((preserve-direction t)) ($limit e x pt)))
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
 		        (setq e (asymptotic-rewrite e x pt n))
+			    (mtell "e = ~M ~%" e)
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)
@@ -212,7 +214,9 @@
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)
 	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*)))
-       (funcall fn (list (add 1 (car e))) x pt n)))
+	   (if fn
+            (funcall fn (list (add 1 (car e))) x pt n)
+			(ftake 'mfactorial (car e)))))
 
 ;; For the case of non integer s, see the comment in specfn.lisp about the 
 ;; truncation value.
@@ -302,7 +306,7 @@
 ;; look up the function in *asymptotic-rewrite-hash*.
 
 (def-asymptotic-rewrite-handler erf (z x pt n)
-	(let ((lim (limit (car z) x pt 'think))
+	(let ((lim ($limit (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
 	(cond ((eq lim '$inf)
 	       (sub 1 (funcall fn z x pt n)))
@@ -311,7 +315,7 @@
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i
 (def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
-	(let* ((aaa (first e)) (z (second e)) (xxx (limit z x pt 'think)))
+	(let* ((aaa (first e)) (z (second e)) (xxx ($limit z x pt)))
 		(cond 
           ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x
           ;; For the series, see http://dlmf.nist.gov/8.11.i
@@ -391,8 +395,9 @@
 
 ;; The identifiers var and val look too similar to me--I'm going to use x for
 ;; the limit variable and pt for the limit point.
+(print 1)
 (defun stirling0 (e &optional (x var) (pt val) (n 1))
-  (let (($numer nil) ($float nil) (*asymptotic-max-order* (* 4 n)))
+  (let (($numer nil) ($float nil) (LHP? nil) (*asymptotic-max-order* (* 4 n)))
    (asymptotic-rewrite e x pt n)))
 
 

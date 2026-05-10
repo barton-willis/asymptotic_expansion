@@ -1,0 +1,246 @@
+/* -------------------------------
+   Gamma function asymptotic tests
+   ------------------------------- */
+
+limit( x * (gamma(x+1) - x*gamma(x)), x, inf );
+0$
+
+limit( (gamma(x+2) - (x+1)*x*gamma(x)), x, inf );
+0$
+
+limit( (gamma(x+1/2) - sqrt(x)*gamma(x)), x, inf );
+0$
+
+limit( x^(3/2) * (gamma(x+1/2) - sqrt(x)*gamma(x)), x, inf );
+0$
+
+limit( (gamma(log(x)+1) - log(x)*gamma(log(x))), x, inf );
+0$
+
+/* -------------------------
+   Polylogarithm tests
+   ------------------------- */
+
+limit( x * (polylog(2, 1 - 1/x) - polylog(2, 1 - 2/x)), x, inf );
+0$
+
+limit( x^2 * (polylog(3, 1 - 1/x) - polylog(3, 1 - 1/(2*x))), x, inf );
+0$
+
+limit( exp(x) * (polylog(1, exp(-x)) - exp(-x)), x, inf );
+0$
+
+limit( x * (polylog(2, exp(-sqrt(x))) - exp(-sqrt(x))), x, inf );
+0$
+
+limit( (polylog(2, 1/x) - 1/x), x, inf );
+0$
+
+
+/* -------------------------
+   Bessel function tests
+   ------------------------- */
+
+limit( x * (bessel_j(0, x + 1/x) - bessel_j(0, x)), x, inf );
+0$
+
+limit( sqrt(x) * (bessel_j(1, x+1) - bessel_j(1, x)), x, inf );
+0$
+
+limit( x * (bessel_y(0, x + 1/x) - bessel_y(0, x)), x, inf );
+0$
+
+limit( (bessel_j(0, log(x)+1) - bessel_j(0, log(x))), x, inf );
+0$
+
+limit( x * (bessel_j(1, sqrt(x) + 1/sqrt(x)) - bessel_j(1, sqrt(x))), x, inf );
+0$
+
+/* ============================================================
+   Stress tests for pathological limits interacting with
+   asymptotic-rewrite and the limit driver.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. Oscillatory expressions with shrinking envelopes
+   ------------------------------------------------------------ */
+
+limit( sin(x) / x, x, inf );
+0$
+
+limit( x * (sin(1/x) - 1/x), x, inf );
+0$
+
+limit( sqrt(x) * (cos(x + 1/sqrt(x)) - cos(x)), x, inf );
+0$
+
+limit( x * (bessel_j(0, x + 1/x) - bessel_j(0, x)), x, inf );
+0$
+
+limit( log(x) * (sin(log(x+1)) - sin(log(x))), x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   2. Nested growth: log–log, exp–log, power–log
+   ------------------------------------------------------------ */
+
+limit( (log(log(x+1)) - log(log(x))) * x, x, inf );
+0$
+
+limit( exp(-sqrt(log(x))) * (exp(-sqrt(log(x+1))) - exp(-sqrt(log(x)))), x, inf );
+0$
+
+limit( x * (log(x+1)^(1/3) - log(x)^(1/3)), x, inf );
+0$
+
+limit( x^2 * (log(x+1)^(1/2) - log(x)^(1/2)), x, inf );
+0$
+
+limit( (log(x+1)/log(x) - 1) * x, x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   3. Removable singularities and delicate cancellations
+   ------------------------------------------------------------ */
+
+limit( (exp(1/x) - (1 + 1/x)) * x, x, inf );
+0$
+
+limit( x * (sqrt(x+1) - sqrt(x) - 1/(2*sqrt(x))), x, inf );
+0$
+
+limit( x^2 * (log(1 + 1/x) - 1/x + 1/(2*x^2)), x, inf );
+0$
+
+limit( (atan(1/x) - 1/x) * x^2, x, inf );
+0$
+
+limit( (sin(1/x) - 1/x + 1/(6*x^3)) * x^4, x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   4. Pathological special-function behavior
+   ------------------------------------------------------------ */
+
+limit( x * (gamma(x+1) - x*gamma(x)), x, inf );
+0$
+
+limit( x * (polylog(2, 1 - 1/x) - polylog(2, 1 - 2/x)), x, inf );
+0$
+
+limit( x * (bessel_y(0, x + 1/x) - bessel_y(0, x)), x, inf );
+0$
+
+limit( exp(x) * (erf(1/sqrt(x)) - 2/sqrt(%pi*x)), x, inf );
+0$
+
+limit( x * (airy_ai(x+1/x) - airy_ai(x)), x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   5. Gruntz-method edge cases
+   ------------------------------------------------------------ */
+
+limit( (log(x+exp(-x)) - log(x)), x, inf );
+0$
+
+limit( (x + sin(x)) / x, x, inf );
+1$
+
+limit( (log(x + sqrt(x)) - log(x)), x, inf );
+0$
+
+limit( (exp(1/x) - 1) * x, x, inf );
+1$
+
+limit( (log(x + exp(-sqrt(x))) - log(x)), x, inf );
+0$
+
+/* ============================================================
+   Regression tests for asymptotic-rewrite with subscripted
+   special functions (mqapply forms).
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   1. Subscripted Gamma: gamma[n](x)
+   ------------------------------------------------------------ */
+
+limit( x * (gamma[1](x+1) - gamma[1](x)), x, inf );
+0$
+
+limit( sqrt(x) * (gamma[2](x+1/x) - gamma[2](x)), x, inf );
+0$
+
+limit( x * (gamma[3](log(x)+1) - gamma[3](log(x))), x, inf );
+0$
+
+limit( x^2 * (gamma[5](x+1/sqrt(x)) - gamma[5](x)), x, inf );
+0$
+
+limit( (gamma[7](x+1) - gamma[7](x)) * exp(-x), x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   2. Subscripted Polylog: polylog[n](x)
+   ------------------------------------------------------------ */
+
+limit( x * (polylog[2](1 - 1/x) - polylog[2](1 - 2/x)), x, inf );
+0$
+
+limit( x^2 * (polylog[3](1 - 1/x) - polylog[3](1 - 1/(2*x))), x, inf );
+0$
+
+limit( exp(x) * (polylog[1](exp(-x)) - exp(-x)), x, inf );
+0$
+
+limit( x * (polylog[4](exp(-sqrt(x))) - exp(-sqrt(x))), x, inf );
+0$
+
+limit( (polylog[5](1/x) - 1/x), x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   3. Subscripted Bessel: bessel_j[n](x), bessel_y[n](x)
+   ------------------------------------------------------------ */
+
+limit( x * (bessel_j[0](x + 1/x) - bessel_j[0](x)), x, inf );
+0$
+
+limit( sqrt(x) * (bessel_j[1](x+1) - bessel_j[1](x)), x, inf );
+0$
+
+limit( x * (bessel_y[0](x + 1/x) - bessel_y[0](x)), x, inf );
+0$
+
+limit( (bessel_j[2](log(x)+1) - bessel_j[2](log(x))), x, inf );
+0$
+
+limit( x * (bessel_j[3](sqrt(x) + 1/sqrt(x)) - bessel_j[3](sqrt(x))), x, inf );
+0$
+
+
+/* ------------------------------------------------------------
+   4. Mixed-growth subscripted tests
+   ------------------------------------------------------------ */
+
+limit( x * (gamma[2](sqrt(x)+1/sqrt(x)) - gamma[2](sqrt(x))), x, inf );
+0$
+
+limit( log(x) * (polylog[3](log(x)+1/log(x)) - polylog[3](log(x))), x, inf );
+0$
+
+limit( x * (bessel_j[4](exp(log(x)/2)) - bessel_j[4](sqrt(x))), x, inf );
+0$
+
+limit( x^2 * (gamma[1](log(log(x)+1)) - gamma[1](log(log(x)))), x, inf );
+0$
+
+limit( exp(-sqrt(x)) * (polylog[2](exp(-sqrt(x)+1/x)) - polylog[2](exp(-sqrt(x)))), x, inf );
+0$

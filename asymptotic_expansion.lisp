@@ -57,13 +57,13 @@
        (defun ,fname ,args
          ,@body)
        (setf (gethash ',op-sym *asymptotic-rewrite-hash*)
-             #',fname)
+             ',fname)
        ',fname)))
 
 ;; Not intended to be a user level function.
-(defmfun $asymptotic_expansion (e x pt n)
-    (let ((LHP? nil))
-	(asymptotic-rewrite e x pt n)))
+(defmfun $asymptotic_rewrite (e x pt n)
+    (let ((LHP? nil)) ;not sure about this.
+	  (asymptotic-rewrite e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
@@ -77,7 +77,6 @@
 
 ;; fff is only used to enumerate the used operators--eventually delete this stuff
 (defun asymptotic-rewrite (e x pt n)
-     (catch 'asymptotic-failure
 	(let (($domain '$complex) 
 	      (lhp? nil) (fn nil) (args nil))
         ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
@@ -92,25 +91,7 @@
 
 		(cond (($mapatom e) e)
 			  (fn (apply fn (list args x pt n)))
-	   	      (t e)))))
-
-(defun asymptotic-rewrite (e x pt n)
-	(let (($domain '$complex) 
-	      (fn nil) (args nil))
-        ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
-		;; subscripted and non subscripted functions. For a subscripted
-		;; function, args = (append subscripted args, regular args).
-        (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
-                   (setq fn (gethash (subfunname e) *asymptotic-rewrite-hash* nil))
-                   (setq args (append (subfunsubs e) (subfunargs e))))
-	            ((and (consp e) (consp (car e)))
-			        (setq fn (gethash (caar e) *asymptotic-rewrite-hash* nil))
-                    (setq args (cdr e))))
-
-		(cond (($mapatom e) e)
-			  (fn (apply fn (list args x pt n)))
 	   	      (t e))))
-
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -150,7 +131,7 @@
 		(let ((s 0) (ds) (k 0))
 		  (setq e (asymptotic-rewrite e x pt n))
 		  ;;(exp(-e)/ e) sum(k!/e^k,k,0,n-1). I know: this is inefficient.
-		  (while (< k n)
+		  (while (< k (max n 2))
 		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
 	 	 	(setq s (add s ds))
 			(setq k (+ 1 k)))
@@ -192,7 +173,7 @@
 			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) ($limit e x pt)))
 		;; Need to check if this is OK for infinity & minf
-	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx) (eq '$minf xxx))
+	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx)) ;;;(eq '$minf xxx))
 		        (setq e (asymptotic-rewrite e x pt n))
 			    (mtell "e = ~M ~%" e)
 			    (while (<= k n)
@@ -213,7 +194,9 @@
 			  (t (ftake '%gamma e))))) ;give up		
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)
-	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*)))
+	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*))
+	      (lim ($limit (car e) x pt)))
+	   (mtell "lim = ~M ~%" lim)
 	   (if fn
             (funcall fn (list (add 1 (car e))) x pt n)
 			(ftake 'mfactorial (car e)))))
@@ -395,9 +378,8 @@
 
 ;; The identifiers var and val look too similar to me--I'm going to use x for
 ;; the limit variable and pt for the limit point.
-(print 1)
-(defun stirling0 (e &optional (x var) (pt val) (n 1))
-  (let (($numer nil) ($float nil) (LHP? nil) (*asymptotic-max-order* (* 4 n)))
-   (asymptotic-rewrite e x pt n)))
+(defun stirling0 (e)
+  (let (($numer nil) ($float nil) (LHP? nil) (*asymptotic-max-order* 8))
+   (asymptotic-rewrite e var val 0)))
 
 

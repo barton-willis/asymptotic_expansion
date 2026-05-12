@@ -167,15 +167,16 @@
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
-	    (setq e (sratsimp (car e)))
+	    (setq e (car e))
 		
 		(when (eql pt 0)
 			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) ($limit e x pt)))
+
+		(mtell "e = ~M ; off = ~M ; xxx = ~M ~%" e (off-negative-real-axisp e) xxx)
 		;; Need to check if this is OK for infinity & minf
-	    (cond ((or (eq '$inf xxx) (eq '$infinity xxx)) ;;;(eq '$minf xxx))
+	    (cond ((or (eq '$inf xxx) (and (eq '$infinity xxx) (off-negative-real-axisp e))) ; not sure about minf?
 		        (setq e (asymptotic-rewrite e x pt n))
-			    (mtell "e = ~M ~%" e)
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)
@@ -299,10 +300,11 @@
 ;; See http://dlmf.nist.gov/8.11.i
 (def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
 	(let* ((aaa (first e)) (z (second e)) (xxx ($limit z x pt)))
+	    (setq n (max 1 n))
 		(cond 
           ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x
           ;; For the series, see http://dlmf.nist.gov/8.11.i
-		  ((and (or (eq '$inf xxx) (eq '$minf xxx)) (freeof x aaa))
+		  ((and (or (eq '$inf xxx)) (freeof x aaa)) ;;not sure about minf & infinity?
 		         (let ((f 1) (s 0))
 		           (dotimes (k n)
 				      (setq s (add s f))

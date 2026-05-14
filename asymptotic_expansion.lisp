@@ -75,23 +75,67 @@
 ;; limit(XXX,x,pt) = limit(YYY,x,pt), where YYY is the result
 ;; of applying asymptotic-rewrite to XXX.
 
-;; fff is only used to enumerate the used operators--eventually delete this stuff
-(defun asymptotic-rewrite (e x pt n)
-	(let (($domain '$complex) 
-	      (lhp? nil) (fn nil) (args nil))
-        ;; Unify dispatching an *asymptotic-rewrite-hash* function for both 
-		;; subscripted and non subscripted functions. For a subscripted
-		;; function, args = (append subscripted args, regular args).
-        (cond ((and (consp e) (consp (car e)) (eq 'mqapply (caar e)))
-                   (setq fn (gethash (subfunname e) *asymptotic-rewrite-hash* nil))
-                   (setq args (append (subfunsubs e) (subfunargs e))))
-	            ((and (consp e) (consp (car e)))
-			        (setq fn (gethash (caar e) *asymptotic-rewrite-hash* nil))
-                    (setq args (cdr e))))
 
-		(cond (($mapatom e) e)
-			  (fn (apply fn (list args x pt n)))
-	   	      (t e))))
+
+(defun asymptotic-rewrite-dispatch (e)
+ "Return the asymptotic rewrite handler and normalized argument list for E.
+
+If E represents a function call with a registered asymptotic rewrite
+handler in *ASYMPTOTIC-REWRITE-HASH*, return two values:
+  1. The handler function.
+  2. The argument list passed to that handler.
+For ordinary function calls, the argument list is simply (cdr e).
+
+For subscripted function calls (MQAPPLY forms), the argument list is
+normalized to
+
+  (append (subfunsubs e) (subfunargs e))
+
+so that subscripted and non-subscripted functions share a common
+dispatch interface.
+
+If no handler is registered for E, return NIL NIL."
+  (cond
+    ;; Subscripted function
+    ((and (consp e)
+          (consp (car e))
+          (eq 'mqapply (caar e)))
+     (values
+       (gethash (subfunname e)
+                *asymptotic-rewrite-hash*)
+       (append (subfunsubs e)
+               (subfunargs e))))
+
+    ;; Ordinary function
+    ((and (consp e)
+          (consp (car e)))
+     (values
+       (gethash (caar e)
+                *asymptotic-rewrite-hash*)
+       (cdr e)))
+
+    ;; No dispatch
+    (t
+     (values nil nil))))
+
+(defun asymptotic-rewrite (e x pt n)
+"Perform a recursive asymptotic rewrite of the expression tree, applying a handler when available and 
+ otherwise rewriting subexpressions."
+  (let (($domain '$complex))
+    ;; Atoms are unchanged
+    (when ($mapatom e)
+      (return-from asymptotic-rewrite e))
+
+    (multiple-value-bind (fn args)
+        (asymptotic-rewrite-dispatch e)
+
+      (if fn
+          (apply fn (list args x pt n))
+
+          ;; No handler → recursively rewrite arguments
+          (fapply (caar e)  (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) (cdr e)))))))
+
+
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -172,8 +216,8 @@
 		(when (eql pt 0)
 			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) ($limit e x pt)))
-
-		(mtell "e = ~M ; off = ~M ; xxx = ~M ~%" e (off-negative-real-axisp e) xxx)
+    
+		;(mtell "e = ~M ; off = ~M ; xxx = ~M ~%" e (off-negative-real-axisp e) xxx)
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (and (eq '$infinity xxx) (off-negative-real-axisp e))) ; not sure about minf?
 		        (setq e (asymptotic-rewrite e x pt n))
@@ -195,9 +239,9 @@
 			  (t (ftake '%gamma e))))) ;give up		
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)
-	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*))
-	      (lim ($limit (car e) x pt)))
-	   (mtell "lim = ~M ~%" lim)
+	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*)))
+	;      (lim ($limit (car e) x pt)))
+;(mtell "lim = ~M ~%" lim)
 	   (if fn
             (funcall fn (list (add 1 (car e))) x pt n)
 			(ftake 'mfactorial (car e)))))
@@ -245,14 +289,15 @@
 (defun psi-asymptotic-rewrite (e x pt n)
 	(let ((s 0) (k 0) ($zerobern t) (ds) (xxx) (m) (z))
 		(setq m (car e))
-	    (setq z (cadr e))
+	    (setq n (max n 2))
+	    (setq z (asymptotic-rewrite (cadr e) x pt n))
 		(setq xxx ($limit z x pt))
-		(cond ((and (eq '$inf xxx) (integerp m) (>= m 1))
+		(cond ((and (or (eq '$inf xxx) (eq '$infinity xxx)) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
 				                       (ftake 'mfactorial k)) 
 				                  (div ($bern k) (ftake 'mexpt z (add k m)))))
-					(setq k (+ k 1))
+					(incf k)
 					(setq s (add s ds)))
 		         (mul (ftake 'mexpt -1 (add m 1)) s))
               ((and (eq '$inf xxx) (eql m 0))
@@ -260,6 +305,7 @@
 			    (setq k 1)
 				(while (< k n)
 					(setq ds (div ($bern k) (mul k (ftake 'mexpt z k))))
+					(incf k)
 				    (setq s (add s ds)))
 				(sub (ftake '%log z) s))	
 			  (t (subfunmake '$psi (list m) (list z))))))		 
@@ -289,11 +335,11 @@
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-rewrite-hash*.
 
-(def-asymptotic-rewrite-handler erf (z x pt n)
+(def-asymptotic-rewrite-handler %erf (z x pt n)
 	(let ((lim ($limit (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
-	(cond ((eq lim '$inf)
-	       (sub 1 (funcall fn z x pt n)))
+	(cond ((and fn (or (eq lim '$inf) (eq lim '$minf)))
+	       (sub 1 (funcall fn (list (car z)) x pt n)))
 		  (t (fapply '%erf z)))))
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
@@ -385,3 +431,96 @@
    (asymptotic-rewrite e var val 0)))
 
 
+(def-asymptotic-rewrite-handler %zeta (e x pt n)
+  (let* ((s (car e)) (lim (let ((preserve-direction t)) ($limit s x pt))))
+
+    (cond
+      ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + n^{-s}
+      ((or (eq lim '$inf) (and (eq lim '$infinity) (eq t (mgrp ($realpart s) 0)))) ;not sure about the infinity case
+       (setq s (asymptotic-rewrite s x pt n))
+       (let ((k 2)
+             (sum 1)
+             (term))
+         (while (<= k n)
+           (setq term (div 1 (ftake 'mexpt k s)))
+           (setq sum (add sum term))
+           (setq k (+ k 1)))
+         sum))
+
+        ;;  s → -∞  (real axis)
+   
+        ;;  This branch uses the Riemann zeta functional equation:
+        ;;      ζ(s) = 2^s · π^(s−1) · sin(π s / 2) · Γ(1−s) · ζ(1−s)
+
+      ((eq lim '$minf)
+       (let* ((one-minus-s (sub 1 s))
+              (z1 (asymptotic-rewrite (ftake '%zeta one-minus-s) x pt n))
+              (g1 (asymptotic-rewrite (ftake '%gamma one-minus-s) x pt n)))
+         (mul
+          (ftake 'mexpt 2 s)
+          (ftake 'mexpt '$%pi (add s -1))
+          (ftake '%sin (mul '$%pi (div s 2)))
+          g1
+          z1)))
+
+      ;; s → 1 : first n Laurent terms with Stieltjes constants; the Stieltjes constants 
+	  ;; do not have a simple representation.
+      ((eql lim 1)
+       (let* ((tau (sub (asymptotic-rewrite s x pt n) 1))
+              (k 0)
+              (sum (div 1 tau))
+              (term))
+         (while (< k n)
+           (setq term
+                 (mul
+                  (div (mul (expt -1 k)
+                            (ftake '%stieltjes k))
+                       (ftake 'mfactorial k))
+                  (ftake 'mexpt tau k)))
+           (setq sum (add sum term))
+           (setq k (+ k 1)))
+         sum))
+
+      (t (ftake '%zeta s)))))
+
+#|
+
+Error(s) found:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problem:
+    (36)
+Tests that were expected to fail but passed:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
+    (25 28 39 86)
+1 test failed out of 14,876 total tests.
+Evaluation took:
+  138.426 seconds of real time
+  130.937500 seconds of total run time (116.296875 user, 14.640625 system)
+  [ Real times consist of 4.702 seconds GC time, and 133.724 seconds non-GC time. ]
+  [ Run times consist of 4.500 seconds GC time, and 126.438 seconds non-GC time. ]
+  94.59% CPU
+  11,521 forms interpreted
+  18,279 lambdas converted
+  276,326,205,080 processor cycles
+  31,896,345,312 bytes consed
+
+
+rror summary:
+Error(s) found:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problem:
+    (36)
+Tests that were expected to fail but passed:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
+    (25 28 39 86)
+1 test failed out of 14,876 total tests.
+Evaluation took:
+  139.046 seconds of real time
+  134.0000000 seconds of total run time (119.734375 user, 14.265625 system)
+  [ Real times consist of 4.814 seconds GC time, and 134.232 seconds non-GC time. ]
+  [ Run times consist of 4.656 seconds GC time, and 129.344 seconds non-GC time. ]
+  96.37% CPU
+  11,521 forms interpreted
+  18,279 lambdas converted
+  277,563,945,748 processor cycles
+  31,914,063,712 bytes consed
+
+ |#

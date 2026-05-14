@@ -119,8 +119,7 @@ If no handler is registered for E, return NIL NIL."
      (values nil nil))))
 
 (defun asymptotic-rewrite (e x pt n)
-"Perform a recursive asymptotic rewrite of the expression tree, applying a handler when available and 
- otherwise rewriting subexpressions."
+"Perform a recursive rewrite of the expression tree, applying a handler when available and otherwise rewriting subexpressions."
   (let (($domain '$complex))
     ;; Atoms are unchanged
     (when ($mapatom e)
@@ -134,8 +133,6 @@ If no handler is registered for E, return NIL NIL."
 
           ;; No handler → recursively rewrite arguments
           (fapply (caar e)  (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) (cdr e)))))))
-
-
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -303,11 +300,12 @@ If no handler is registered for E, return NIL NIL."
               ((and (eq '$inf xxx) (eql m 0))
 			  	;log(z)-sum(bern(k)/(k*z^k),k,1,n)
 			    (setq k 1)
-				(while (< k n)
-					(setq ds (div ($bern k) (mul k (ftake 'mexpt z k))))
+				(while (< k (/ n 2))
+				    (let ((k2 (* 2 k)))
+					   (setq ds (div ($bern k2) (mul k2 (ftake 'mexpt z k2)))))
 					(incf k)
-				    (setq s (add s ds)))
-				(sub (ftake '%log z) s))	
+				    (setq s (sub s ds)))
+				(add (ftake '%log z) (div -1 (mul 2 z)) s))	
 			  (t (subfunmake '$psi (list m) (list z))))))		 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) #'psi-asymptotic-rewrite)
 

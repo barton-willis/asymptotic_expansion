@@ -282,14 +282,13 @@ If no handler is registered for E, return NIL NIL."
 			(t (subfunmake '$li (list s) (list z))))))
 (setf (gethash '$li *asymptotic-rewrite-hash*) 'polylogarithm-asymptotic-rewrite)
 
+(defvar *larry* nil)
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
 (defun psi-asymptotic-rewrite (e x pt n)
-	(let ((s 0) (k 0) ($zerobern t) (ds) (xxx) (m) (z))
-		(setq m (car e))
-	    (setq n (max n 2))
-	    (setq z (asymptotic-rewrite (cadr e) x pt n))
-		(setq xxx ($limit z x pt))
-		(cond ((and (or (eq '$inf xxx) (eq '$infinity xxx)) (integerp m) (>= m 1))
+	(let* ((s 0) (k 0) ($zerobern t) (ds) (m (car e))
+	       (z (asymptotic-rewrite (cadr e) x pt n))
+		   (lim ($limit z x pt)))
+		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
 				                       (ftake 'mfactorial k)) 
@@ -297,15 +296,30 @@ If no handler is registered for E, return NIL NIL."
 					(incf k)
 					(setq s (add s ds)))
 		         (mul (ftake 'mexpt -1 (add m 1)) s))
-              ((and (eq '$inf xxx) (eql m 0))
-			  	;log(z)-sum(bern(k)/(k*z^k),k,1,n)
-			    (setq k 1)
-				(while (< k (/ n 2))
-				    (let ((k2 (* 2 k)))
-					   (setq ds (div ($bern k2) (mul k2 (ftake 'mexpt z k2)))))
+
+			  ((and nil (eql (ridofab lim) 0) (integerp m))
+			   (push (ftake 'mlist e x pt n) *larry*)
+			   (mtell "m = ~M ; z = ~M ~% " m z)
+			   ($taylor (subfunmake '$psi (list m) (list (cadr e))) x pt n))
+
+			 ((eq lim '$minf)
+			 	(sub (asymptotic-rewrite 
+				        (subfunmake '$psi (list m) (list (sub 1 (cadr e)))) x pt n) 
+				        (mul '$%pi (ftake '%cot (mul '$%pi (cadr e))))))
+
+              ((and (eq '$inf lim) (eql m 0))
+			  	;; log(z) - sum(bern(k)/(k*z^k),k,1,n), where bern(1)=1/2.
+                ;; Maxima uses the standard bern(1)=-1/2 so we'll peel off the first 
+				;; term of the sum.
+				(setq z ($ratdisrep ($taylor z x pt n)))
+			    (setq k 2)
+				(setq s (div 1 (mul 2 z)))
+				(while (< k n)
+					(setq ds (div ($bern k) (mul k (ftake 'mexpt z k))))
 					(incf k)
-				    (setq s (sub s ds)))
-				(add (ftake '%log z) (div -1 (mul 2 z)) s))	
+				    (setq s (add s ds)))
+				(sub (ftake '%log z) s))
+
 			  (t (subfunmake '$psi (list m) (list z))))))		 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) #'psi-asymptotic-rewrite)
 

@@ -130,9 +130,9 @@ If no handler is registered for E, return NIL NIL."
 
       (if fn
           (apply fn (list args x pt n))
-
+          (fapply (caar e) (cdr e))))))
           ;; No handler → recursively rewrite arguments
-          (fapply (caar e)  (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) (cdr e)))))))
+;(fapply (caar e)  (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) (cdr e)))))))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -232,7 +232,7 @@ If no handler is registered for E, return NIL NIL."
 
                 ((or (eq xxx '$zeroa) (zerop2 xxx))
 		         (setq e (ftake '%gamma e))
-		 	     ($ratdisrep (tlimit-taylor e x (ridofab pt) n)))
+		 	     (resimplify ($ratdisrep (tlimit-taylor e x (ridofab pt) n))))
 			  (t (ftake '%gamma e))))) ;give up		
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)
@@ -282,11 +282,19 @@ If no handler is registered for E, return NIL NIL."
 			(t (subfunmake '$li (list s) (list z))))))
 (setf (gethash '$li *asymptotic-rewrite-hash*) 'polylogarithm-asymptotic-rewrite)
 
-(defvar *larry* nil)
+(defun polygamma-reflection (m z)
+    ;; psi^(m)(z) = (-1)^m psi^(m)(1-z)- %pi * d^m/dz^m cot(pi z)
+	(let* ((q (gensym)) (g (maxima-substitute z q ($diff (ftake '%cot (mul '$%pi q)) q m))))
+     (sub
+       (mul (ftake 'mexpt -1 m)
+            (subfunmake '$psi (list m) (list (sub 1 z))))
+     (mul '$%pi g))))
+
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
 (defun psi-asymptotic-rewrite (e x pt n)
 	(let* ((s 0) (k 0) ($zerobern t) (ds) (m (car e))
-	       (z (asymptotic-rewrite (cadr e) x pt n))
+	       (arg (cadr e))
+	       (z (asymptotic-rewrite arg x pt n)) ;; the expand should not be needed
 		   (lim ($limit z x pt)))
 		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
 				 (while (< k n)
@@ -297,21 +305,22 @@ If no handler is registered for E, return NIL NIL."
 					(setq s (add s ds)))
 		         (mul (ftake 'mexpt -1 (add m 1)) s))
 
-			  ((and nil (eql (ridofab lim) 0) (integerp m))
-			   (push (ftake 'mlist e x pt n) *larry*)
-			   (mtell "m = ~M ; z = ~M ~% " m z)
-			   ($taylor (subfunmake '$psi (list m) (list (cadr e))) x pt n))
+			  ((and (integerp (ridofab lim)) (eq t (mgqp 0 lim)) (integerp m))
+			    (let* ((w (gensym))
+                       (asym (tlimit-taylor (subfunmake '$psi (list m) (list w)) w lim n)))
+				  (maxima-substitute z w asym)))
 
-			 ((eq lim '$minf)
-			 	(sub (asymptotic-rewrite 
-				        (subfunmake '$psi (list m) (list (sub 1 (cadr e)))) x pt n) 
-				        (mul '$%pi (ftake '%cot (mul '$%pi (cadr e))))))
-
+              ;; When lim is minf and the order m is an integer, use the polygamma reflection
+			  ;; formula and then dispatch asymptotic-rewrite. If we need extra protection against
+			  ;; an infinite loop, we could try checking that limit(cadr(z) x pt) is no minf, I think.
+			  ((and (eq lim '$minf) (integerp m) (not (eq ($limit (sub 1 arg) x pt) '$minf)))
+			   (asymptotic-rewrite (polygamma-reflection m z) x pt n))
+			  ;; asymptotic formula toward inf
               ((and (eq '$inf lim) (eql m 0))
 			  	;; log(z) - sum(bern(k)/(k*z^k),k,1,n), where bern(1)=1/2.
                 ;; Maxima uses the standard bern(1)=-1/2 so we'll peel off the first 
 				;; term of the sum.
-				(setq z ($ratdisrep ($taylor z x pt n)))
+				(setq z (resimplify ($ratdisrep ($taylor z x lim 0))))
 			    (setq k 2)
 				(setq s (div 1 (mul 2 z)))
 				(while (< k n)
@@ -320,8 +329,8 @@ If no handler is registered for E, return NIL NIL."
 				    (setq s (add s ds)))
 				(sub (ftake '%log z) s))
 
-			  (t (subfunmake '$psi (list m) (list z))))))		 
-(setf (gethash '$psi *asymptotic-rewrite-hash*) #'psi-asymptotic-rewrite)
+			  (t (subfunmake '$psi (list m) (list z))))))	 
+(setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
 
 ;; See http://dlmf.nist.gov/7.11.E2. Missing the z --> -inf case.
 ;; Running the testsuite, this causes an asksign 
@@ -435,11 +444,8 @@ If no handler is registered for E, return NIL NIL."
 
 ; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.
-
-;; The identifiers var and val look too similar to me--I'm going to use x for
-;; the limit variable and pt for the limit point.
 (defun stirling0 (e)
-  (let (($numer nil) ($float nil) (LHP? nil) (*asymptotic-max-order* 8))
+  (let (($numer nil) ($float nil) (*asymptotic-max-order* 8))
    (asymptotic-rewrite e var val 0)))
 
 

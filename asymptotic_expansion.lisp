@@ -33,7 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special var val lhp?))
+(declare-top (special preserve-direction var val lhp?))
 
 
 (defmvar *asymptotic-max-order* 16)
@@ -128,11 +128,12 @@ If no handler is registered for E, return NIL NIL."
     (multiple-value-bind (fn args)
         (asymptotic-rewrite-dispatch e)
 
+	 (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) args)))
+
       (if fn
-          (apply fn (list args x pt n))
-          (fapply (caar e) (cdr e))))))
+          (apply fn (list rew-args x pt n))
           ;; No handler → recursively rewrite arguments
-;(fapply (caar e)  (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) (cdr e)))))))
+          (fapply (caar e) rew-args))))))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -148,22 +149,6 @@ If no handler is registered for E, return NIL NIL."
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
 			   (fapply 'mplus e)))
           (t ans))))
-
-;; Return the product of the result of mapping asymptotic-rewrite over the terms 
-;; in the CL list e.
-(def-asymptotic-rewrite-handler mtimes (e x pt n)
-	(fapply 'mtimes (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e)))
-
-;; Map asymptotic-rewrite onto the arguments of mexpt.
-(def-asymptotic-rewrite-handler mexpt (e x pt n)
-	(ftake 'mexpt 
-		    (asymptotic-rewrite (car e) x pt n)
-			(asymptotic-rewrite (cadr e) x pt n)))
-
-;; Could we do better? Maybe  
-;;   log(x^2+x) -> log(x^2) + 1/x-1/(2*x^2)+1/(3*x^3)
-(def-asymptotic-rewrite-handler %log (e x pt n)
-	(ftake '%log (asymptotic-rewrite (car e) x pt n)))
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
@@ -253,7 +238,7 @@ If no handler is registered for E, return NIL NIL."
 ;; that Maxima routes the minf case through li-asymptotic-expansion...
 (defun polylogarithm-asymptotic-rewrite (e x pt n)
 	(let (($numer nil) (s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
-	   (setq z (asymptotic-rewrite z x pt n))
+	   ;(setq z (asymptotic-rewrite z x pt n))
 	   (setq xxx ($limit z x pt))
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
@@ -294,13 +279,12 @@ If no handler is registered for E, return NIL NIL."
 (defun psi-asymptotic-rewrite (e x pt n)
 	(let* ((s 0) (k 0) ($zerobern t) (ds) (m (car e))
 	       (arg (cadr e))
-	       (z (asymptotic-rewrite arg x pt n)) ;; the expand should not be needed
-		   (lim ($limit z x pt)))
+		   (lim (limit arg x pt 'think)))
 		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
 				                       (ftake 'mfactorial k)) 
-				                  (div ($bern k) (ftake 'mexpt z (add k m)))))
+				                  (div ($bern k) (ftake 'mexpt arg (add k m)))))
 					(incf k)
 					(setq s (add s ds)))
 		         (mul (ftake 'mexpt -1 (add m 1)) s))
@@ -308,44 +292,43 @@ If no handler is registered for E, return NIL NIL."
 			  ((and (integerp (ridofab lim)) (eq t (mgqp 0 lim)) (integerp m))
 			    (let* ((w (gensym))
                        (asym (tlimit-taylor (subfunmake '$psi (list m) (list w)) w lim n)))
-				  (maxima-substitute z w asym)))
+				  (maxima-substitute arg w asym)))
 
               ;; When lim is minf and the order m is an integer, use the polygamma reflection
 			  ;; formula and then dispatch asymptotic-rewrite. If we need extra protection against
 			  ;; an infinite loop, we could try checking that limit(cadr(z) x pt) is no minf, I think.
-			  ((and (eq lim '$minf) (integerp m) (not (eq ($limit (sub 1 arg) x pt) '$minf)))
-			   (asymptotic-rewrite (polygamma-reflection m z) x pt n))
+			  ((and (eq lim '$minf) (integerp m))
+			   (asymptotic-rewrite (polygamma-reflection m arg) x pt n))
 			  ;; asymptotic formula toward inf
               ((and (eq '$inf lim) (eql m 0))
-			  	;; log(z) - sum(bern(k)/(k*z^k),k,1,n), where bern(1)=1/2.
+			  	;; log(arg) - sum(bern(k)/(k*arg^k),k,1,n), where bern(1)=1/2.
                 ;; Maxima uses the standard bern(1)=-1/2 so we'll peel off the first 
 				;; term of the sum.
-				(setq z (resimplify ($ratdisrep ($taylor z x lim 0))))
+				(setq arg (resimplify ($ratdisrep ($taylor arg x lim 0))))
 			    (setq k 2)
-				(setq s (div 1 (mul 2 z)))
+				(setq s (div 1 (mul 2 arg)))
 				(while (< k n)
-					(setq ds (div ($bern k) (mul k (ftake 'mexpt z k))))
+					(setq ds (div ($bern k) (mul k (ftake 'mexpt arg k))))
 					(incf k)
 				    (setq s (add s ds)))
-				(sub (ftake '%log z) s))
+				(sub (ftake '%log arg) s))
 
-			  (t (subfunmake '$psi (list m) (list z))))))	 
+			  (t (subfunmake '$psi (list m) (list arg))))))	 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
 
 ;; See http://dlmf.nist.gov/7.11.E2. Missing the z --> -inf case.
 ;; Running the testsuite, this causes an asksign 
 (def-asymptotic-rewrite-handler %erfc (z x pt n)
 	(setq z (car z))
-	(let ((s 0) (ds (div 1 z)) (k 0) (zz (mul 2 z z)) (xxx))
-	  (setq xxx ($limit z x pt))
-	  ;(setq xxx (limit z x pt 'think))
-	  (cond ((eq '$inf xxx)
-			  (while (< k n)
+	(let ((s 0) (ds (div 1 z)) (k 0) (zz (mul 2 z z))
+	      (lim (limit z x pt 'think)))
+	  (cond ((eq '$inf lim)
+			  (while (<= k n)
 				 (setq s (add s ds))
 				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) zz))
 				 (setq k (+ k 1)))
 			  (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
-		    ((eq '$minf xxx)
+		    ((eq '$minf lim)
 			  (while (< k n)
 				 (setq s (add s ds))
 				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) zz))
@@ -357,8 +340,9 @@ If no handler is registered for E, return NIL NIL."
 ;; look up the function in *asymptotic-rewrite-hash*.
 
 (def-asymptotic-rewrite-handler %erf (z x pt n)
-	(let ((lim ($limit (car z) x pt))
+	(let ((lim (limit (car z) x pt 'think))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
+
 	(cond ((and fn (or (eq lim '$inf) (eq lim '$minf)))
 	       (sub 1 (funcall fn (list (car z)) x pt n)))
 		  (t (fapply '%erf z)))))
@@ -450,23 +434,21 @@ If no handler is registered for E, return NIL NIL."
 
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
-  (let* ((s (car e)) (lim (let ((preserve-direction t)) ($limit s x pt))))
-
+  (let* ((s (car e)) (lim (let ((preserve-direction t)) (limit s x pt 'think))))
     (cond
-      ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + n^{-s}
-      ((or (eq lim '$inf) (and (eq lim '$infinity) (eq t (mgrp ($realpart s) 0)))) ;not sure about the infinity case
-       (setq s (asymptotic-rewrite s x pt n))
+      ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + nn^{-s}, where  nn = max(n 2)
+      ((or (eq lim '$inf) (and (eq lim '$infinity) (eq (mgrp ($realpart s) 0) t))) ;not sure about the infinity case
        (let ((k 2)
              (sum 1)
-             (term))
-         (while (<= k n)
+             (term)
+			 (nn (max n 2)))
+         (while (<= k nn)
            (setq term (div 1 (ftake 'mexpt k s)))
            (setq sum (add sum term))
            (setq k (+ k 1)))
          sum))
 
-        ;;  s → -∞  (real axis)
-   
+        ;;  s → -∞  (real axis)   
         ;;  This branch uses the Riemann zeta functional equation:
         ;;      ζ(s) = 2^s · π^(s−1) · sin(π s / 2) · Γ(1−s) · ζ(1−s)
 

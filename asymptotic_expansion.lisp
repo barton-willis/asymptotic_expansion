@@ -119,28 +119,30 @@ If no handler is registered for E, return NIL NIL."
      (values nil nil))))
 
 (defun asymptotic-rewrite (e x pt n)
-"Perform a recursive rewrite of the expression tree, applying a handler when available and otherwise rewriting subexpressions."
-   
-    (when ($mapatom e)
-      (return-from asymptotic-rewrite e))
+  "Perform a recursive rewrite of the expression tree, applying a handler
+   when available and otherwise rewriting subexpressions."
+  ;; Atoms are unchanged
+  (cond
+    ;; Mapatoms are unchanged
+    (($mapatom e)
+     e)
+    ;; Special-case MPLUS: rewrite its summands using a dedicated handler--when cancellation, the mplus
+	;; handler increases the order and tries again, stopping when the order reaches *asymptotic-max-order*.
+	;; When that happens, the code gives up and simply adds the members of e.
+    ((mplusp e)
+     (asymptotic-rewrite-mplus (cdr e) x pt n))
 
-	
-	(cond (($mapatom e) e) ;; mapatoms are unchanged
-	      ((mplusp e) (asymptotic-rewrite-mplus (cdr e) x pt n))
-		  (t 
-
-		     
-
-    (multiple-value-bind (fn args)
-        (asymptotic-rewrite-dispatch e)
-
-	 (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) args)))
-
-      (if fn
-          (apply fn (list rew-args x pt n))
-          ;; No handler → recursively rewrite arguments
-          (fapply (caar e) rew-args)))))))
-		  
+    ;; General case: dispatch to handler or recursively rewrite arguments
+    (t
+     (multiple-value-bind (fn args)
+         (asymptotic-rewrite-dispatch e)
+       ;; Rewrite each argument at order n
+       (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) args)))
+         (if fn
+             ;; Handler exists → call it with rewritten args
+             (apply fn (list rew-args x pt n))
+             ;; No handler → rebuild expression with rewritten args
+             (fapply (caar e) rew-args)))))))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 

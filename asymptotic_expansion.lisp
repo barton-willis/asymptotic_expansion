@@ -281,8 +281,6 @@ If no handler is registered for E, return NIL NIL."
 	       (arg (resimplify (cadr e)))
 		   (tay-arg (tlimit-taylor arg x (ridofab pt) n))
 		   (lim (limit arg x pt 'think)))
-
-
         (if tay-arg
 			(setq arg tay-arg)
 			(return-from psi-asymptotic-rewrite  (subfunmake '$psi (list m) (list arg)))) 

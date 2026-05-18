@@ -196,7 +196,9 @@ If no handler is registered for E, return NIL NIL."
 	       ($zerobern t) ; We want bern(even integer) = 0
 	       (ds) (k 1)
 		   (arg (car e))
-	       (lim ($limit arg x pt)))
+		   (lim (cond ((eq pt '$zerob) ($limit arg x 0 '$minus))
+		              ((eq pt '$zeroa) ($limit arg x 0 '$plus))
+					  (t ($limit arg x pt)))))
 		(when (eql lim 0)
 			(setq lim (zero-fixup arg x pt)))
 		;; Need to check if this is OK for infinity & minf

@@ -194,10 +194,9 @@ If no handler is registered for E, return NIL NIL."
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (car e))
-		
-		(setq xxx (let ((preserve-direction t)) ($limit e x pt)))
-    
-		;(mtell "e = ~M ; off = ~M ; xxx = ~M ~%" e (off-negative-real-axisp e) xxx)
+        (setq xxx ($limit e x pt))
+		(when (eql xxx 0)
+			(setq xxx (zero-fixup e x pt)))
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (and (eq '$infinity xxx) (off-negative-real-axisp e))) ; not sure about minf?
 			    (while (<= k n)

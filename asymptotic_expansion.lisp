@@ -120,7 +120,6 @@ If no handler is registered for E, return NIL NIL."
 
 (defun asymptotic-rewrite (e x pt n)
 "Perform a recursive rewrite of the expression tree, applying a handler when available and otherwise rewriting subexpressions."
-  (let (($domain '$complex))
     ;; Atoms are unchanged
     (when ($mapatom e)
       (return-from asymptotic-rewrite e))
@@ -133,7 +132,7 @@ If no handler is registered for E, return NIL NIL."
       (if fn
           (apply fn (list rew-args x pt n))
           ;; No handler → recursively rewrite arguments
-          (fapply (caar e) rew-args))))))
+          (fapply (caar e) rew-args)))))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 

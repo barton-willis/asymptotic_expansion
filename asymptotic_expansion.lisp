@@ -195,8 +195,6 @@ If no handler is registered for E, return NIL NIL."
 	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
 	    (setq e (car e))
 		
-		(when (eql pt 0)
-			(setq pt '$zeroa))
 		(setq xxx (let ((preserve-direction t)) ($limit e x pt)))
     
 		;(mtell "e = ~M ; off = ~M ; xxx = ~M ~%" e (off-negative-real-axisp e) xxx)
@@ -307,7 +305,6 @@ If no handler is registered for E, return NIL NIL."
 			  ;; formula and then dispatch asymptotic-rewrite. If we need extra protection against
 			  ;; an infinite loop, we could try checking that limit(cadr(z) x pt) is no minf, I think.
 			  ((and (eq lim '$minf) (integerp m))
-			   ;;; (setq arg (resimplify ($ratdisrep ($taylor arg x pt 0))))
 			   (asymptotic-rewrite (polygamma-reflection m arg) x pt n))
 			  ;; asymptotic formula toward inf
               ((and (eq '$inf lim) (eql m 0))

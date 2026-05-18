@@ -154,7 +154,6 @@ If no handler is registered for E, return NIL NIL."
     (let* ((e (car ee)) (lim ($limit e x pt)))
 	(cond ((eq '$inf lim)
 		(let ((s 0) (ds) (k 0))
-;(setq e (asymptotic-rewrite e x pt n))
 		  ;;(exp(-e)/ e) sum(k!/e^k,k,0,n-1). I know: this is inefficient.
 		  (while (< k (max n 2))
 		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
@@ -237,7 +236,6 @@ If no handler is registered for E, return NIL NIL."
 ;; that Maxima routes the minf case through li-asymptotic-expansion...
 (defun polylogarithm-asymptotic-rewrite (e x pt n)
 	(let (($numer nil) (s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
-	   ;(setq z (asymptotic-rewrite z x pt n))
 	   (setq xxx ($limit z x pt))
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
@@ -463,8 +461,8 @@ If no handler is registered for E, return NIL NIL."
 
       ((eq lim '$minf)
        (let* ((one-minus-s (sub 1 s))
-              (z1 (asymptotic-rewrite (ftake '%zeta one-minus-s) x pt n))
-              (g1 (asymptotic-rewrite (ftake '%gamma one-minus-s) x pt n)))
+              (z1 (ftake '%zeta one-minus-s))
+              (g1 (ftake '%gamma one-minus-s)))
          (mul
           (ftake 'mexpt 2 s)
           (ftake 'mexpt '$%pi (add s -1))
@@ -475,7 +473,7 @@ If no handler is registered for E, return NIL NIL."
       ;; s → 1 : first n Laurent terms with Stieltjes constants; the Stieltjes constants 
 	  ;; do not have a simple representation.
       ((eql lim 1)
-       (let* ((tau (sub (asymptotic-rewrite s x pt n) 1))
+       (let* ((tau (sub s 1))
               (k 0)
               (sum (div 1 tau))
               (term))

@@ -205,8 +205,8 @@ If no handler is registered for E, return NIL NIL."
 	    (cond ((or (eq '$inf lim) (and (eq '$infinity lim) (off-negative-real-axisp arg))) ; not sure about minf?
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
-		                       (mul (mul 2 k) (sub (mul 2 k) 1)
-							   (ftake 'mexpt arg (sub (mul 2 k) 1)))))
+		                       (mul (* 2 k) (- (* 2 k) 1)
+							   (ftake 'mexpt arg (- (* 2 k) 1)))))
 		            (setq k (+ 1 k))					   
 		            (setq s (add s ds)))
 	            (mul 

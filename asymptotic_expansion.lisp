@@ -280,6 +280,7 @@ If no handler is registered for E, return NIL NIL."
 	(let* ((s 0) (k 0) ($zerobern t) (ds) (m (car e))
 	       (arg (cadr e))
 		   (lim (limit arg x pt 'think)))
+	    (mtell "lim = ~M ~%" lim)
 		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
@@ -291,8 +292,8 @@ If no handler is registered for E, return NIL NIL."
 
 			  ((and (integerp (ridofab lim)) (eq t (mgqp 0 lim)) (integerp m))
 			    (let* ((w (gensym))
-                       (asym (tlimit-taylor (subfunmake '$psi (list m) (list w)) w lim n)))
-				  (maxima-substitute arg w asym)))
+                       (asym ($ratdisrep ($taylor (subfunmake '$psi (list m) (list w)) w (ridofab lim) n))))
+				  (resimplify (maxima-substitute arg w asym))))
 
               ;; When lim is minf and the order m is an integer, use the polygamma reflection
 			  ;; formula and then dispatch asymptotic-rewrite. If we need extra protection against
@@ -304,14 +305,15 @@ If no handler is registered for E, return NIL NIL."
 			  	;; log(arg) - sum(bern(k)/(k*arg^k),k,1,n), where bern(1)=1/2.
                 ;; Maxima uses the standard bern(1)=-1/2 so we'll peel off the first 
 				;; term of the sum.
-				(setq arg (resimplify ($ratdisrep ($taylor arg x lim 0))))
+                ;(setq arg (resimplify ($ratdisrep ($taylor arg x pt n))))
 			    (setq k 2)
 				(setq s (div 1 (mul 2 arg)))
-				(while (< k n)
+				(while (<= k (max n 2))
 					(setq ds (div ($bern k) (mul k (ftake 'mexpt arg k))))
 					(incf k)
 				    (setq s (add s ds)))
 				(sub (ftake '%log arg) s))
+				;(resimplify ($ratdisrep ($taylor (sub (ftake '%log arg) s) x pt n))))
 
 			  (t (subfunmake '$psi (list m) (list arg))))))	 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
@@ -429,14 +431,14 @@ If no handler is registered for E, return NIL NIL."
 ; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.
 (defun stirling0 (e)
-  (let (($numer nil) ($float nil) (*asymptotic-max-order* 8))
+  (let (($numer nil) ($float nil) (*asymptotic-max-order* 64))
    (asymptotic-rewrite e var val 0)))
 
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
   (let* ((s (car e)) (lim (let ((preserve-direction t)) (limit s x pt 'think))))
     (cond
-      ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + nn^{-s}, where  nn = max(n 2)
+      ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + nn^{-s}, where  nn = max(n,2)
       ((or (eq lim '$inf) (and (eq lim '$infinity) (eq (mgrp ($realpart s) 0) t))) ;not sure about the infinity case
        (let ((k 2)
              (sum 1)

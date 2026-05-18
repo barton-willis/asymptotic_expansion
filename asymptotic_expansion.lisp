@@ -173,7 +173,6 @@ If no handler is registered for E, return NIL NIL."
 
 		;; see http://dlmf.nist.gov/6.6.E1
 		((zerop2 lim)
-		  ;; (setq e (asymptotic-rewrite e x pt n))
 		  (let ((acc (add '$%gamma (ftake '%log e))) (k 0))
 		    ;; %gamma + log(e) + sum(e^k / (k * k!),k,1,n). Again, I know that this code
 			;; is a bit inefficient.
@@ -230,8 +229,6 @@ If no handler is registered for E, return NIL NIL."
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)
 	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*)))
-	;      (lim ($limit (car e) x pt)))
-;(mtell "lim = ~M ~%" lim)
 	   (if fn
             (funcall fn (list (add 1 (car e))) x pt n)
 			(ftake 'mfactorial (car e)))))
@@ -291,11 +288,6 @@ If no handler is registered for E, return NIL NIL."
         (if tay-arg
 			(setq arg tay-arg)
 			(return-from psi-asymptotic-rewrite  (subfunmake '$psi (list m) (list arg)))) 
-
-		;;;(setq arg (tlimit-taylor ($expand arg) x pt n))
-	    ;;(setq arg (tlimit-taylor ($expand arg) x (ridofab pt) n))
-		;;;(setq arg (or (tlimit-taylor arg x (ridofab pt) n) arg))
-	    (mtell "arg = ~M ; order = ~M ; x = ~M ; pt = ~M ; n = ~M ; lim = ~M ~%" arg m x pt n lim)
 		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
@@ -502,42 +494,19 @@ If no handler is registered for E, return NIL NIL."
 
 #|
 
-Error(s) found:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problem:
-    (36)
+No unexpected errors found out of 14,876 tests.
 Tests that were expected to fail but passed:
   C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
     (25 28 39 86)
-1 test failed out of 14,876 total tests.
 Evaluation took:
-  138.426 seconds of real time
-  130.937500 seconds of total run time (116.296875 user, 14.640625 system)
-  [ Real times consist of 4.702 seconds GC time, and 133.724 seconds non-GC time. ]
-  [ Run times consist of 4.500 seconds GC time, and 126.438 seconds non-GC time. ]
-  94.59% CPU
-  11,521 forms interpreted
+  57.277 seconds of real time
+  57.078125 seconds of total run time (51.953125 user, 5.125000 system)
+  [ Real times consist of 2.491 seconds GC time, and 54.786 seconds non-GC time. ]
+  [ Run times consist of 2.437 seconds GC time, and 54.642 seconds non-GC time. ]
+  99.65% CPU
+  11,141 forms interpreted
   18,279 lambdas converted
-  276,326,205,080 processor cycles
-  31,896,345,312 bytes consed
-
-
-rror summary:
-Error(s) found:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problem:
-    (36)
-Tests that were expected to fail but passed:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
-    (25 28 39 86)
-1 test failed out of 14,876 total tests.
-Evaluation took:
-  139.046 seconds of real time
-  134.0000000 seconds of total run time (119.734375 user, 14.265625 system)
-  [ Real times consist of 4.814 seconds GC time, and 134.232 seconds non-GC time. ]
-  [ Run times consist of 4.656 seconds GC time, and 129.344 seconds non-GC time. ]
-  96.37% CPU
-  11,521 forms interpreted
-  18,279 lambdas converted
-  277,563,945,748 processor cycles
-  31,914,063,712 bytes consed
+  114,336,471,059 processor cycles
+  32,098,174,256 bytes consed
 
  |#

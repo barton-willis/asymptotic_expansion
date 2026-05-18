@@ -154,7 +154,7 @@ If no handler is registered for E, return NIL NIL."
     (let* ((e (car ee)) (lim ($limit e x pt)))
 	(cond ((eq '$inf lim)
 		(let ((s 0) (ds) (k 0))
-		  (setq e (asymptotic-rewrite e x pt n))
+;(setq e (asymptotic-rewrite e x pt n))
 		  ;;(exp(-e)/ e) sum(k!/e^k,k,0,n-1). I know: this is inefficient.
 		  (while (< k (max n 2))
 		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
@@ -164,7 +164,7 @@ If no handler is registered for E, return NIL NIL."
 
 		;; see http://dlmf.nist.gov/6.6.E1
 		((zerop2 lim)
-		  (setq e (asymptotic-rewrite e x pt n))
+		  ;; (setq e (asymptotic-rewrite e x pt n))
 		  (let ((acc (add '$%gamma (ftake '%log e))) (k 0))
 		    ;; %gamma + log(e) + sum(e^k / (k * k!),k,1,n). Again, I know that this code
 			;; is a bit inefficient.

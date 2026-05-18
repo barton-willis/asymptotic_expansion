@@ -192,29 +192,31 @@ If no handler is registered for E, return NIL NIL."
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
-	(let ((s 0) ($zerobern t) (ds) (k 1) (xxx)) ;tricky setting for $zerobern
-	    (setq e (car e))
-        (setq xxx ($limit e x pt))
-		(when (eql xxx 0)
-			(setq xxx (zero-fixup e x pt)))
+	(let* ((s 0) 
+	       ($zerobern t) ; We want bern(even integer) = 0
+	       (ds) (k 1)
+		   (arg (car e))
+	       (lim ($limit arg x pt)))
+		(when (eql lim 0)
+			(setq lim (zero-fixup arg x pt)))
 		;; Need to check if this is OK for infinity & minf
-	    (cond ((or (eq '$inf xxx) (and (eq '$infinity xxx) (off-negative-real-axisp e))) ; not sure about minf?
+	    (cond ((or (eq '$inf lim) (and (eq '$infinity lim) (off-negative-real-axisp arg))) ; not sure about minf?
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)
-							   (ftake 'mexpt e (sub (mul 2 k) 1)))))
+							   (ftake 'mexpt arg (sub (mul 2 k) 1)))))
 		            (setq k (+ 1 k))					   
 		            (setq s (add s ds)))
 	            (mul 
 				    (ftake 'mexpt '$%e s)
 				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
-	                (ftake 'mexpt e (add e (div -1 2)))
-		            (ftake 'mexpt '$%e (mul -1 e))))
+	                (ftake 'mexpt arg (add arg (div -1 2)))
+		            (ftake 'mexpt '$%e (mul -1 arg))))
 
-                ((or (eq xxx '$zeroa) (zerop2 xxx))
-		         (setq e (ftake '%gamma e))
-		 	     (resimplify ($ratdisrep (tlimit-taylor e x (ridofab pt) n))))
-			  (t (ftake '%gamma e))))) ;give up		
+                ((or (eq lim '$zeroa) (zerop2 lim))
+		         (setq arg (ftake '%gamma arg))
+		 	     (resimplify ($ratdisrep (tlimit-taylor arg x (ridofab pt) n))))
+			  (t (ftake '%gamma arg))))) ;give up		
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)
 	(let ((fn (gethash '%gamma *asymptotic-rewrite-hash*)))

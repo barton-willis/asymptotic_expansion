@@ -120,9 +120,16 @@ If no handler is registered for E, return NIL NIL."
 
 (defun asymptotic-rewrite (e x pt n)
 "Perform a recursive rewrite of the expression tree, applying a handler when available and otherwise rewriting subexpressions."
-    ;; Atoms are unchanged
+   
     (when ($mapatom e)
       (return-from asymptotic-rewrite e))
+
+	
+	(cond (($mapatom e) e) ;; mapatoms are unchanged
+	      ((mplusp e) (asymptotic-rewrite-mplus (cdr e) x pt n))
+		  (t 
+
+		     
 
     (multiple-value-bind (fn args)
         (asymptotic-rewrite-dispatch e)
@@ -132,7 +139,8 @@ If no handler is registered for E, return NIL NIL."
       (if fn
           (apply fn (list rew-args x pt n))
           ;; No handler → recursively rewrite arguments
-          (fapply (caar e) rew-args)))))
+          (fapply (caar e) rew-args)))))))
+		  
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the truncation order and try again. When the order n 
@@ -140,7 +148,7 @@ If no handler is registered for E, return NIL NIL."
 
 ;; The first argument e is a CL list of the summand. The second argument is the 
 ;; limit variable, the third is the point, and the last is the truncation level.
-(def-asymptotic-rewrite-handler mplus (e x pt n)
+(defun asymptotic-rewrite-mplus (e x pt n)
   (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
     (cond ((zerop1 ans)
            ;; Try higher-order expansion; if that fails, return the sum of the list e.

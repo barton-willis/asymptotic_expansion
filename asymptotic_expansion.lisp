@@ -278,9 +278,19 @@ If no handler is registered for E, return NIL NIL."
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
 (defun psi-asymptotic-rewrite (e x pt n)
 	(let* ((s 0) (k 0) ($zerobern t) (ds) (m (car e))
-	       (arg (cadr e))
+	       (arg (resimplify (cadr e)))
+		   (tay-arg (tlimit-taylor arg x (ridofab pt) n))
 		   (lim (limit arg x pt 'think)))
-	    (mtell "lim = ~M ~%" lim)
+
+
+        (if tay-arg
+			(setq arg tay-arg)
+			(return-from psi-asymptotic-rewrite  (subfunmake '$psi (list m) (list arg)))) 
+
+		;;;(setq arg (tlimit-taylor ($expand arg) x pt n))
+	    ;;(setq arg (tlimit-taylor ($expand arg) x (ridofab pt) n))
+		;;;(setq arg (or (tlimit-taylor arg x (ridofab pt) n) arg))
+	    (mtell "arg = ~M ; order = ~M ; x = ~M ; pt = ~M ; n = ~M ; lim = ~M ~%" arg m x pt n lim)
 		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
 				 (while (< k n)
 					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
@@ -299,13 +309,14 @@ If no handler is registered for E, return NIL NIL."
 			  ;; formula and then dispatch asymptotic-rewrite. If we need extra protection against
 			  ;; an infinite loop, we could try checking that limit(cadr(z) x pt) is no minf, I think.
 			  ((and (eq lim '$minf) (integerp m))
+			   ;;; (setq arg (resimplify ($ratdisrep ($taylor arg x pt 0))))
 			   (asymptotic-rewrite (polygamma-reflection m arg) x pt n))
 			  ;; asymptotic formula toward inf
               ((and (eq '$inf lim) (eql m 0))
 			  	;; log(arg) - sum(bern(k)/(k*arg^k),k,1,n), where bern(1)=1/2.
-                ;; Maxima uses the standard bern(1)=-1/2 so we'll peel off the first 
-				;; term of the sum.
-                ;(setq arg (resimplify ($ratdisrep ($taylor arg x pt n))))
+                ;; Maxima uses the standard bern(1)=-1/2, not bern(1) as required
+				;; by this expansion, so we'll peel off the first term of the sum.
+                ;;;;(setq arg (resimplify ($ratdisrep ($taylor arg x (ridofab pt) n))))
 			    (setq k 2)
 				(setq s (div 1 (mul 2 arg)))
 				(while (<= k (max n 2))
@@ -315,7 +326,7 @@ If no handler is registered for E, return NIL NIL."
 				(sub (ftake '%log arg) s))
 				;(resimplify ($ratdisrep ($taylor (sub (ftake '%log arg) s) x pt n))))
 
-			  (t (subfunmake '$psi (list m) (list arg))))))	 
+			  (t (subfunmake '$psi (list m) (list arg)))))) 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
 
 ;; See http://dlmf.nist.gov/7.11.E2. Missing the z --> -inf case.

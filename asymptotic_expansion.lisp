@@ -200,7 +200,6 @@ If no handler is registered for E, return NIL NIL."
 		;(mtell "e = ~M ; off = ~M ; xxx = ~M ~%" e (off-negative-real-axisp e) xxx)
 		;; Need to check if this is OK for infinity & minf
 	    (cond ((or (eq '$inf xxx) (and (eq '$infinity xxx) (off-negative-real-axisp e))) ; not sure about minf?
-		        (setq e (asymptotic-rewrite e x pt n))
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (mul 2 k) (sub (mul 2 k) 1)

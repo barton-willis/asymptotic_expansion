@@ -66,7 +66,7 @@
              ',fname)
        ',fname)))
 
-;; Not intended to be a user level function.
+;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
 (defmfun $asymptotic_rewrite (e x pt n)
     (let ((LHP? nil)) ;not sure about this.
 	  (asymptotic-rewrite e x pt n)))
@@ -80,8 +80,6 @@
 ;; This code is supposed to preserve limits. By this I mean
 ;; limit(XXX,x,pt) = limit(YYY,x,pt), where YYY is the result
 ;; of applying asymptotic-rewrite to XXX.
-
-
 
 (defun asymptotic-rewrite-dispatch (e)
  "Return the asymptotic rewrite handler and normalized argument list for E.
@@ -125,20 +123,23 @@ If no handler is registered for E, return NIL NIL."
      (values nil nil))))
 
 (defun asymptotic-rewrite (e x pt n)
-  "Perform a recursive rewrite of the expression tree, applying a handler
-   when available and otherwise rewriting subexpressions."
+  "Recursively rewrite an expression using asymptotic expansions. Dispatch is via a hashtable; all 
+  handlers except mplus receive arguments already rewritten at order n."
   ;; Atoms are unchanged
   (cond
     ;; Mapatoms are unchanged
-    (($mapatom e)
-     e)
-    ;; Special-case MPLUS: rewrite its summands using a dedicated handler--when cancellation happens, the mplus
-	;; handler increases the order and tries again, stopping when the order reaches *asymptotic-max-order*.
-	;; When that happens, the code gives up and simply adds the members of e.
-    ((mplusp e)
-     (asymptotic-rewrite-mplus (cdr e) x pt n))
+    (($mapatom e)  e)
+    ;; Special case: The function asymptotic-rewrite-mplus receives the arguments of 
+	;; the summation. When cancellation happens, the mplus handler increases the 
+	;; order and tries again, stopping when the order reaches *asymptotic-max-order*.
+	;; When that happens, the code gives up and simply adds the members of e. 
 
-    ;; General case: dispatch to handler or recursively rewrite arguments
+    ;; Operators whose handlers must see original arguments (like mplus) should be
+    ;; special-cased here. All others receive rewritten arguments.
+    ((mplusp e)
+       (asymptotic-rewrite-mplus (cdr e) x pt n))
+    ;; General case: dispatch to handler or recursively rewrite arguments. 
+	;; Handlers (except mplus) receive arguments already rewritten at order n.
     (t
      (multiple-value-bind (fn args)
          (asymptotic-rewrite-dispatch e)
@@ -151,8 +152,8 @@ If no handler is registered for E, return NIL NIL."
              (fapply (caar e) rew-args)))))))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
-;; the sum vanishes, increase the truncation order and try again. When the order n 
-;; reaches a magic number (8), give up and return e. 
+;; the sum vanishes, increase the order and try again. When the order n 
+;; reaches *asymptotic-max-order*, give up and return the sum of the members of e.
 
 ;; The first argument e is a CL list of the summand. The second argument is the 
 ;; limit variable, the third is the point, and the last is the truncation level.
@@ -170,11 +171,11 @@ If no handler is registered for E, return NIL NIL."
     (let* ((e (car ee)) (lim (limit-at e x pt)))
 	(cond ((eq '$inf lim)
 		(let ((s 0) (ds) (k 0))
-		  ;;(exp(-e)/ e) sum(k!/e^k,k,0,n-1). I know: this is inefficient.
-		  (while (< k (max n 2))
+		  ;;(exp(e)/e) sum(k!/e^k,k,0,max(n,1)). We must have at least one term--thus the max(n,1)
+		  (while (< k (max n 1))
 		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
 	 	 	(setq s (add s ds))
-			(setq k (+ 1 k)))
+			(incf k))
 	  	(mul s (div (ftake 'mexpt '$%e e) e))))
 
 		;; see http://dlmf.nist.gov/6.6.E1
@@ -186,21 +187,20 @@ If no handler is registered for E, return NIL NIL."
 			    (incf k 1)
 				(setq acc (add acc (div (ftake 'mexpt e k) (mul k (ftake 'mfactorial k))))))
 			acc))
-	(t (ftake '%expintegral_ei ee)))))
+	(t (ftake '%expintegral_ei e)))))
 	  
-;; See https://dlmf.nist.gov/6.12. Let's triple check for a Ei vs E1 flub.
-(defun expintegral-e1-asymptotic (e x pt n)
+;; See https://dlmf.nist.gov/6.12.
+(def-asymptotic-rewrite-handler %expintegral_e1 (e x pt n)
 	(let ((s 0) (ds) (k 0))
 	  (setq e (first e))
 	  (cond ((eq '$inf (limit-at e x pt))
-	 	     ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient.
-		     (while (< k n)
+	 	     ;;(exp(-e)/ e) sum((-1)^k k!/e^k,k,0,n-1). I know: this is inefficient.
+		     (while (< k (max n 1))
 	 	       (setq ds (div (mul (ftake 'mexpt -1 k) (ftake 'mfactorial k)) (ftake 'mexpt e k)))
 	  	   	   (setq s (add s ds))
-			   (setq k (+ 1 k)))
-	 	      (mul s (div (ftake 'mexpt '$%e e) e)))
+			   (incf k))
+	 	      (mul s (div (ftake 'mexpt '$%e (neg e)) e)))
 		   (t (ftake '%expintegral_e1 e)))))
-(setf (gethash '%expintegral_e1 *asymptotic-rewrite-hash*) #'expintegral-e1-asymptotic)
 
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 

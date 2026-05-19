@@ -329,23 +329,23 @@ If no handler is registered for E, return NIL NIL."
 			  (t (subfunmake '$psi (list m) (list arg)))))) 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
 
-;; See http://dlmf.nist.gov/7.11.E2. Missing the z --> -inf case.
-;; Running the testsuite, this causes an asksign 
+;; See http://dlmf.nist.gov/7.11.E2.  This code is poorly tested.
 (def-asymptotic-rewrite-handler %erfc (z x pt n)
 	(setq z (car z))
-	(let ((s 0) (ds (div 1 z)) (k 0) (zz (mul 2 z z))
+	(let ((s 0) (ds (div 1 z)) (k 0)
 	      (lim (limit z x pt 'think)))
 	  (cond ((eq '$inf lim)
-			  (while (<= k n)
-				 (setq s (add s ds))
-				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) zz))
-				 (setq k (+ k 1)))
-			  (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
-		    ((eq '$minf lim)
 			  (while (< k n)
 				 (setq s (add s ds))
-				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) zz))
-				 (setq k (+ k 1)))
+				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
+				 (incf k))
+			  (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
+		    ((eq '$minf lim)
+			  (setq z (neg z))
+			  (while (< k n)
+				 (setq s (add s ds))
+				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
+				 (incf k))
 				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
 		  (t (ftake '%erfc z)))))		
 
@@ -445,9 +445,8 @@ If no handler is registered for E, return NIL NIL."
   (let (($numer nil) ($float nil) (*asymptotic-max-order* 64))
    (asymptotic-rewrite e var val 0)))
 
-
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
-  (let* ((s (car e)) (lim (let ((preserve-direction t)) (limit s x pt 'think))))
+  (let* ((s (car e)) (lim (limit-at s x pt)))
     (cond
       ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + nn^{-s}, where  nn = max(n,2)
       ((or (eq lim '$inf) (and (eq lim '$infinity) (eq (mgrp ($realpart s) 0) t))) ;not sure about the infinity case

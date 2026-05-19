@@ -513,15 +513,5 @@ Evaluation took:
   32,098,174,256 bytes consed
 
   
-
- (unless (fboundp 'old-merror)
-  (setf (symbol-function 'old-merror)
-        (symbol-function 'merror)))
-
-(defmvar $print_error_messages t)
-(defun merror (fmt &rest args)
-  (if $print_error_messages
-      (apply old-merror (cons fmt args))
-      nil))
  |#
 	

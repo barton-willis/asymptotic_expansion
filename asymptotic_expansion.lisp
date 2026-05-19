@@ -35,6 +35,12 @@
 ;; What special variables did I miss?
 (declare-top (special preserve-direction var val lhp?))
 
+(defun limit-at (arg x pt)
+"Normalize directional limit points and call $limit. PT may be an ordinary limit point or one of 
+ the directional markers $zerob or $zeroa." 
+	(cond ((eq pt '$zerob) ($limit arg x 0 '$minus))
+		  ((eq pt '$zeroa) ($limit arg x 0 '$plus))
+		  (t ($limit arg x pt))))
 
 (defmvar *asymptotic-max-order* 16)
 
@@ -126,7 +132,7 @@ If no handler is registered for E, return NIL NIL."
     ;; Mapatoms are unchanged
     (($mapatom e)
      e)
-    ;; Special-case MPLUS: rewrite its summands using a dedicated handler--when cancellation, the mplus
+    ;; Special-case MPLUS: rewrite its summands using a dedicated handler--when cancellation happens, the mplus
 	;; handler increases the order and tries again, stopping when the order reaches *asymptotic-max-order*.
 	;; When that happens, the code gives up and simply adds the members of e.
     ((mplusp e)
@@ -161,7 +167,7 @@ If no handler is registered for E, return NIL NIL."
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
-    (let* ((e (car ee)) (lim ($limit e x pt)))
+    (let* ((e (car ee)) (lim (limit-at e x pt)))
 	(cond ((eq '$inf lim)
 		(let ((s 0) (ds) (k 0))
 		  ;;(exp(-e)/ e) sum(k!/e^k,k,0,n-1). I know: this is inefficient.
@@ -186,7 +192,7 @@ If no handler is registered for E, return NIL NIL."
 (defun expintegral-e1-asymptotic (e x pt n)
 	(let ((s 0) (ds) (k 0))
 	  (setq e (first e))
-	  (cond ((eq '$inf ($limit e x pt))
+	  (cond ((eq '$inf (limit-at e x pt))
 	 	     ;;(exp(e)/ e) sum k!/e^k,k,0,n-1). I know: this is inefficient.
 		     (while (< k n)
 	 	       (setq ds (div (mul (ftake 'mexpt -1 k) (ftake 'mfactorial k)) (ftake 'mexpt e k)))
@@ -203,9 +209,7 @@ If no handler is registered for E, return NIL NIL."
 	       ($zerobern t) ; We want bern(even integer) = 0
 	       (ds) (k 1)
 		   (arg (car e))
-		   (lim (cond ((eq pt '$zerob) ($limit arg x 0 '$minus))
-		              ((eq pt '$zeroa) ($limit arg x 0 '$plus))
-					  (t ($limit arg x pt)))))
+		   (lim (limit-at arg x pt)))
 		(when (eql lim 0)
 			(setq lim (zero-fixup arg x pt)))
 		;; Need to check if this is OK for infinity & minf
@@ -243,7 +247,7 @@ If no handler is registered for E, return NIL NIL."
 ;; that Maxima routes the minf case through li-asymptotic-expansion...
 (defun polylogarithm-asymptotic-rewrite (e x pt n)
 	(let (($numer nil) (s (first e)) (z (second e)) (nn) (xxx) (k 1) (acc 0))
-	   (setq xxx ($limit z x pt))
+	   (setq xxx (limit-at z x pt))
        ;only handle explicit numeric order
 	   (cond ((and (integerp s) (> s 0) (or (eq '$inf xxx) (eq '$minf xxx)))
 	           (while (<= k n)
@@ -359,7 +363,7 @@ If no handler is registered for E, return NIL NIL."
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i
 (def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
-	(let* ((aaa (first e)) (z (second e)) (xxx ($limit z x pt)))
+	(let* ((aaa (first e)) (z (second e)) (xxx (limit-at z x pt)))
 	    (setq n (max 1 n))
 		(cond 
           ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x
@@ -393,7 +397,7 @@ If no handler is registered for E, return NIL NIL."
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (def-asymptotic-rewrite-handler %bessel_j (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0))
-	    (cond ((eq '$inf ($limit z x pt))
+	    (cond ((eq '$inf (limit-at z x pt))
 				(setq ω (add z (div (mul '$%pi v) -2) (div '$%pi -4)))
 				(setq a (sub (div 1 2) v))
 				(setq b (add (div 1 2) v))
@@ -417,7 +421,7 @@ If no handler is registered for E, return NIL NIL."
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
 (def-asymptotic-rewrite-handler bessel_k (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (k 0) (a) (b) (cc 0))
-	    (cond ((eq '$inf ($limit z x pt))
+	    (cond ((eq '$inf (limit-at z x pt))
 				(setq a (sub (div 1 2) v))
 				(setq b (add (div 1 2) v))
 				(labels ((fn (k a b) ; (1/2-v)_k (1/2+v)_k / ((-2)^k k!)
@@ -509,4 +513,16 @@ Evaluation took:
   114,336,471,059 processor cycles
   32,098,174,256 bytes consed
 
+  
+
+ (unless (fboundp 'old-merror)
+  (setf (symbol-function 'old-merror)
+        (symbol-function 'merror)))
+
+(defmvar $print_error_messages t)
+(defun merror (fmt &rest args)
+  (if $print_error_messages
+      (apply old-merror (cons fmt args))
+      nil))
  |#
+	

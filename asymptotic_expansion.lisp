@@ -202,6 +202,14 @@ If no handler is registered for E, return NIL NIL."
 	 	      (mul s (div (ftake 'mexpt '$%e (neg e)) e)))
 		   (t (ftake '%expintegral_e1 e)))))
 
+;; E[p](x) = z^(p-1) * gamma_incomplete(1-p,x); see http://dlmf.nist.gov/8.19.E1 
+(def-asymptotic-rewrite-handler %expintegral_e (e x pt n)
+	(let* ((p (car e))
+	       (arg (cadr e))
+		   ($expintrep '$gamma_incomplete)
+		   (alt (mul (ftake 'mexpt arg (sub p 1))
+		            (ftake '%gamma_incomplete (sub 1 p) arg))))
+		   (asymptotic-rewrite alt x pt n)))
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (def-asymptotic-rewrite-handler %gamma (e x pt n)

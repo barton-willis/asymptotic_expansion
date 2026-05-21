@@ -371,7 +371,7 @@ If no handler is registered for E, return NIL NIL."
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i
 (def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
-	(let* ((aaa (first e)) (z (second e)) (xxx (limit-at z x pt)))
+	(let* ((aaa (first e)) (z (second e)) (xxx (limit-at (ftake 'mabs z) x pt)))
 	    (setq n (max 1 n))
 		(cond 
           ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x

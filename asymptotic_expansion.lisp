@@ -138,6 +138,11 @@ If no handler is registered for E, return NIL NIL."
     ;; special-cased here. All others receive rewritten arguments.
     ((mplusp e)
        (asymptotic-rewrite-mplus (cdr e) x pt n))
+    ;; Don't attempt:
+	((or (member (caar e) '(%sum %product %derivative %integrate))
+	     (member (caar e) '(mequal mlessp mleqp mnotequal mgreaterp mgeqp $notequal $equal)))
+		(fapply (caar e) (cdr e)))
+
     ;; General case: dispatch to handler or recursively rewrite arguments. 
 	;; Handlers (except mplus) receive arguments already rewritten at order n.
     (t
@@ -502,6 +507,8 @@ If no handler is registered for E, return NIL NIL."
          sum))
 
       (t (ftake '%zeta s)))))
+
+
 
 #|
 

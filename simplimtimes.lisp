@@ -1,3 +1,20 @@
+#|
+
+Error(s) found:
+  /rtest15.mac problems:  (210 425)
+  /rtest16.mac problems:  (525 809)
+  /rtestint.mac problems: (152 237 241)
+  /rtest_gamma.mac problem:  (477)
+  /rtest_sqrt.mac problems:  (9 11 12)
+  /rtest_limit.mac problems:  (15 62 64 163 164 232 278)
+   /rtest_limit_extra.mac problems:  (54 55 63 64 66 67 81 94 208 266 301 308 309 400 401 411 422)
+Tests that were expected to fail but passed:
+  /rtest_limit.mac problem:  (113)
+  /rtest_limit_extra.mac problems:  (268 269 270)
+35 tests failed out of 14,926 total tests.
+
+ |#
+
 (in-package :maxima)
 
 (declare-top (special origval
@@ -211,16 +228,21 @@
              (let ((sgn ($csign ek)))
                (setq lim (cond ((eq sgn '$neg) '$zerob)
                                ((eq sgn '$pos) '$zeroa)
+                               (preserve-direction (zero-fixup ek var val))
                                (t 0)))))
 
            (cond ((memq lim '($minf $inf $infinity))
                     (push (cons lim ek) inf-terms))
+
                  ((or (eq lim '$ind) (eq lim nil) (eq lim t))
                     (push (cons lim ek) ind-terms))
+
                  ((eq lim '$und)
                     (push (cons lim ek) und-terms))
+
                  ((zerop2 lim)
                     (push (cons lim ek) zero-terms))
+                    
                  (t
                     (push (cons lim ek) finite-terms)))))))
 

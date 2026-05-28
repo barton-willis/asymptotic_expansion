@@ -69,7 +69,7 @@
 ;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
 (defmfun $asymptotic_rewrite (e x pt n)
     (let ((LHP? nil)) ;not sure about this.
-	  (asymptotic-rewrite e x pt n)))
+	  (asymptotic-rewrite-top e x pt n)))
 
 (defun asymptotic-assume (e lim)
   "Given an expression E and its limit LIM, assert the 
@@ -140,43 +140,76 @@ If no handler is registered for E, return NIL NIL."
 
 (defun asymptotic-rewrite-top (e x pt n)
 	(let ((cntx ($supcontext)))
+	    ($activate cntx)
 		(unwind-protect
 		   (asymptotic-rewrite e x pt n)
 		   ($killcontext cntx))))
-		   
+
+(defparameter *missing-ops*
+  (make-hash-table :test #'eq)
+  "Hashtable mapping missing operator symbols to occurrence counts.")
+
+  (defmfun $missing ()
+  "Print missing operator counts sorted by descending frequency."
+  (let (accum)
+    ;; Collect entries
+    (maphash (lambda (op count)
+               (push (cons op count) accum))
+             *missing-ops*)
+
+    ;; Sort by count descending
+    (setf accum (sort accum #'> :key #'cdr))
+
+    ;; Print results
+    (format t "~%Missing operator summary:~%")
+    (dolist (entry accum)
+      (format t "  ~A : ~D~%" (car entry) (cdr entry)))))
+
+    ;; Return the sorted list as a value
+    ;(fapply 'mlist accum)))
+
 (defun asymptotic-rewrite (e x pt n)
   "Recursively rewrite an expression using asymptotic expansions. Dispatch is via a hashtable; all 
-  handlers except mplus receive arguments already rewritten at order n."
-  ;; Atoms are unchanged
+   handlers except mplus receive arguments already rewritten at order n."
+
   (cond
     ;; Mapatoms are unchanged
-    (($mapatom e)  e)
-    ;; Special case: The function asymptotic-rewrite-mplus receives the arguments of 
-	;; the summation. When cancellation happens, the mplus handler increases the 
-	;; order and tries again, stopping when the order reaches *asymptotic-max-order*.
-	;; When that happens, the code gives up and simply adds the members of e. 
+    (($mapatom e)
+     e)
 
-    ;; Operators whose handlers must see original arguments (like mplus) should be
-    ;; special-cased here. All others receive rewritten arguments.
+    ;; Special case: mplus handler receives original arguments
     ((mplusp e)
-       (asymptotic-rewrite-mplus (cdr e) x pt n))
-    ;; Don't attempt:
-	((or (member (caar e) '(%sum %product %derivative %integrate))
-	     (member (caar e) '(mequal mlessp mleqp mnotequal mgreaterp mgeqp $notequal $equal)))
-		(fapply (caar e) (cdr e)))
+     (asymptotic-rewrite-mplus (cdr e) x pt n))
 
-    ;; General case: dispatch to handler or recursively rewrite arguments. 
-	;; Handlers (except mplus) receive arguments already rewritten at order n.
+    ;; Operators we do NOT rewrite at all
     (t
-     (multiple-value-bind (fn args)
-         (asymptotic-rewrite-dispatch e)
-       ;; Rewrite each argument at order n
-       (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) args)))
-         (if fn
-             ;; Handler exists → call it with rewritten args
-             (apply fn (list rew-args x pt n))
-             ;; No handler → rebuild expression with rewritten args
-             (fapply (caar e) rew-args)))))))
+     (let* ((op (caar e)))
+       ;; Skip rewriting for these operators
+       (when (or (member op '(%sum %product %derivative %integrate))
+                 (member op '(mequal mlessp mleqp mnotequal mgreaterp mgeqp $notequal $equal)))
+         (return-from asymptotic-rewrite e))
+
+       ;; General case: dispatch to handler
+       (multiple-value-bind (fn handler-args)
+           (asymptotic-rewrite-dispatch e)
+
+         ;; Track missing handlers
+		 (when (null fn)
+          (incf (gethash op *missing-ops* 0)))
+
+         ;; Rewrite arguments
+         (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) handler-args)))
+           ;; Handler exists → call it
+           (if fn
+               (apply fn (list rew-args x pt n))
+               ;; No handler → rebuild expression with rewritten args
+               (fapply op rew-args))))))))
+
+;; Same as default, but for future enhancement, let's have an explicit handler for mtimes.
+(def-asymptotic-rewrite-handler mtimes (arg-list x pt n)
+  (declare (ignore x pt n))
+  ;; arg-list is already rewritten by the dispatcher
+  (fapply 'mtimes arg-list))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the order and try again. When the order n 
@@ -487,9 +520,11 @@ If no handler is registered for E, return NIL NIL."
 		(t (ftake '%bessel_j v x)))))   
 
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
-(def-asymptotic-rewrite-handler bessel_k (e x pt n)
+(def-asymptotic-rewrite-handler %bessel_k (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (k 0) (a) (b) (cc 0))
+	    (setq n (max n 1))
 	    (cond ((eq '$inf (limit-at z x pt))
+		        (mtell "got it ~%")
 				(setq a (sub (div 1 2) v))
 				(setq b (add (div 1 2) v))
 				(labels ((fn (k a b) ; (1/2-v)_k (1/2+v)_k / ((-2)^k k!)
@@ -563,7 +598,14 @@ If no handler is registered for E, return NIL NIL."
 
       (t (ftake '%zeta s)))))
 
-
+(def-asymptotic-rewrite-handler %signum (arg-list x pt n)
+  (declare (ignore n))
+  (let* ((z   (car arg-list))
+         (lim (limit-at z x pt)))
+    ;; asymptotic-assume is called only for its side-effect:
+    ;; it inserts sign information about Z into the current context.
+    (asymptotic-assume z lim)
+    (ftake '%signum z)))
 
 #|
 

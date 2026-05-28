@@ -171,6 +171,17 @@ If no handler is registered for E, return NIL NIL."
 			   (fapply 'mplus e)))
           (t ans))))
 
+(defvar *mexpt* 0)
+(def-asymptotic-rewrite-handler mexpt (arg-list x pt n)
+	(let* ((a (first arg-list))
+	       (b (second arg-list)))
+	(cond ((mexptp a)
+	        (let ((alim (limit a x pt 'think)))
+			    (if (eq alim '$inf)
+                     (ftake 'mexpt (second a) (mul (third a) b))
+					 (ftake 'mexpt a b))))
+		  (t (ftake 'mexpt a b)))))
+
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
     (let* ((e (car ee)) (lim (limit-at e x pt)))
@@ -342,33 +353,45 @@ If no handler is registered for E, return NIL NIL."
 			  (t (subfunmake '$psi (list m) (list arg)))))) 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
 
-;; See http://dlmf.nist.gov/7.11.E2.  This code is poorly tested.
-(def-asymptotic-rewrite-handler %erfc (z x pt n)
-	(setq z (car z))
-	(let ((s 0) (ds (div 1 z)) (k 0)
-	      (lim (limit z x pt 'think)))
+;; See http://dlmf.nist.gov/7.11.E2.  
+(def-asymptotic-rewrite-handler %erfc (arg-list x pt n)
+	(let* ((z (car arg-list))
+	       (s 0) 
+		   (ds (div 1 z)) 
+           (k 0)
+		   ($radexpand nil)
+	       (lim (limit-at z x pt)))
 	  (cond ((eq '$inf lim)
 			  (while (< k n)
 				 (setq s (add s ds))
 				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
 				 (incf k))
-			  (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
+			  (mul (ftake 'mexpt '$%e (mul -1 (ftake 'mexpt z 2))) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
+			  
 		    ((eq '$minf lim)
 			  (setq z (neg z))
 			  (while (< k n)
 				 (setq s (add s ds))
 				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
 				 (incf k))
-				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 z z)) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
+				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 (ftake 'mexpt z 2))) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
 		  (t (ftake '%erfc z)))))		
 
+(def-asymptotic-rewrite-handler %erfc-9999 (arg-list x pt n)
+	(let* ((z (car arg-list))
+	       (lim (limit-at z x pt)))
+	  (cond ((or (eq '$inf lim) (eq '$minf lim) (eq '$infinity lim))
+		    (let ((fn (gethash '%gamma_incomplete *asymptotic-rewrite-hash*)))
+			  (if fn 
+			  	(asymptotic-rewrite (div (ftake '%gamma_incomplete (div 1 2) (ftake 'mexpt z 2)) (ftake 'mexpt '$%pi (div 1 2))) x pt n)
+				(ftake '%erfc z))))
+		  (t (ftake '%erfc z)))))	
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-rewrite-hash*.
 
 (def-asymptotic-rewrite-handler %erf (z x pt n)
-	(let ((lim (limit (car z) x pt 'think))
+	(let ((lim (limit-at (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
-
 	(cond ((and fn (or (eq lim '$inf) (eq lim '$minf)))
 	       (sub 1 (funcall fn (list (car z)) x pt n)))
 		  (t (fapply '%erf z)))))
@@ -376,7 +399,8 @@ If no handler is registered for E, return NIL NIL."
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i
 (def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
-	(let* ((aaa (first e)) (z (second e)) (xxx (limit-at (ftake 'mabs z) x pt)))
+	(let* ((aaa (first e)) (z (second e)) (xxx (limit-at (ftake 'mabs z) x pt))
+	       ($radexpand nil))
 	    (setq n (max 1 n))
 		(cond 
           ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x

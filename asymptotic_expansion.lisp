@@ -33,7 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special preserve-direction var val lhp?))
+(declare-top (special preserve-direction *large-positive-number* var val lhp?))
 
 (defun limit-at (arg x pt)
 "Normalize directional limit points and call $limit. PT may be an ordinary limit point or one of 
@@ -70,6 +70,22 @@
 (defmfun $asymptotic_rewrite (e x pt n)
     (let ((LHP? nil)) ;not sure about this.
 	  (asymptotic-rewrite e x pt n)))
+
+(defun asymptotic-assume (e lim)
+  "Given an expression E and its limit LIM, assert the 
+   appropriate asymptotic inequality for E in the current context."
+  (cond
+    ;; E → +∞  ⇒  E > *large-positive-number*
+    ((eq lim '$inf)
+     (assume (ftake 'mgreaterp e *large-positive-number*)))
+
+    ;; E → -∞  ⇒  E < - *large-positive-number*
+    ((eq lim '$minf)
+     (assume (ftake 'mlessp e (neg *large-positive-number*))))
+
+    ;; Unknown ⇒  no assumption
+    (t nil)))
+
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
@@ -122,6 +138,12 @@ If no handler is registered for E, return NIL NIL."
     (t
      (values nil nil))))
 
+(defun asymptotic-rewrite-top (e x pt n)
+	(let ((cntx ($supcontext)))
+		(unwind-protect
+		   (asymptotic-rewrite e x pt n)
+		   ($killcontext cntx))))
+		   
 (defun asymptotic-rewrite (e x pt n)
   "Recursively rewrite an expression using asymptotic expansions. Dispatch is via a hashtable; all 
   handlers except mplus receive arguments already rewritten at order n."
@@ -171,16 +193,24 @@ If no handler is registered for E, return NIL NIL."
 			   (fapply 'mplus e)))
           (t ans))))
 
-(defvar *mexpt* 0)
+(def-asymptotic-rewrite-handler mabs (arg-list x pt n)
+  (declare (ignore n))
+  (let* ((z   (car arg-list))
+         (lim (limit-at z x pt)))
+	;; asymptotic-assume is called *only* for its side-effect:
+    ;; it inserts sign information about Z into the current context.
+    (asymptotic-assume z lim)
+    (ftake 'mabs z)))
+
 (def-asymptotic-rewrite-handler mexpt (arg-list x pt n)
+	(declare (ignore n))
 	(let* ((a (first arg-list))
-	       (b (second arg-list)))
-	(cond ((mexptp a)
-	        (let ((alim (limit a x pt 'think)))
-			    (if (eq alim '$inf)
-                     (ftake 'mexpt (second a) (mul (third a) b))
-					 (ftake 'mexpt a b))))
-		  (t (ftake 'mexpt a b)))))
+	       (alim (limit a x pt 'think))
+	       (b (second arg-list))
+		   (blim (limit a x pt 'think)))
+		 (asymptotic-assume a alim)
+		 (asymptotic-assume b blim)
+		 (ftake 'mexpt a b)))
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
@@ -367,7 +397,7 @@ If no handler is registered for E, return NIL NIL."
 				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
 				 (incf k))
 			  (mul (ftake 'mexpt '$%e (mul -1 (ftake 'mexpt z 2))) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
-			  
+
 		    ((eq '$minf lim)
 			  (setq z (neg z))
 			  (while (< k n)
@@ -480,7 +510,7 @@ If no handler is registered for E, return NIL NIL."
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.
 (defun stirling0 (e)
   (let (($numer nil) ($float nil) (*asymptotic-max-order* 64))
-   (asymptotic-rewrite e var val 0)))
+   (asymptotic-rewrite-top e var val 0)))
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
   (let* ((s (car e)) (lim (limit-at s x pt)))

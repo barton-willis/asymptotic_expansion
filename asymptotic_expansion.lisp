@@ -264,6 +264,7 @@ If no handler is registered for E, return NIL NIL."
 	       (ds) (k 1)
 		   (arg (car e))
 		   (lim (limit-at arg x pt)))
+		(asymptotic-assume arg lim)
 		(when (eql lim 0)
 			(setq lim (zero-fixup arg x pt)))
 		;; Need to check if this is OK for infinity & minf

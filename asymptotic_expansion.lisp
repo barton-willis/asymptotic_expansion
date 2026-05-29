@@ -525,7 +525,7 @@ If no handler is registered for E, return NIL NIL."
 		(t (ftake '%bessel_j v x)))))   
 
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
-(def-asymptotic-rewrite-handler %bessel_k (e x pt n)
+(def-asymptotic-rewrite-handler %bessel_kkk (e x pt n)
 	(let ((v (car e)) (z (cadr e)) (k 0) (a) (b) (cc 0))
 	    (setq n (max n 1))
 	    (cond ((eq '$inf (limit-at z x pt))
@@ -546,6 +546,94 @@ If no handler is registered for E, return NIL NIL."
 		   (ftake 'mexpt '$%e (mul -1 z)) ;exp(-z)
 		   cc)))
 		(t (ftake '%bessel_k v x)))))   
+
+(def-asymptotic-rewrite-handler %bessel_k (e x pt n)
+  (let* ((v (car e))
+         (z (cadr e))
+         (lim (limit-at z x pt)))
+    (setq n (max n 1))
+    (cond
+      ;; ------------------------------------------------------------
+      ;; z → +∞ asymptotic expansion
+      ;; ------------------------------------------------------------
+      ((eq '$inf lim)
+       (flet ((f (k)
+                ;; quotient a(k)/a(k-1):
+                ;; ((1/2 - v + k)(1/2 + v + k)) / (-2 (k+1) z)
+                (div (mul (add k (sub (div 1 2) v))
+                          (add k (add (div 1 2) v)))
+                     (mul -2 (add k 1) z))))
+         (let ((s (sum-by-quotient 1 #'f n)))
+           (mul
+            ;; sqrt(pi/(2z))
+            (ftake 'mexpt (div '$%pi (mul 2 z)) (div 1 2))
+            ;; exp(-z)
+            (ftake 'mexpt '$%e (mul -1 z))
+            ;; series sum
+            s))))
+
+	  ;; ------------------------------------------------------------
+      ;; z → −∞  (analytic continuation)
+      ;;
+      ;; K_v(z) = e^{iπv} K_v(|z|) − iπ I_v(|z|)
+      ;;
+      ;; We do NOT duplicate the asymptotic series.
+      ;; We simply rewrite and recurse.
+      ;; ------------------------------------------------------------
+      ((eq '$minf lim)
+       (let ((zp (neg z)))
+         (sub
+          (mul (ftake 'mexpt '$%e (mul '$%i '$%pi v))
+               (asymptotic-rewrite (list '%bessel_k v zp) x pt n))
+          (mul '$%i '$%pi
+               (asymptotic-rewrite (list '%bessel_i v zp) x pt n)))))
+
+      ;; ------------------------------------------------------------
+      ;; fallback
+      ;; ------------------------------------------------------------
+      (t (ftake '%bessel_k v x)))))
+
+(def-asymptotic-rewrite-handler %bessel_i (e x pt n)
+  (let* ((v (car e))
+         (z (cadr e))
+         (lim (limit-at z x pt)))
+    (setq n (max n 1))
+    (cond
+      ;; ------------------------------------------------------------
+      ;; z → +∞ asymptotic expansion
+      ;; ------------------------------------------------------------
+      ((eq '$inf lim)
+       (flet ((f (k)
+                ;; quotient a(k)/a(k-1):
+                ;; ((1/2 - v + k)(1/2 + v + k)) / (2 (k+1) z)
+                (div (mul (add k (sub (div 1 2) v))
+                          (add k (add (div 1 2) v)))
+                     (mul 2 (add k 1) z))))
+         (let ((s (sum-by-quotient 1 #'f n)))
+           (mul
+            ;; exp(z)
+            (ftake 'mexpt '$%e z)
+            ;; 1/sqrt(2πz)
+            (div 1 (ftake 'mexpt (mul 2 '$%pi z) (div 1 2)))
+            s))))
+
+      ;; ------------------------------------------------------------
+      ;; z → −∞  (analytic continuation)
+      ;;
+      ;; I_v(-z) = e^{iπv} I_v(z)
+      ;;
+      ;; No K_v term appears.
+      ;; ------------------------------------------------------------
+      ((eq '$minf lim)
+       (let ((zp (neg z)))
+         (mul (ftake 'mexpt '$%e (mul '$%i '$%pi v))
+              (asymptotic-rewrite (list '%bessel_i v zp) x pt n))))
+
+      ;; ------------------------------------------------------------
+      ;; fallback
+      ;; ------------------------------------------------------------
+      (t (ftake '%bessel_i v x)))))
+
 
 ; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.

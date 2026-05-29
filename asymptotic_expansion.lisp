@@ -44,6 +44,17 @@
 
 (defmvar *asymptotic-max-order* 16)
 
+(defun sum-by-quotient (a0 f n)
+  "Return a(0) + ... + a(n-1), where a(k) = a(k-1) * f(k)."
+  (cond
+    ((<= n 0) 0)
+    (t
+     (do ((k 0 (1+ k))
+          (ak a0 (mul ak (funcall f k)))
+          (s 0 (add s ak)))
+         ((>= k n) s)))))
+
+
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
 ;; expansion for the function with that key. Each function has
@@ -418,41 +429,35 @@ If no handler is registered for E, return NIL NIL."
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
 
 ;; See http://dlmf.nist.gov/7.11.E2.  
+(defun erfc-asymptotic-positive (z n)
+  (let* ((a0 (div 1 z))
+         (f  #'(lambda (k)  (div (mul -1 (add 1 (* 2 k))) (ftake 'mexpt z 2))))
+         (s  (sum-by-quotient a0 f n)))
+
+    (mul (ftake 'mexpt '$%e (mul -1 (ftake 'mexpt z 2)))
+         s
+         (div 1 (ftake 'mexpt '$%pi (div 1 2))))))
+
 (def-asymptotic-rewrite-handler %erfc (arg-list x pt n)
-	(let* ((z (car arg-list))
-	       (s 0) 
-		   (ds (div 1 z)) 
-           (k 0)
-		   ($radexpand nil)
-	       (lim (limit-at z x pt)))
-	  (cond ((eq '$inf lim)
-			  (while (< k n)
-				 (setq s (add s ds))
-				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
-				 (incf k))
-			  (mul (ftake 'mexpt '$%e (mul -1 (ftake 'mexpt z 2))) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))
+  (let* ((z (car arg-list))
+         ($radexpand nil)
+         (lim (limit-at z x pt)))
 
-		    ((eq '$minf lim)
-			  (setq z (neg z))
-			  (while (< k n)
-				 (setq s (add s ds))
-				 (setq ds (div (mul ds -1 (add 1 (* 2 k))) z))
-				 (incf k))
-				(sub 2 (mul (ftake 'mexpt '$%e (mul -1 (ftake 'mexpt z 2))) s (div 1 (ftake 'mexpt '$%pi (div 1 2)))))) 
-		  (t (ftake '%erfc z)))))		
+    (cond
+      ;; z → +∞
+      ((eq '$inf lim)
+       (erfc-asymptotic-positive z n))
 
-(def-asymptotic-rewrite-handler %erfc-9999 (arg-list x pt n)
-	(let* ((z (car arg-list))
-	       (lim (limit-at z x pt)))
-	  (cond ((or (eq '$inf lim) (eq '$minf lim) (eq '$infinity lim))
-		    (let ((fn (gethash '%gamma_incomplete *asymptotic-rewrite-hash*)))
-			  (if fn 
-			  	(asymptotic-rewrite (div (ftake '%gamma_incomplete (div 1 2) (ftake 'mexpt z 2)) (ftake 'mexpt '$%pi (div 1 2))) x pt n)
-				(ftake '%erfc z))))
-		  (t (ftake '%erfc z)))))	
+      ;; z → −∞
+      ((eq '$minf lim)
+       ;; erfc(z) = 2 − erfc(−z)
+       (sub 2 (erfc-asymptotic-positive (neg z) n)))
+
+      ;; fallback
+      (t (ftake '%erfc z)))))
+
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-rewrite-hash*.
-
 (def-asymptotic-rewrite-handler %erf (z x pt n)
 	(let ((lim (limit-at (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
@@ -609,21 +614,43 @@ If no handler is registered for E, return NIL NIL."
 
 #|
 
-No unexpected errors found out of 14,876 tests.
-Tests that were expected to fail but passed:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
-    (25 28 39 86)
-Evaluation took:
-  57.277 seconds of real time
-  57.078125 seconds of total run time (51.953125 user, 5.125000 system)
-  [ Real times consist of 2.491 seconds GC time, and 54.786 seconds non-GC time. ]
-  [ Run times consist of 2.437 seconds GC time, and 54.642 seconds non-GC time. ]
-  99.65% CPU
-  11,141 forms interpreted
-  18,279 lambdas converted
-  114,336,471,059 processor cycles
-  32,098,174,256 bytes consed
+The test_limit_extra.mac problem:  (407) is not a real failure.
 
+Error(s) found:
+  rtest_limit_extra.mac problem:  (407)
+Tests that were expected to fail but passed:
+  rtest_limit_gruntz.mac problems:    (25 28 39 86)
+1 test failed out of 14,926 total tests.
+Evaluation took:
+  149.079 seconds of real time
+  138.0000000 seconds of total run time (123.406250 user, 14.593750 system)
+  [ Real times consist of 5.121 seconds GC time, and 143.958 seconds non-GC time. ]
+  [ Run times consist of 5.093 seconds GC time, and 132.907 seconds non-GC time. ]
+  92.57% CPU
+  11,177 forms interpreted
+  17,371 lambdas converted
+  297,592,058,060 processor cycles
+  32,711,205,744 bytes consed
+
+(%o0)                                done
+(%i1) missing();
+
+Missing operator summary:
+  %LOG : 12308
+  %SIN : 4293
+  %COS : 4159
+  %TAN : 2278
+  %COT : 463
+  %ATAN : 216
+  $CONJUGATE : 24
+  %ASINH : 24
+  %ATAN2 : 20
+  %SINC : 12
+  %ACOS : 10
+  %ASIN : 8
+  $CEILING : 8
+  $FLOOR : 8
+  %ATANH : 1
   
  |#
 	

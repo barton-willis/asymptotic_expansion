@@ -54,7 +54,6 @@
           (s 0 (add s ak)))
          ((>= k n) s)))))
 
-
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
 ;; expansion for the function with that key. Each function has
@@ -245,16 +244,6 @@ If no handler is registered for E, return NIL NIL."
     ;; it inserts sign information about Z into the current context.
     (asymptotic-assume z lim)
     (ftake 'mabs z)))
-
-(def-asymptotic-rewrite-handler mexpt (arg-list x pt n)
-	(declare (ignore n))
-	(let* ((a (first arg-list))
-	       (alim (limit a x pt 'think))
-	       (b (second arg-list))
-		   (blim (limit a x pt 'think)))
-		 (asymptotic-assume a alim)
-		 (asymptotic-assume b blim)
-		 (ftake 'mexpt a b)))
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
@@ -502,8 +491,8 @@ If no handler is registered for E, return NIL NIL."
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (def-asymptotic-rewrite-handler %bessel_j (e x pt n)
-	(let ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0))
-	    (cond ((eq '$inf (limit-at z x pt))
+	(let* ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0) (lim (limit-at z x pt)))
+	    (cond ((and (eq '$inf lim) (freeof x v))
 				(setq ω (add z (div (mul '$%pi v) -2) (div '$%pi -4)))
 				(setq a (sub (div 1 2) v))
 				(setq b (add (div 1 2) v))
@@ -522,31 +511,17 @@ If no handler is registered for E, return NIL NIL."
 		(mul 
 		   (ftake 'mexpt (div 2 (mul '$%pi x)) (div 1 2))
 		   (sub (mul cc (ftake '%cos ω)) (mul sc (ftake '%sin ω))))))
-		(t (ftake '%bessel_j v x)))))   
+
+	  ;; ------------------------------------------------------------
+      ;; z → −∞  (J_v(-z) = e^{iπv} J_v(z))
+      ;; ------------------------------------------------------------
+      ((and (eq '$minf lim) (freeof x v))
+       (let ((zp (neg z)))
+         (mul (ftake 'mexpt '$%e (mul '$%i '$%pi v))  (asymptotic-rewrite (ftake '%bessel_j v zp) x pt n))))
+
+		(t (ftake '%bessel_j v x)))))
 
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
-(def-asymptotic-rewrite-handler %bessel_kkk (e x pt n)
-	(let ((v (car e)) (z (cadr e)) (k 0) (a) (b) (cc 0))
-	    (setq n (max n 1))
-	    (cond ((eq '$inf (limit-at z x pt))
-		        (mtell "got it ~%")
-				(setq a (sub (div 1 2) v))
-				(setq b (add (div 1 2) v))
-				(labels ((fn (k a b) ; (1/2-v)_k (1/2+v)_k / ((-2)^k k!)
-				     (div
-		   	 		 	(mul (ftake '$pochhammer a k) 
-				 			 (ftake '$pochhammer b k))
-						(mul (ftake 'mexpt -2 k) 
-							 (ftake 'mfactorial k)))))	 
-		(while (< k n)
-			(setq cc (add cc (div (fn k a b) (ftake 'mexpt z k))))
-			(incf k))
-		(mul 
-		   (ftake 'mexpt (div '$%pi (mul 2 z)) (div 1 2)) ;sqrt(pi/(2z))
-		   (ftake 'mexpt '$%e (mul -1 z)) ;exp(-z)
-		   cc)))
-		(t (ftake '%bessel_k v x)))))   
-
 (def-asymptotic-rewrite-handler %bessel_k (e x pt n)
   (let* ((v (car e))
          (z (cadr e))
@@ -556,7 +531,7 @@ If no handler is registered for E, return NIL NIL."
       ;; ------------------------------------------------------------
       ;; z → +∞ asymptotic expansion
       ;; ------------------------------------------------------------
-      ((eq '$inf lim)
+      ((and (eq '$inf lim) (freeof x v))
        (flet ((f (k)
                 ;; quotient a(k)/a(k-1):
                 ;; ((1/2 - v + k)(1/2 + v + k)) / (-2 (k+1) z)
@@ -580,7 +555,7 @@ If no handler is registered for E, return NIL NIL."
       ;; We do NOT duplicate the asymptotic series.
       ;; We simply rewrite and recurse.
       ;; ------------------------------------------------------------
-      ((eq '$minf lim)
+      ((and (eq '$minf lim) (freeof x v))
        (let ((zp (neg z)))
          (sub
           (mul (ftake 'mexpt '$%e (mul '$%i '$%pi v))
@@ -700,6 +675,34 @@ If no handler is registered for E, return NIL NIL."
     (asymptotic-assume z lim)
     (ftake '%signum z)))
 
+;; Airy–Bessel identities (DLMF 9.6.1–9.6.2):
+;;   Ai(z) = (1/3)*sqrt(z) * [ J_{-1/3}( (2/3) z^(3/2) ) - J_{ 1/3}( (2/3) z^(3/2) ) ]
+;;   Bi(z) = sqrt(z/3)     * [ J_{-1/3}( (2/3) z^(3/2) ) + J_{ 1/3}( (2/3) z^(3/2) ) ]
+;;
+;; We rewrite Ai and Bi into Bessel J and delegate all asymptotics
+;; to the existing %bessel_j handler.
+
+(def-asymptotic-rewrite-handler %airy_ai (e x pt n)
+  (let* ((z (car e))
+         (zz (mul (div 2 3) (ftake 'mexpt z (div 3 2))))
+         (pref (mul (div 1 3) (ftake 'mexpt z (div 1 2))))
+         (jneg (ftake '%bessel_j (div -1 3) zz))
+         (jpos (ftake '%bessel_j (div  1 3) zz))
+         (expr (mul pref (sub jneg jpos))))
+    (asymptotic-rewrite expr x pt n)))
+
+
+(def-asymptotic-rewrite-handler %airy_bi (e x pt n)
+  (let* ((z (car e))
+         (zz (mul (div 2 3) (ftake 'mexpt z (div 3 2))))
+         (pref (ftake 'mexpt (div z 3) (div 1 2)))
+         (jneg (ftake '%bessel_j (div -1 3) zz))
+         (jpos (ftake '%bessel_j (div  1 3) zz))
+         (expr (mul pref (add jneg jpos))))
+    (asymptotic-rewrite expr x pt n)))
+
+
+
 #|
 
 The test_limit_extra.mac problem:  (407) is not a real failure.
@@ -740,5 +743,75 @@ Missing operator summary:
   $FLOOR : 8
   %ATANH : 1
   
+  Error(s) found:
+  rtest_limit_extra.mac problem:   (407)
+Tests that were expected to fail but passed:
+  rtest_limit_gruntz.mac problems:   (25 28 39 86)
+1 test failed out of 14,926 total tests.
+Evaluation took:
+  138.344 seconds of real time
+  135.109375 seconds of total run time (121.281250 user, 13.828125 system)
+  [ Real times consist of 4.805 seconds GC time, and 133.539 seconds non-GC time. ]
+  [ Run times consist of 4.953 seconds GC time, and 130.157 seconds non-GC time. ]
+  97.66% CPU
+  11,177 forms interpreted
+  17,371 lambdas converted
+  276,162,746,401 processor cycles
+  32,710,052,336 bytes consed
+
+(%o0)                                done
+(%i1) missing();
+
+Missing operator summary:
+  %LOG : 12308
+  %SIN : 4293
+  %COS : 4159
+  %TAN : 2278
+  %COT : 463
+  %ATAN : 216
+  $CONJUGATE : 24
+  %ASINH : 24
+  %ATAN2 : 20
+  %SINC : 12
+  %ACOS : 10
+  %ASIN : 8
+  $CEILING : 8
+  $FLOOR : 8
+  %ATANH : 1
+
+  No unexpected errors found out of 19,934 tests.
+Tests that were expected to fail but passed:
+  rtest_limit_gruntz.mac problems:  (25 28 39 86)
+Evaluation took:
+  209.512 seconds of real time
+  203.437500 seconds of total run time (184.437500 user, 19.0000000 system)
+  [ Real times consist of 9.388 seconds GC time, and 200.124 seconds non-GC time. ]
+  [ Run times consist of 9.765 seconds GC time, and 193.673 seconds non-GC time. ]
+  97.10% CPU
+  372,551 forms interpreted
+  695,484 lambdas converted
+  418,228,078,615 processor cycles
+  97,904,686,720 bytes consed
+
+(%o0)                                done
+(%i1) missing();
+
+Missing operator summary:
+  MEXPT : 23801
+  %LOG : 12073
+  %SIN : 4199
+  %COS : 4056
+  %TAN : 2269
+  %COT : 463
+  %ATAN : 215
+  $CONJUGATE : 24
+  %ASINH : 24
+  %ATAN2 : 20
+  %SINC : 12
+  %ACOS : 10
+  %ASIN : 8
+  $CEILING : 8
+  $FLOOR : 8
+  %ATANH : 1
  |#
 	

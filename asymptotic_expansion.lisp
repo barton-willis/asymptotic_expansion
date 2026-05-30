@@ -48,13 +48,12 @@
 ;; is used by some (not all) asymptotic rewrite functions.
 (defun sum-by-quotient (a0 f n)
   "Return a(0) + ... + a(n-1), where a(k) = a(k-1) * f(k)."
-  (cond
-    ((<= n 0) 0)
-    (t
-     (do ((k 0 (1+ k))
-          (ak a0 (mul ak (funcall f k)))
-          (s 0 (add s ak)))
-         ((>= k n) s)))))
+   (let ((sum 0) (k 0) (ds a0))
+     (while (< k n)
+        (setq sum (add sum ds))
+        (incf k)
+        (setq ds (mul ds (funcall f k))))
+    sum))
 
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
@@ -209,50 +208,39 @@ If no handler is registered for E, return NIL NIL."
 			   (fapply 'mplus e)))
           (t ans))))
 
-;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
-(def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
-    (let* ((e (car ee)) (lim (limit-at e x pt)))
-	(cond ((eq '$inf lim)
-		(let ((s 0) (ds) (k 0))
-		  ;;(exp(e)/e) sum(k!/e^k,k,0,max(n,1)). We must have at least one term--thus the max(n,1)
-		  (while (< k (max n 1))
-		    (setq ds (div (ftake 'mfactorial k) (ftake 'mexpt e k)))
-	 	 	(setq s (add s ds))
-			(incf k))
-	  	(mul s (div (ftake 'mexpt '$%e e) e))))
+(def-asymptotic-rewrite-handler %expintegral_ei (arg-list x pt n)
+  (let* ((z (car arg-list))
+         (lim (limit-at z x pt)))
+    (cond
+      ((eq '$inf lim)
+       ;; (exp(z)/z) * sum(k!/z^k, k, 0, max(n,1)), see http://dlmf.nist.gov/6.12.E2
+       (mul (div (ftake 'mexpt '$%e z) z)
+            (sum-by-quotient 1  #'(lambda (k) (div k z)) (max n 1))))
 
-		;; see http://dlmf.nist.gov/6.6.E1
-		((zerop2 lim)
-		  (let ((acc (add '$%gamma (ftake '%log e))) (k 0))
-		    ;; %gamma + log(e) + sum(e^k / (k * k!),k,1,n). Again, I know that this code
-			;; is a bit inefficient.
-		  	(while (< k n)
-			    (incf k 1)
-				(setq acc (add acc (div (ftake 'mexpt e k) (mul k (ftake 'mfactorial k))))))
-			acc))
-	(t (ftake '%expintegral_ei e)))))
-	  
-;; See https://dlmf.nist.gov/6.12.
-(def-asymptotic-rewrite-handler %expintegral_e1 (e x pt n)
-	(let ((s 0) (ds) (k 0))
-	  (setq e (first e))
-	  (cond ((eq '$inf (limit-at e x pt))
-	 	     ;;(exp(-e)/ e) sum((-1)^k k!/e^k,k,0,n-1). I know: this is inefficient.
-		     (while (< k (max n 1))
-	 	       (setq ds (div (mul (ftake 'mexpt -1 k) (ftake 'mfactorial k)) (ftake 'mexpt e k)))
-	  	   	   (setq s (add s ds))
-			   (incf k))
-	 	      (mul s (div (ftake 'mexpt '$%e (neg e)) e)))
-		   (t (ftake '%expintegral_e1 e)))))
+      ((and (zerop2 lim))
+       ;; %gamma + log(z) + sum(x^k/(k (k+1)), k, 1, n); see http://dlmf.nist.gov/6.6.E1
+       (add '$%gamma
+            (ftake '%log z) (sum-by-quotient z #'(lambda (k) (div (mul k z) (ftake 'mexpt (add 1 k) 2))) (max n 1))))
 
-;; E[p](x) = z^(p-1) * gamma_incomplete(1-p,x); see http://dlmf.nist.gov/8.19.E1 
+      ;; no known expansion, so return %expintegral_ei noun form
+      (t (ftake '%expintegral_ei z)))))
+
+     
+
+;; E1(z) = gamma_incomplete(0,z); see http://dlmf.nist.gov/8.4.E4 
+(def-asymptotic-rewrite-handler %expintegral_e1 (arg-list x pt n)
+  (let ((z (car arg-list))
+        ($expintrep '$gamma_incomplete))
+    (asymptotic-rewrite (ftake '%gamma_incomplete 0 z) x pt n)))
+
+;; E[p](z) = z^(p-1) * gamma_incomplete(1-p,z); see http://dlmf.nist.gov/8.19.E1 
 (def-asymptotic-rewrite-handler %expintegral_e (e x pt n)
 	(let* ((p (car e))
-	       (arg (cadr e))
-		   ($expintrep '$gamma_incomplete)
-		   (alt (mul (ftake 'mexpt arg (sub p 1))
-		            (ftake '%gamma_incomplete (sub 1 p) arg))))
+	       (z (cadr e))
+		     ($expintrep '$gamma_incomplete)
+		     (alt (mul (ftake 'mexpt z (sub p 1)) (ftake '%gamma_incomplete (sub 1 p) z))))
 		   (asymptotic-rewrite alt x pt n)))
+
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (def-asymptotic-rewrite-handler %gamma (e x pt n)

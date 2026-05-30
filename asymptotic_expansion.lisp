@@ -218,22 +218,20 @@ If no handler is registered for E, return NIL NIL."
             (sum-by-quotient 1  #'(lambda (k) (div k z)) (max n 1))))
 
       ((and (zerop2 lim))
-       ;; %gamma + log(z) + sum(x^k/(k (k+1)), k, 1, n); see http://dlmf.nist.gov/6.6.E1
+       ;; %gamma + log(z) + sum(x^k/(k (k+1)), k, 1, (max(n,1))); see http://dlmf.nist.gov/6.6.E1
        (add '$%gamma
             (ftake '%log z) (sum-by-quotient z #'(lambda (k) (div (mul k z) (ftake 'mexpt (add 1 k) 2))) (max n 1))))
 
       ;; no known expansion, so return %expintegral_ei noun form
       (t (ftake '%expintegral_ei z)))))
 
-     
-
-;; E1(z) = gamma_incomplete(0,z); see http://dlmf.nist.gov/8.4.E4 
+;; expinegral_e1(x) = -expintegral_ei(-z)  http://dlmf.nist.gov/6.2.E6  
 (def-asymptotic-rewrite-handler %expintegral_e1 (arg-list x pt n)
-  (let ((z (car arg-list))
-        ($expintrep '$gamma_incomplete))
-    (asymptotic-rewrite (ftake '%gamma_incomplete 0 z) x pt n)))
+  (let* ((z (car arg-list))
+         ($expintrep '$expintegral_ei))
+    (asymptotic-rewrite (mul -1 (ftake '%expintegral_ei (mul -1 z))) x pt n)))
 
-;; E[p](z) = z^(p-1) * gamma_incomplete(1-p,z); see http://dlmf.nist.gov/8.19.E1 
+;; %expintegral_e(p,z) = z^(p-1) * gamma_incomplete(1-p,z); see http://dlmf.nist.gov/8.19.E1 
 (def-asymptotic-rewrite-handler %expintegral_e (e x pt n)
 	(let* ((p (car e))
 	       (z (cadr e))

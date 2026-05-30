@@ -33,7 +33,7 @@
 (in-package :maxima)
 
 ;; What special variables did I miss?
-(declare-top (special preserve-direction *large-positive-number* var val lhp?))
+(declare-top (special *preserve-direction* *large-positive-number* var val lhp?))
 
 (defun limit-at (arg x pt)
 "Normalize directional limit points and call $limit. PT may be an ordinary limit point or one of 
@@ -79,23 +79,7 @@
 ;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
 (defmfun $asymptotic_rewrite (e x pt n)
     (let ((LHP? nil)) ;not sure about this.
-	  (asymptotic-rewrite-top e x pt n)))
-
-(defun asymptotic-assume (e lim)
-  "Given an expression E and its limit LIM, assert the 
-   appropriate asymptotic inequality for E in the current context."
-  (cond
-    ;; E → +∞  ⇒  E > *large-positive-number*
-    ((eq lim '$inf)
-     (assume (ftake 'mgreaterp e *large-positive-number*)))
-
-    ;; E → -∞  ⇒  E < - *large-positive-number*
-    ((eq lim '$minf)
-     (assume (ftake 'mlessp e (neg *large-positive-number*))))
-
-    ;; Unknown ⇒  no assumption
-    (t nil)))
-
+	  (asymptotic-rewrite e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
@@ -148,13 +132,6 @@ If no handler is registered for E, return NIL NIL."
     (t
      (values nil nil))))
 
-(defun asymptotic-rewrite-top (e x pt n)
-	(let ((cntx ($supcontext)))
-	    ($activate cntx)
-		(unwind-protect
-		   (asymptotic-rewrite e x pt n)
-		   ($killcontext cntx))))
-
 (defparameter *missing-ops*
   (make-hash-table :test #'eq)
   "Hashtable mapping missing operator symbols to occurrence counts.")
@@ -204,8 +181,8 @@ If no handler is registered for E, return NIL NIL."
            (asymptotic-rewrite-dispatch e)
 
          ;; Track missing handlers
-		 (when (null fn)
-          (incf (gethash op *missing-ops* 0)))
+		 (when fn
+          (incf (gethash fn *missing-ops* 0)))
 
          ;; Rewrite arguments
          (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) handler-args)))
@@ -235,15 +212,6 @@ If no handler is registered for E, return NIL NIL."
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
 			   (fapply 'mplus e)))
           (t ans))))
-
-(def-asymptotic-rewrite-handler mabs (arg-list x pt n)
-  (declare (ignore n))
-  (let* ((z   (car arg-list))
-         (lim (limit-at z x pt)))
-	;; asymptotic-assume is called *only* for its side-effect:
-    ;; it inserts sign information about Z into the current context.
-    (asymptotic-assume z lim)
-    (ftake 'mabs z)))
 
 ;; See https://dlmf.nist.gov/6.12.  Let's triple check for a Ei vs E1 flub.
 (def-asymptotic-rewrite-handler %expintegral_ei (ee x pt n)
@@ -297,7 +265,6 @@ If no handler is registered for E, return NIL NIL."
 	       (ds) (k 1)
 		   (arg (car e))
 		   (lim (limit-at arg x pt)))
-		(asymptotic-assume arg lim)
 		(when (eql lim 0)
 			(setq lim (zero-fixup arg x pt)))
 		;; Need to check if this is OK for infinity & minf
@@ -614,7 +581,7 @@ If no handler is registered for E, return NIL NIL."
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.
 (defun stirling0 (e)
   (let (($numer nil) ($float nil) (*asymptotic-max-order* 64))
-   (asymptotic-rewrite-top e var val 0)))
+   (asymptotic-rewrite e var val 0)))
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
   (let* ((s (car e)) (lim (limit-at s x pt)))
@@ -666,15 +633,6 @@ If no handler is registered for E, return NIL NIL."
 
       (t (ftake '%zeta s)))))
 
-(def-asymptotic-rewrite-handler %signum (arg-list x pt n)
-  (declare (ignore n))
-  (let* ((z   (car arg-list))
-         (lim (limit-at z x pt)))
-    ;; asymptotic-assume is called only for its side-effect:
-    ;; it inserts sign information about Z into the current context.
-    (asymptotic-assume z lim)
-    (ftake '%signum z)))
-
 ;; Airy–Bessel identities (DLMF 9.6.1–9.6.2):
 ;;   Ai(z) = (1/3)*sqrt(z) * [ J_{-1/3}( (2/3) z^(3/2) ) - J_{ 1/3}( (2/3) z^(3/2) ) ]
 ;;   Bi(z) = sqrt(z/3)     * [ J_{-1/3}( (2/3) z^(3/2) ) + J_{ 1/3}( (2/3) z^(3/2) ) ]
@@ -691,7 +649,6 @@ If no handler is registered for E, return NIL NIL."
          (expr (mul pref (sub jneg jpos))))
     (asymptotic-rewrite expr x pt n)))
 
-
 (def-asymptotic-rewrite-handler %airy_bi (e x pt n)
   (let* ((z (car e))
          (zz (mul (div 2 3) (ftake 'mexpt z (div 3 2))))
@@ -700,8 +657,6 @@ If no handler is registered for E, return NIL NIL."
          (jpos (ftake '%bessel_j (div  1 3) zz))
          (expr (mul pref (add jneg jpos))))
     (asymptotic-rewrite expr x pt n)))
-
-
 
 #|
 

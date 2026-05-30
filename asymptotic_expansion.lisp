@@ -750,5 +750,35 @@ Missing operator summary:
   $CEILING : 8
   $FLOOR : 8
   %ATANH : 1
+
+No unexpected errors found out of 14,947 tests.
+Tests that were expected to fail but passed:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
+    (25 28 39 86)
+Evaluation took:
+  52.994 seconds of real time
+  52.781250 seconds of total run time (48.296875 user, 4.484375 system)
+  [ Real times consist of 2.309 seconds GC time, and 50.685 seconds non-GC time. ]
+  [ Run times consist of 2.343 seconds GC time, and 50.439 seconds non-GC time. ]
+  99.60% CPU
+  11,177 forms interpreted
+  17,371 lambdas converted
+  105,787,082,420 processor cycles
+  32,464,256,720 bytes consed
+
+(%o0)                                done
+(%i1) missing();
+
+(this is acutally used, not missing!)
+Missing operator summary:
+  MFACTORIAL-ASYMPTOTIC : 464
+  PSI-ASYMPTOTIC-REWRITE : 214
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
+  %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
+  %ERF-ASYMPTOTIC : 49
+  %ZETA-ASYMPTOTIC : 25
+  %EXPINTEGRAL_EI-ASYMPTOTIC : 24
+  %BESSEL_J-ASYMPTOTIC : 1
+  %BESSEL_K-ASYMPTOTIC : 1
  |#
 	

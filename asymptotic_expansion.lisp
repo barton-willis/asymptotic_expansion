@@ -44,6 +44,8 @@
 
 (defmvar *asymptotic-max-order* 16)
 
+;; Utility function for finding sums when the quotient of consecutive terms has a simple form. This function
+;; is used by some (not all) asymptotic rewrite functions.
 (defun sum-by-quotient (a0 f n)
   "Return a(0) + ... + a(n-1), where a(k) = a(k-1) * f(k)."
   (cond
@@ -79,7 +81,7 @@
 ;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
 (defmfun $asymptotic_rewrite (e x pt n)
     (let ((LHP? nil)) ;not sure about this.
-	  (asymptotic-rewrite e x pt n)))
+	    (asymptotic-rewrite e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
@@ -191,12 +193,6 @@ If no handler is registered for E, return NIL NIL."
                (apply fn (list rew-args x pt n))
                ;; No handler → rebuild expression with rewritten args
                (fapply op rew-args))))))))
-
-;; Same as default, but for future enhancement, let's have an explicit handler for mtimes.
-(def-asymptotic-rewrite-handler mtimes (arg-list x pt n)
-  (declare (ignore x pt n))
-  ;; arg-list is already rewritten by the dispatcher
-  (fapply 'mtimes arg-list))
 
 ;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
 ;; the sum vanishes, increase the order and try again. When the order n 

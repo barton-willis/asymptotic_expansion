@@ -55,6 +55,16 @@
         (setq ds (mul ds (funcall f k))))
     sum))
 
+;; Utility function for computing a simple finite sum.
+;; Returns f(0) + f(1) + ... + f(n-1).
+(defun sum-by-function (f n)
+  "Return sum(f(k), k, 0, n-1)."
+  (let ((sum 0))
+    (dotimes (k n sum)
+      (setq sum (add sum (funcall f k))))))
+
+
+
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
 ;; expansion for the function with that key. Each function has
@@ -394,6 +404,21 @@ If no handler is registered for E, return NIL NIL."
       ;; fallback
       (t (ftake '%erfc z)))))
 
+;; For the series, see http://dlmf.nist.gov/8.4.
+;; This sum doesn't fit into the sum-by-quotient pattern all that well, so we'll use an explicit formula for
+;; the summand.
+(defun gamma-incomplete-series-at-zero (p z n)
+    (setq n (max n 1))
+    (let ((sum (sum-by-function #'(lambda (k)  (if (eql (add k p) 0)
+                                                       0
+                                                      (div (ftake 'mexpt (neg z) k) (mul (ftake 'mfactorial k) (add k p))))) (max n 1))))
+					(sub (mul
+					       (div (ftake 'mexpt -1 (neg p)) (ftake 'mfactorial (neg p)))
+					       (sub 
+					         (resimplify (subfunmake '$psi (list 0) (list (sub 1 p))))
+						       (ftake '%log z)))
+						   (mul (ftake 'mexpt z p) sum))))
+
 ;; See http://dlmf.nist.gov/7.2.i. Don't directly call erfc-asymptotic, instead
 ;; look up the function in *asymptotic-rewrite-hash*.
 (def-asymptotic-rewrite-handler %erf (z x pt n)
@@ -405,38 +430,26 @@ If no handler is registered for E, return NIL NIL."
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
 ;; See http://dlmf.nist.gov/8.11.i
-(def-asymptotic-rewrite-handler %gamma_incomplete (e x pt n)
-	(let* ((aaa (first e)) (z (second e)) (xxx (limit-at (ftake 'mabs z) x pt))
+(def-asymptotic-rewrite-handler %gamma_incomplete (arg-list x pt n)
+	(let* ((p (first arg-list))
+         (z (second arg-list)) 
+         (lim (limit-at (ftake 'mabs z) x pt))
 	       ($radexpand nil))
-	    (setq n (max 1 n))
-		(cond 
-          ;; Case 1: Asymptotic expansion when z -> +/- inf and aaa is free of x
+
+    (cond 
+          ;; Case 1: Asymptotic expansion when z -> +/- inf and p is free of x
           ;; For the series, see http://dlmf.nist.gov/8.11.i
-		  ((and (or (eq '$inf xxx)) (freeof x aaa)) ;;not sure about minf & infinity?
-		         (let ((f 1) (s 0))
-		           (dotimes (k n)
-				      (setq s (add s f))
-                      (setq f (mul f (div (add aaa -1 (- k)) z))))
-				 ;; return z^(a-1)*exp(-z)*s
-				 (mul (ftake 'mexpt z (sub aaa 1)) (ftake 'mexpt '$%e (mul -1 z)) s)))
-           ;; Case 2: Asymptotic expansion when z -> 0, aaa integer, and aaa <= 0
+		  ((and (eq '$inf lim) (freeof x p)) ;;not sure about minf & infinity?
+          (mul (ftake 'mexpt z (sub p 1))
+               (ftake 'mexpt '$%e (mul -1 z))
+               (sum-by-quotient 1 #'(lambda (k) (div (sub p k) z)) (max n 1))))
+
+       ;; Case 2: Asymptotic expansion when z -> 0, p integer, and p <= 0
 		   ;; For the series, see http://dlmf.nist.gov/8.4.E15
-		   ((and (zerop2 xxx) (integerp aaa) (>= 0 aaa))
-		      (let ((s 0))
-		      (flet ((fn (k) (if (eql (add k aaa) 0) 
-			                        0 
-									(div (power (neg z) k) (mul (ftake 'mfactorial k) (add k aaa))))))
-					(dotimes (k n)
-						(setq s (add s (fn k))))
-					
-					(sub (mul
-					       (div (ftake 'mexpt -1 (neg aaa)) (ftake 'mfactorial (neg aaa)))
-					       (sub 
-					         (simplifya (subfunmake '$psi (list 0) (list (add (neg aaa) 1))) nil)
-						     (ftake '%log z)))
-						 (mul (ftake 'mexpt z (neg aaa)) s)))))
-	       ;; Case 3: fall back			
-           (t (ftake '%gamma_incomplete aaa z)))))
+		   ((and (zerop2 lim) (integerp p) (>= 0 p))
+		      (gamma-incomplete-series-at-zero p z n))
+	     ;; Case 3: fall back			
+       (t (ftake '%gamma_incomplete p z)))))
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (def-asymptotic-rewrite-handler %bessel_j (e x pt n)
@@ -770,6 +783,34 @@ Evaluation took:
 (%i1) missing();
 
 (this is acutally used, not missing!)
+Missing operator summary:
+  MFACTORIAL-ASYMPTOTIC : 464
+  PSI-ASYMPTOTIC-REWRITE : 214
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
+  %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
+  %ERF-ASYMPTOTIC : 49
+  %ZETA-ASYMPTOTIC : 25
+  %EXPINTEGRAL_EI-ASYMPTOTIC : 24
+  %BESSEL_J-ASYMPTOTIC : 1
+  %BESSEL_K-ASYMPTOTIC : 
+  
+  Tests that were expected to fail but passed:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
+    (25 28 39 86)
+Evaluation took:
+  62.370 seconds of real time
+  60.796875 seconds of total run time (55.406250 user, 5.390625 system)
+  [ Real times consist of 2.517 seconds GC time, and 59.853 seconds non-GC time. ]
+  [ Run times consist of 2.406 seconds GC time, and 58.391 seconds non-GC time. ]
+  97.48% CPU
+  11,177 forms interpreted
+  17,371 lambdas converted
+  124,503,170,090 processor cycles
+  32,464,039,872 bytes consed
+
+(%o0)                                done
+(%i1) missing();  (actually used)
+
 Missing operator summary:
   MFACTORIAL-ASYMPTOTIC : 464
   PSI-ASYMPTOTIC-REWRITE : 214

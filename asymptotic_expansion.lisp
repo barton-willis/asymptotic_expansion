@@ -820,6 +820,36 @@ Missing operator summary:
   %ZETA-ASYMPTOTIC : 25
   %EXPINTEGRAL_EI-ASYMPTOTIC : 24
   %BESSEL_J-ASYMPTOTIC : 1
+  %BESSEL_K-ASYMPTOTIC : 
+  
+  ---------
+  No unexpected errors found out of 19,955 tests.
+Tests that were expected to fail but passed:
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
+    (25 28 39 86)
+Evaluation took:
+  221.525 seconds of real time
+  213.968750 seconds of total run time (193.703125 user, 20.265625 system)
+  [ Real times consist of 10.218 seconds GC time, and 211.307 seconds non-GC time. ]
+  [ Run times consist of 10.359 seconds GC time, and 203.610 seconds non-GC time. ]
+  96.59% CPU
+  372,551 forms interpreted
+  695,484 lambdas converted
+  442,207,462,063 processor cycles
+  98,245,331,264 bytes consed
+
+(%o0)                                done
+(%i1) missing();
+
+Missing operator summary:
+  MFACTORIAL-ASYMPTOTIC : 464
+  PSI-ASYMPTOTIC-REWRITE : 214
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 195
+  %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
+  %ERF-ASYMPTOTIC : 49
+  %ZETA-ASYMPTOTIC : 25
+  %EXPINTEGRAL_EI-ASYMPTOTIC : 24
+  %BESSEL_J-ASYMPTOTIC : 1
   %BESSEL_K-ASYMPTOTIC : 1
  |#
 	

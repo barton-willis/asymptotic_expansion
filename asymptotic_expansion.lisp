@@ -63,8 +63,6 @@
     (dotimes (k n sum)
       (setq sum (add sum (funcall f k))))))
 
-
-
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
 ;; expansion for the function with that key. Each function has
@@ -147,7 +145,7 @@ If no handler is registered for E, return NIL NIL."
   (make-hash-table :test #'eq)
   "Hashtable mapping missing operator symbols to occurrence counts.")
 
-  (defmfun $missing ()
+  (defmfun $used ()
   "Print missing operator counts sorted by descending frequency."
   (let (accum)
     ;; Collect entries
@@ -159,7 +157,7 @@ If no handler is registered for E, return NIL NIL."
     (setf accum (sort accum #'> :key #'cdr))
 
     ;; Print results
-    (format t "~%Missing operator summary:~%")
+    (format t "~%Used operator summary:~%")
     (dolist (entry accum)
       (format t "  ~A : ~D~%" (car entry) (cdr entry)))))
 
@@ -655,193 +653,25 @@ If no handler is registered for E, return NIL NIL."
 
 #|
 
-The test_limit_extra.mac problem:  (407) is not a real failure.
 
-Error(s) found:
-  rtest_limit_extra.mac problem:  (407)
 Tests that were expected to fail but passed:
-  rtest_limit_gruntz.mac problems:    (25 28 39 86)
-1 test failed out of 14,926 total tests.
+  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
+    (25 28 39 86)
 Evaluation took:
-  149.079 seconds of real time
-  138.0000000 seconds of total run time (123.406250 user, 14.593750 system)
-  [ Real times consist of 5.121 seconds GC time, and 143.958 seconds non-GC time. ]
-  [ Run times consist of 5.093 seconds GC time, and 132.907 seconds non-GC time. ]
-  92.57% CPU
-  11,177 forms interpreted
-  17,371 lambdas converted
-  297,592,058,060 processor cycles
-  32,711,205,744 bytes consed
-
-(%o0)                                done
-(%i1) missing();
-
-Missing operator summary:
-  %LOG : 12308
-  %SIN : 4293
-  %COS : 4159
-  %TAN : 2278
-  %COT : 463
-  %ATAN : 216
-  $CONJUGATE : 24
-  %ASINH : 24
-  %ATAN2 : 20
-  %SINC : 12
-  %ACOS : 10
-  %ASIN : 8
-  $CEILING : 8
-  $FLOOR : 8
-  %ATANH : 1
-  
-  Error(s) found:
-  rtest_limit_extra.mac problem:   (407)
-Tests that were expected to fail but passed:
-  rtest_limit_gruntz.mac problems:   (25 28 39 86)
-1 test failed out of 14,926 total tests.
-Evaluation took:
-  138.344 seconds of real time
-  135.109375 seconds of total run time (121.281250 user, 13.828125 system)
-  [ Real times consist of 4.805 seconds GC time, and 133.539 seconds non-GC time. ]
-  [ Run times consist of 4.953 seconds GC time, and 130.157 seconds non-GC time. ]
-  97.66% CPU
-  11,177 forms interpreted
-  17,371 lambdas converted
-  276,162,746,401 processor cycles
-  32,710,052,336 bytes consed
-
-(%o0)                                done
-(%i1) missing();
-
-Missing operator summary:
-  %LOG : 12308
-  %SIN : 4293
-  %COS : 4159
-  %TAN : 2278
-  %COT : 463
-  %ATAN : 216
-  $CONJUGATE : 24
-  %ASINH : 24
-  %ATAN2 : 20
-  %SINC : 12
-  %ACOS : 10
-  %ASIN : 8
-  $CEILING : 8
-  $FLOOR : 8
-  %ATANH : 1
-
-  No unexpected errors found out of 19,934 tests.
-Tests that were expected to fail but passed:
-  rtest_limit_gruntz.mac problems:  (25 28 39 86)
-Evaluation took:
-  209.512 seconds of real time
-  203.437500 seconds of total run time (184.437500 user, 19.0000000 system)
-  [ Real times consist of 9.388 seconds GC time, and 200.124 seconds non-GC time. ]
-  [ Run times consist of 9.765 seconds GC time, and 193.673 seconds non-GC time. ]
-  97.10% CPU
+  450.834 seconds of real time
+  443.406250 seconds of total run time (402.906250 user, 40.500000 system)
+  [ Real times consist of 17.496 seconds GC time, and 433.338 seconds non-GC time. ]
+  [ Run times consist of 17.906 seconds GC time, and 425.501 seconds non-GC time. ]
+  98.35% CPU
   372,551 forms interpreted
   695,484 lambdas converted
-  418,228,078,615 processor cycles
-  97,904,686,720 bytes consed
+  899,954,206,137 processor cycles
+  98,243,020,576 bytes consed
 
 (%o0)                                done
-(%i1) missing();
+(%i1) used();
 
-Missing operator summary:
-  MEXPT : 23801
-  %LOG : 12073
-  %SIN : 4199
-  %COS : 4056
-  %TAN : 2269
-  %COT : 463
-  %ATAN : 215
-  $CONJUGATE : 24
-  %ASINH : 24
-  %ATAN2 : 20
-  %SINC : 12
-  %ACOS : 10
-  %ASIN : 8
-  $CEILING : 8
-  $FLOOR : 8
-  %ATANH : 1
-
-No unexpected errors found out of 14,947 tests.
-Tests that were expected to fail but passed:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
-    (25 28 39 86)
-Evaluation took:
-  52.994 seconds of real time
-  52.781250 seconds of total run time (48.296875 user, 4.484375 system)
-  [ Real times consist of 2.309 seconds GC time, and 50.685 seconds non-GC time. ]
-  [ Run times consist of 2.343 seconds GC time, and 50.439 seconds non-GC time. ]
-  99.60% CPU
-  11,177 forms interpreted
-  17,371 lambdas converted
-  105,787,082,420 processor cycles
-  32,464,256,720 bytes consed
-
-(%o0)                                done
-(%i1) missing();
-
-(this is acutally used, not missing!)
-Missing operator summary:
-  MFACTORIAL-ASYMPTOTIC : 464
-  PSI-ASYMPTOTIC-REWRITE : 214
-  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
-  %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
-  %ERF-ASYMPTOTIC : 49
-  %ZETA-ASYMPTOTIC : 25
-  %EXPINTEGRAL_EI-ASYMPTOTIC : 24
-  %BESSEL_J-ASYMPTOTIC : 1
-  %BESSEL_K-ASYMPTOTIC : 
-  
-  Tests that were expected to fail but passed:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
-    (25 28 39 86)
-Evaluation took:
-  62.370 seconds of real time
-  60.796875 seconds of total run time (55.406250 user, 5.390625 system)
-  [ Real times consist of 2.517 seconds GC time, and 59.853 seconds non-GC time. ]
-  [ Run times consist of 2.406 seconds GC time, and 58.391 seconds non-GC time. ]
-  97.48% CPU
-  11,177 forms interpreted
-  17,371 lambdas converted
-  124,503,170,090 processor cycles
-  32,464,039,872 bytes consed
-
-(%o0)                                done
-(%i1) missing();  (actually used)
-
-Missing operator summary:
-  MFACTORIAL-ASYMPTOTIC : 464
-  PSI-ASYMPTOTIC-REWRITE : 214
-  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
-  %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
-  %ERF-ASYMPTOTIC : 49
-  %ZETA-ASYMPTOTIC : 25
-  %EXPINTEGRAL_EI-ASYMPTOTIC : 24
-  %BESSEL_J-ASYMPTOTIC : 1
-  %BESSEL_K-ASYMPTOTIC : 
-  
-  ---------
-  No unexpected errors found out of 19,955 tests.
-Tests that were expected to fail but passed:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
-    (25 28 39 86)
-Evaluation took:
-  221.525 seconds of real time
-  213.968750 seconds of total run time (193.703125 user, 20.265625 system)
-  [ Real times consist of 10.218 seconds GC time, and 211.307 seconds non-GC time. ]
-  [ Run times consist of 10.359 seconds GC time, and 203.610 seconds non-GC time. ]
-  96.59% CPU
-  372,551 forms interpreted
-  695,484 lambdas converted
-  442,207,462,063 processor cycles
-  98,245,331,264 bytes consed
-
-(%o0)                                done
-(%i1) missing();
-
-Missing operator summary:
+Used operator summary:
   MFACTORIAL-ASYMPTOTIC : 464
   PSI-ASYMPTOTIC-REWRITE : 214
   POLYLOGARITHM-ASYMPTOTIC-REWRITE : 195
@@ -851,5 +681,6 @@ Missing operator summary:
   %EXPINTEGRAL_EI-ASYMPTOTIC : 24
   %BESSEL_J-ASYMPTOTIC : 1
   %BESSEL_K-ASYMPTOTIC : 1
+
  |#
 	

@@ -213,7 +213,7 @@ If no handler is registered for E, return NIL NIL."
            ;; Try higher-order expansion; if that fails, return the sum of the list e.
            (if (< n *asymptotic-max-order*)
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
-			   (fapply 'mplus e)))
+			         (fapply 'mplus e)))
           (t ans))))
 
 (def-asymptotic-rewrite-handler %expintegral_ei (arg-list x pt n)
@@ -249,7 +249,9 @@ If no handler is registered for E, return NIL NIL."
 
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
+(defvar *yep* 0)
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
+  (setq n (max 2 n))
 	(let* ((s 0) 
 	       ($zerobern t) ; We want bern(even integer) = 0
 	       (ds) (k 1)
@@ -258,7 +260,14 @@ If no handler is registered for E, return NIL NIL."
 		(when (eql lim 0)
 			(setq lim (zero-fixup arg x pt)))
 		;; Need to check if this is OK for infinity & minf
-	    (cond ((or (eq '$inf lim) (and (eq '$infinity lim) (off-negative-real-axisp arg))) ; not sure about minf?
+	    (cond 
+        ((eq '$minf lim)
+          (incf *yep* 1)
+          (asymptotic-rewrite (div '$%pi
+                                   (mul (ftake '%sin (mul '$%pi arg))
+                                        (ftake '%gamma (sub 1 arg)))) x pt n))
+      
+        ((or (eq '$inf lim) (and (eq '$infinity lim) (off-negative-real-axisp arg))) 
 			    (while (<= k n)
 			        (setq ds (div ($bern (mul 2 k))
 		                       (mul (* 2 k) (- (* 2 k) 1)
@@ -574,7 +583,7 @@ If no handler is registered for E, return NIL NIL."
 ;; name implies, so we will effectively rename it to asymptotic-rewrite.
 (defun stirling0 (e)
   (let (($numer nil) ($float nil) (*asymptotic-max-order* 64))
-   (asymptotic-rewrite e var val 0)))
+   (asymptotic-rewrite e var val 1)))
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
   (let* ((s (car e)) (lim (limit-at s x pt)))
@@ -653,34 +662,239 @@ If no handler is registered for E, return NIL NIL."
 
 #|
 
-
 Tests that were expected to fail but passed:
-  C:/Users/barto/maxima-code-pure/maxima-code/tests/rtest_limit_gruntz.mac problems:
-    (25 28 39 86)
+  rtest_limit_gruntz.mac problems:  (25 28 39 86)
+1 test failed out of 14,951 total tests.
 Evaluation took:
-  450.834 seconds of real time
-  443.406250 seconds of total run time (402.906250 user, 40.500000 system)
-  [ Real times consist of 17.496 seconds GC time, and 433.338 seconds non-GC time. ]
-  [ Run times consist of 17.906 seconds GC time, and 425.501 seconds non-GC time. ]
-  98.35% CPU
-  372,551 forms interpreted
-  695,484 lambdas converted
-  899,954,206,137 processor cycles
-  98,243,020,576 bytes consed
+  66.671 seconds of real time
+  66.234375 seconds of total run time (60.093750 user, 6.140625 system)
+  [ Real times consist of 2.792 seconds GC time, and 63.879 seconds non-GC time. ]
+  [ Run times consist of 2.984 seconds GC time, and 63.251 seconds non-GC time. ]
+  99.34% CPU
+  11,089 forms interpreted
+  17,371 lambdas converted
+  133,088,696,020 processor cycles
+  33,260,418,384 bytes consed
 
 (%o0)                                done
 (%i1) used();
 
 Used operator summary:
   MFACTORIAL-ASYMPTOTIC : 464
-  PSI-ASYMPTOTIC-REWRITE : 214
-  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 195
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
   %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
-  %ERF-ASYMPTOTIC : 49
-  %ZETA-ASYMPTOTIC : 25
-  %EXPINTEGRAL_EI-ASYMPTOTIC : 24
-  %BESSEL_J-ASYMPTOTIC : 1
+  PSI-ASYMPTOTIC-REWRITE : 50
+  %ERF-ASYMPTOTIC : 32
+  %EXPINTEGRAL_EI-ASYMPTOTIC : 23
+  %ZETA-ASYMPTOTIC : 13
+  %BESSEL_J-ASYMPTOTIC : 2
   %BESSEL_K-ASYMPTOTIC : 1
 
  |#
+
+  ;;; patches & changes for limit.lisp
+
+(defun limfact (n d)
+  (let ((lim (toplevel-$limit (asymptotic-rewrite (div n d) var val 0) var val)))
+    (if (successful-limit-result-p lim)
+	    lim
+		  (throw 'limit nil))))
+
+;;; Limit(log(XXX), var, 0, val), where val is either zerob (limit from below)
+;;; or zeroa (limit from above).
+(defun simplimln (expr var val)
+  (let ((arglim (let ((*preserve-direction* t)) (limit (cadr expr) var val 'think))) (dir))
+    ;; When arglim is 0, try using behavior to determine if the limit is zerob or zeroa.
+    (when (eql arglim 0)
+		(setq dir (behavior expr var val))
+		(cond ((eql dir -1) (setq arglim '$zerob))
+		      ((eql dir 1) (setq arglim '$zeroa))))
+    (cond 
+
+	  ((not (successful-limit-result-p arglim)) (throw 'limit nil))
+	  ((eq arglim '$inf) '$inf)     ;log(inf) = inf
+
+      ;;log(minf,infinity,zerob) = infinity
+	  ((member arglim '($minf $infinity $zerob))
+	   '$infinity)
+
+	  ((eq arglim '$zeroa) '$minf)  ;log(zeroa) = minf
+
+	  ;; Special case of arglim = 0
+	  ((eql arglim 0) '$infinity)
 	
+      ;; If expr doesn't vanish, log(ind) = ind; otherwise log(ind) = und.
+	  ((eq arglim '$ind)
+	      (if (eq t (mnqp (cadr expr) 0)) '$ind '$und))
+
+	  ;; This case should be caught by simplimit, but in case simplimln is called
+	  ;; from outside simplimit, we'll leave this case here for now 
+	  ((eq arglim '$und) 
+	    (throw 'limit nil))
+
+      ;; log(1^(-)) = zerob, log(1^(+)) = zeroa & log(1)=0
+	  ((eql (ridofab arglim) 1)
+	      ;; it can happen that arglim is 1 + zeroa, for example. For such cases,
+		  ;; we'll apply maybe-asksign; when that doesn't yield a sign, we'll use
+		  ;; dispatch behavior.
+		  (let ((sgn (maybe-asksign (sub arglim 1))))
+		   (cond ((eq sgn '$neg) '$zerob)
+		         ((eq sgn '$pos) '$zeroa)
+				 (t
+                   (setq dir (behavior (cadr expr) var val))
+		           (cond ((eql dir -1) '$zerob)
+		                 ((eql dir 1) '$zeroa)
+			             (t 0))))))
+
+	    (t
+	       (let* ((z (trisplit arglim)) (xx (car z))  (yy (cdr z)) (sgn))
+           ;; When yy vanishes, find the sign of xx. But when the sign is 'pnz', 
+		   ;; use asksign. We could use 'meqp' or 'askequal' to  test for a vanishing yy,
+		   ;; but for now, we'll test for a syntactic zero
+			(when (eql 0 yy)
+				(setq sgn (maybe-asksign xx))
+				(when (eq sgn '$pnz)
+		   	      (setq sgn (let ((*getsignl-asksign-ok* t)) (maybe-asksign xx)))))
+
+	        (cond 
+  		  	  ((and (eql 0 yy) (eq sgn '$neg)) ; arglim on the negative real axis
+			    ;; For arglim on the negative real axis, we need to examine the imaginary
+		  	    ;; part of 'expr' to see if the imaginary part of 'expr' vanishes, or if it
+			    ;; approaches zero from above or below.
+			   (let ((yy (cdr (trisplit (cadr expr)))))
+					 (setq dir (if (eq t (meqp yy 0)) 1 (behavior yy var val)))
+					 (if (eql dir 0) 
+					     (throw 'limit t)
+	                     (add (ftake '%log (mul -1 arglim)) (mul dir '$%i '$%pi)))))
+			  ((and (eql 0 yy) (eq sgn '$zero)) '$infinity)
+			  (t  (ftake '%log arglim))))))))
+(setf (get '%log 'simplim%function) 'simplimln)
+(setf (get '%plog 'simplim%function) 'simplimln)
+
+
+(defvar *gl* nil)
+(defun simplim%gamma (expr var val)
+  (let* ((*preserve-direction* t) 
+         (z (cadr expr))   
+         (lim (limit z var val 'think)))
+
+    (push (ftake 'mlist expr lim var val) *gl*)
+    
+    (cond ((eq lim '$zeroa) '$inf)
+          ((eq lim '$zerob) '$minf)
+          ((eql lim 0) '$infinity)
+          ((eq lim '$minf) '$und)
+          ((eq lim '$inf) '$inf)
+          ((eq lim '$und) (throw 'limit nil))
+          ((eq lim '$infinity) '$infinity)
+          ((eq lim '$ind)
+             (if (eq t (mgrp z 0))
+                  '$ind
+                  (throw 'limit nil)))
+          ((and (integerp lim) (<= lim 0))
+           (limit ($ratdisrep ($taylor expr var lim 0)) var val 'think))
+		  ((successful-limit-result-p lim) (ftake '%gamma lim))
+          (t  (throw 'limit nil)))))
+(setf (get '%gamma 'simplim%function) 'simplim%gamma)
+
+#| 
+;; AI written
+(defmacro define-renamed-with-nlexit (old-name new-name log-var)
+  "Rename OLD-NAME to NEW-NAME and wrap OLD-NAME so that any non-local
+exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
+  (let ((args (gensym "ARGS")))
+    `(progn
+       ;; Save the old definition under NEW-NAME
+       (setf (symbol-function ',new-name)
+             (symbol-function ',old-name))
+
+       ;; Define the wrapper under OLD-NAME
+       (setf (symbol-function ',old-name)
+             (lambda (&rest ,args)
+               (handler-case
+                   (apply #',new-name ,args)
+
+                 (condition (c)
+                   (push (ftake 'mlist :function  ',old-name
+                               :renamed   ',new-name
+                               ;; Maxima list of args: (mlist arg1 arg2 ...)
+                               :args      (cons (list 'mlist) ,args)
+                               :condition c
+                               :timestamp (get-universal-time))
+                         ,log-var)
+                   (signal c)))))
+
+       ',old-name)))
+
+
+(defvar *nonlocal-exit* nil)
+(define-renamed-with-nlexit radlim  old-radlim *nonlocal-exit*)
+
+(defmfun $nlexit ()
+  (fapply 'mlist *nonlocal-exit*))
+
+
+|#
+
+(defun extra-simp (e)
+  (declare (special var))
+   (let ((var-present (not (freeof var e))))
+   (cond ((extended-real-p e) e) ;we don't want to call sign on ind, so catch this
+		 (($mapatom e) ;if e is declared zero, return 0; otherwise e
+		     (if (eq '$zero ($csign e)) 0 e))
+         ;; dispatch radcan on (positive integer)^Y
+         ((and (mexptp e) (integerp (cadr e)) (> (cadr e) 0))
+		     ($radcan (ftake 'mexpt (cadr e) (extra-simp (caddr e)))))
+		 ;; log(negative number) --> log(-negative number) + %i*%pi. This is
+		 ;; needed for a nice result for integrate(x^3/(exp(x)-1),x,0,inf), for
+		 ;; example.
+		 ((and (eq '%log (caar e)) ($numberp (cadr e)) (eq t (mgrp 0 (cadr e))))
+		 	(add (ftake '%log (mul -1 (cadr e))) (mul '$%i '$%pi)))
+		 ;; When e isn't freeof var and e is a sum, map extra-simp over the
+		 ;; summands, add the results, and apply sin-sq-cos-sq-sub. 
+		 ((and var-present (mplusp e))
+		   (sin-sq-cos-sq-sub (fapply 'mplus (mapcar #'extra-simp (cdr e))) var))
+         ;; Convert gamma functions to factorials. Eventually, we should convert
+		 ;; factorials to gamma functions, I think (BW).
+		 ((and nil var-present (eq '%gamma (caar e)))
+		   (ftake 'mfactorial (extra-simp (sub (cadr e) 1))))
+         ;; Exponentialize the hyperbolic functions. It might be nicer to not do 
+		 ;; this, but without this we get an error for limit(diff(log(tan(%pi/2*tanh(x))),x),x,inf).
+		 ((and var-present (member (caar e) (list '%sinh '%cosh '%tanh '%sech '%csch '%coth)))
+		 	(extra-simp ($exponentialize e)))
+         ;; When X depends on var, apply reciprocal function identities such as
+		 ;; csc(X) --> 1/sin(X). Specifically, do this for operators '%sec, '%csc, 
+		 ;; '%cot, '%jacobi_nc, '%jacobi_ns, %jacobi_cs, %jacobi_ds, and %jacobi_dc. 
+		 ;; Since the hyperbolics are exponentialized, we don't do this for the 
+		 ;; hyperbolics.
+		 ((and var-present (member (caar e) 
+		    (list '%sec '%csc '%cot '%jacobi_nc '%jacobi_ns '%jacobi_cs '%jacobi_ds '%jacobi_dc)))
+		  (div 1 (fapply (get (caar e) 'recip) (mapcar #'extra-simp (cdr e)))))
+		 ;; When X or Y depends on var, convert binomial(X,Y) to factorial form.
+		 ;; Same for beta(x,y). Again, I think it would be better to convert to
+		 ;; gamma function form.
+		 ((and var-present (member (caar e) (list '%binomial '%beta)))
+		  (extra-simp ($makefact e)))
+         ;; When X depends on var, do acsc(X) --> asin(1/X). Do the same
+		 ;; for asec, acot, acsch, asech, and acoth.
+		 ((and var-present (member (caar e) '(%acsc %asec %acot %acsch %asech %acoth)))
+		  (ftake (get (get (get (caar e) '$inverse) 'recip) '$inverse) 
+		     (div 1 (extra-simp (cadr e)))))
+         ;; When X depends on var, convert fib(X) to its power form.
+		 ((and var-present (eq '$fib (caar e)))
+		  (extra-simp ($fibtophi e)))	
+		 ;; convert log_gamma(X) to log(gamma(X))
+		((and var-present (eq '%log_gamma (caar e)))
+		  (extra-simp (ftake '%log (ftake '%gamma (cadr e)))))
+        ;; convert expintegral_e to an incomplete gamma expression
+        ((and var-present (eq (caar e) '%expintegral_e))
+		  (let* ((p (extra-simp (cadr e)))
+				 (arg (extra-simp (caddr e))))
+				(mul (ftake 'mexpt arg (sub p 1))
+				     (ftake '%gamma_incomplete (sub 1 p) arg))))
+	     (($subvarp (mop e)) ;subscripted function
+		     (subfunmake 
+		      (subfunname e) 
+			  (mapcar #'extra-simp (subfunsubs e)) 
+			  (mapcar #'extra-simp (subfunargs e))))
+		 (t (fapply (caar e) (mapcar #'extra-simp (cdr e)))))))

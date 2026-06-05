@@ -251,7 +251,7 @@ If no handler is registered for E, return NIL NIL."
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (defvar *yep* 0)
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
-  (setq n (max 2 n))
+  ;;;(setq n (max 1 n))
 	(let* ((s 0) 
 	       ($zerobern t) ; We want bern(even integer) = 0
 	       (ds) (k 1)

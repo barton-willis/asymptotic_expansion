@@ -44,6 +44,27 @@
 
 (defmvar *asymptotic-max-order* 16)
 
+;; We provide three summation helpers, each serving a different purpose:
+;;
+;;   (1) sum-by-function:
+;;         Computes f(0) + f(1) + ... + f(n-1).
+;;         Used when the natural summation index begins at 0 and the
+;;         number of terms is known in advance.
+;;
+;;   (2) sum-by-function-range:
+;;         Computes f(k0) + f(k0+1) + ... + f(k1).
+;;         Used when the summation index has a natural lower bound
+;;         different from 0. Avoids manual index shifting.
+;;
+;;   (3) sum-by-quotient:
+;;         Computes a(0) + a(1) + ... + a(n-1) when consecutive terms
+;;         satisfy a(k) = a(k-1) * q(k).  Useful when the quotient q(k)
+;;         has a simple form, allowing efficient accumulation of terms
+;;         without recomputing each one from scratch.
+;;
+;; These helpers keep the asymptotic code readable by matching the
+;; structure of the mathematical formulas they implement.
+
 ;; Utility function for finding sums when the quotient of consecutive terms has a simple form. This function
 ;; is used by some (not all) asymptotic rewrite functions.
 (defun sum-by-quotient (a0 f n)
@@ -62,6 +83,16 @@
   (let ((sum 0))
     (dotimes (k n sum)
       (setq sum (add sum (funcall f k))))))
+
+;; Sum f(k) for k = k0 .. k1 inclusive.
+(defun sum-by-function-range (f k0 k1)
+  (let ((sum 0)
+        (k   k0))
+    (while (<= k k1)
+      (setq sum (add sum (funcall f k)))
+      (setq k (1+ k)))
+    sum))
+
 
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
@@ -141,7 +172,7 @@ If no handler is registered for E, return NIL NIL."
     (t
      (values nil nil))))
 
-(defparameter *missing-ops*
+(defparameter *used-ops*
   (make-hash-table :test #'eq)
   "Hashtable mapping missing operator symbols to occurrence counts.")
 
@@ -151,7 +182,7 @@ If no handler is registered for E, return NIL NIL."
     ;; Collect entries
     (maphash (lambda (op count)
                (push (cons op count) accum))
-             *missing-ops*)
+             *used-ops*)
 
     ;; Sort by count descending
     (setf accum (sort accum #'> :key #'cdr))
@@ -191,7 +222,7 @@ If no handler is registered for E, return NIL NIL."
 
          ;; Track missing handlers
 		 (when fn
-          (incf (gethash fn *missing-ops* 0)))
+          (incf (gethash fn *used-ops* 0)))
 
          ;; Rewrite arguments
          (let ((rew-args (mapcar (lambda (s) (asymptotic-rewrite s x pt n)) handler-args)))
@@ -214,7 +245,7 @@ If no handler is registered for E, return NIL NIL."
 (defun asymptotic-rewrite-mplus (e x pt n)
   (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
     ;; Attempt to detect cancellation at order n. First try a cheap test ($expand ans 1 0); second,
-    ;; when $expand fails to detect cancellation, test using sratsimp
+    ;; when $expand fails to detect cancellation, test using sratsimp.
     (cond ((or (zerop1 ($expand ans 1 0))
                (zerop1 (sratsimp ans)))
            ;; If cancellation occurs and we have not exceeded the max order,
@@ -240,7 +271,7 @@ If no handler is registered for E, return NIL NIL."
        (add '$%gamma
             (ftake '%log z) (sum-by-quotient z #'(lambda (k) (div (mul k z) (ftake 'mexpt (add 1 k) 2))) (max n 1))))
 
-      ;; no known expansion, so return %expintegral_ei noun form
+      ;; no known expansion, so return an %expintegral_ei noun form
       (t (ftake '%expintegral_ei z)))))
 
 ;; expinegral_e1(x) = -expintegral_ei(-z)  http://dlmf.nist.gov/6.2.E6  
@@ -346,7 +377,7 @@ If no handler is registered for E, return NIL NIL."
 (setf (gethash '$li *asymptotic-rewrite-hash*) 'polylogarithm-asymptotic-rewrite)
 
 (defun polygamma-reflection (m z)
-    ;; psi^(m)(z) = (-1)^m psi^(m)(1-z)- %pi * d^m/dz^m cot(pi z)
+  ;; psi^(m)(z) = (-1)^m psi^(m)(1-z)- %pi * d^m/dz^m cot(pi z)
 	(let* ((q (gensym)) (g (maxima-substitute z q ($diff (ftake '%cot (mul '$%pi q)) q m))))
      (sub
        (mul (ftake 'mexpt -1 m)
@@ -355,21 +386,20 @@ If no handler is registered for E, return NIL NIL."
 
 ;; See https://en.wikipedia.org/wiki/Polygamma_function#Asymptotic_expansion 
 (defun psi-asymptotic-rewrite (e x pt n)
-	(let* ((s 0) (k 0) ($zerobern t) (ds) (m (car e))
+	(let* (($zerobern t) (m (car e))
 	       (arg (resimplify (cadr e)))
-		   (tay-arg (tlimit-taylor arg x (ridofab pt) n))
-		   (lim (limit arg x pt 'think)))
+		     (tay-arg (tlimit-taylor arg x (ridofab pt) n))
+         (lim (limit arg x pt 'think)))
         (if tay-arg
 			(setq arg tay-arg)
 			(return-from psi-asymptotic-rewrite  (subfunmake '$psi (list m) (list arg)))) 
 		(cond ((and (eq '$inf lim) (integerp m) (>= m 1))
-				 (while (< k n)
-					(setq ds (mul (div (ftake 'mfactorial (add k m -1))
+            (let ((s (sum-by-function 
+                    #'(lambda (k) 
+                         (mul (div (ftake 'mfactorial (add k m -1))
 				                       (ftake 'mfactorial k)) 
-				                  (div ($bern k) (ftake 'mexpt arg (add k m)))))
-					(incf k)
-					(setq s (add s ds)))
-		         (mul (ftake 'mexpt -1 (add m 1)) s))
+				                  (div ($bern k) (ftake 'mexpt arg (add k m))))) n)))
+		        (mul (ftake 'mexpt -1 (add m 1)) s)))
 
 			  ((and (integerp (ridofab lim)) (eq t (mgqp 0 lim)) (integerp m))
 			    (let* ((w (gensym))
@@ -382,19 +412,15 @@ If no handler is registered for E, return NIL NIL."
 			  ((and (eq lim '$minf) (integerp m))
 			   (asymptotic-rewrite (polygamma-reflection m arg) x pt n))
 			  ;; asymptotic formula toward inf
-              ((and (eq '$inf lim) (eql m 0))
+        ((and (eq '$inf lim) (eql m 0))
 			  	;; log(arg) - sum(bern(k)/(k*arg^k),k,1,n), where bern(1)=1/2.
-                ;; Maxima uses the standard bern(1)=-1/2, not bern(1) as required
-				;; by this expansion, so we'll peel off the first term of the sum.
-                ;;;;(setq arg (resimplify ($ratdisrep ($taylor arg x (ridofab pt) n))))
-			    (setq k 2)
-				(setq s (div 1 (mul 2 arg)))
-				(while (<= k (max n 2))
-					(setq ds (div ($bern k) (mul k (ftake 'mexpt arg k))))
-					(incf k)
-				    (setq s (add s ds)))
-				(sub (ftake '%log arg) s))
-				;(resimplify ($ratdisrep ($taylor (sub (ftake '%log arg) s) x pt n))))
+          ;; Maxima uses the standard bern(1)=-1/2, not bern(1) as required
+				  ;; by this expansion, so we'll peel off the first term of the sum.
+        (let* ((maxk (max n 2))
+               (s0 (div 1 (mul 2 arg)))
+                (summand  (lambda (k) (div ($bern k) (mul k (ftake 'mexpt arg k)))))
+                (s (add s0 (sum-by-function-range summand 2 maxk))))
+				(sub (ftake '%log arg) s)))
 
 			  (t (subfunmake '$psi (list m) (list arg)))))) 
 (setf (gethash '$psi *asymptotic-rewrite-hash*) 'psi-asymptotic-rewrite)
@@ -602,54 +628,73 @@ If no handler is registered for E, return NIL NIL."
    (asymptotic-rewrite e var val 1)))
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
-  (let* ((s (car e)) (lim (limit-at s x pt)))
+  ;; Asymptotic regimes for zeta(s):
+  ;;   (1) s -> +inf : Dirichlet series truncation
+  ;;   (2) s -> -inf : functional equation 
+  ;;   (3) s -> 1    : Laurent expansion with Stieltjes constants 
+  ;;   (4) otherwise : return noun %zeta(s)
+  (let* ((s (car e))
+         (lim (limit-at s x pt)))
+
     (cond
-      ;; Re(s) → +∞ : ζ(s) ≈ 1 + 2^{-s} + ... + nn^{-s}, where  nn = max(n,2)
-      ((or (eq lim '$inf) (and (eq lim '$infinity) (eq (mgrp ($realpart s) 0) t))) ;not sure about the infinity case
-       (let ((k 2)
-             (sum 1)
-             (term)
-			 (nn (max n 2)))
-         (while (<= k nn)
-           (setq term (div 1 (ftake 'mexpt k s)))
-           (setq sum (add sum term))
-           (setq k (+ k 1)))
-         sum))
+      ;; ------------------------------------------------------------
+      ;; 1. Re(s) -> +inf
+      ;;    Use the first nn = max(n,2) terms of the Dirichlet series:
+      ;;      zeta(s) ~ 1 + 2^(-s) + 3^(-s) + ... + nn^(-s)
+      ;;    Reference: DLMF 25.2.5
+      ;; ------------------------------------------------------------
+      ((or (eq lim '$inf)
+           (and (eq lim '$infinity)
+                (eq (mgrp ($realpart s) 0) t)))
+       (let* ((nn (max n 2)))
+         (add 1
+              (sum-by-function
+               #'(lambda (k)
+                   ;; k runs 0..nn-1, but Dirichlet sum starts at 2
+                   (let ((kk (+ k 2)))
+                     (div 1 (ftake 'mexpt kk s))))
+               (- nn 1)))))
 
-        ;;  s → -∞  (real axis)   
-        ;;  This branch uses the Riemann zeta functional equation:
-        ;;      ζ(s) = 2^s · π^(s−1) · sin(π s / 2) · Γ(1−s) · ζ(1−s)
+      ;; ------------------------------------------------------------
+      ;; 2. s -> -inf (real axis)
+      ;;    Use the functional equation:
+      ;;      zeta(s) = 2^s * pi^(s-1) * sin(pi*s/2) * gamma(1-s) * zeta(1-s)
+      ;;    Reference: http://dlmf.nist.gov/25.4.E1
+      ;; ------------------------------------------------------------
+      ((and (eq lim '$minf) (off-negative-real-axisp s))
+       (let* ((one-minus-s (sub 1 s)))
+         (asymptotic-rewrite 
+             (mul
+                (ftake 'mexpt 2 s)
+                (ftake 'mexpt '$%pi (add s -1))
+                (ftake '%sin (mul '$%pi (div s 2)))
+                (ftake '%gamma one-minus-s)
+                (ftake '%zeta one-minus-s)) x pt n)))
 
-      ((eq lim '$minf)
-       (let* ((one-minus-s (sub 1 s))
-              (z1 (ftake '%zeta one-minus-s))
-              (g1 (ftake '%gamma one-minus-s)))
-         (mul
-          (ftake 'mexpt 2 s)
-          (ftake 'mexpt '$%pi (add s -1))
-          (ftake '%sin (mul '$%pi (div s 2)))
-          g1
-          z1)))
-
-      ;; s → 1 : first n Laurent terms with Stieltjes constants; the Stieltjes constants 
-	  ;; do not have a simple representation.
+      ;; ------------------------------------------------------------
+      ;; 3. s -> 1
+      ;;    Laurent expansion:
+      ;;      zeta(s) = 1/(s-1) + sum_{k>=0} (-1)^k * gamma_k * (s-1)^k / k!
+      ;;    where gamma_k are Stieltjes constants.
+      ;;    Reference: http://dlmf.nist.gov/25.2.E4
+      ;; ------------------------------------------------------------
       ((eql lim 1)
-       (let* ((tau (sub s 1))
-              (k 0)
-              (sum (div 1 tau))
-              (term))
-         (while (< k n)
-           (setq term
-                 (mul
-                  (div (mul (expt -1 k)
-                            (ftake '%stieltjes k))
-                       (ftake 'mfactorial k))
-                  (ftake 'mexpt tau k)))
-           (setq sum (add sum term))
-           (setq k (+ k 1)))
-         sum))
+       (let* ((tau (sub s 1)))
+         (add (div 1 tau)
+              (sum-by-function
+               #'(lambda (k)
+                   (mul
+                    (div (mul (expt -1 k)
+                              (ftake '%stieltjes k))
+                         (ftake 'mfactorial k))
+                    (ftake 'mexpt tau k)))
+               n))))
 
+      ;; ------------------------------------------------------------
+      ;; 4. No asymptotic rule applies: return noun %zeta(s)
+      ;; ------------------------------------------------------------
       (t (ftake '%zeta s)))))
+
 
 ;; Airy–Bessel identities (DLMF 9.6.1–9.6.2):
 ;;   Ai(z) = (1/3)*sqrt(z) * [ J_{-1/3}( (2/3) z^(3/2) ) - J_{ 1/3}( (2/3) z^(3/2) ) ]

@@ -201,19 +201,29 @@ If no handler is registered for E, return NIL NIL."
                ;; No handler → rebuild expression with rewritten args
                (fapply op rew-args))))))))
 
-;; For a sum, map asymptotic-rewrite onto the summand and sum the result. When
-;; the sum vanishes, increase the order and try again. When the order n 
-;; reaches *asymptotic-max-order*, give up and return the sum of the members of e.
-
-;; The first argument e is a CL list of the summand. The second argument is the 
-;; limit variable, the third is the point, and the last is the truncation level.
+;; For a sum, map asymptotic-rewrite onto each summand and sum the result.
+;; When the sum vanishes at order n, restart the rewrite from the *original*
+;; summands at order n+1. When n reaches *asymptotic-max-order*, give up and
+;; return the sum of the members of e.
+;;
+;; Arguments:
+;;   e  – a CL list of the summand expressions
+;;   x  – limit variable
+;;   pt – limit point
+;;   n  – truncation order
 (defun asymptotic-rewrite-mplus (e x pt n)
   (let ((ans (fapply 'mplus (mapcar #'(lambda (s) (asymptotic-rewrite s x pt n)) e))))
-    (cond ((zerop1 ans)
-           ;; Try higher-order expansion; if that fails, return the sum of the list e.
+    ;; Attempt to detect cancellation at order n. First try a cheap test ($expand ans 1 0); second,
+    ;; when $expand fails to detect cancellation, test using sratsimp
+    (cond ((or (zerop1 ($expand ans 1 0))
+               (zerop1 (sratsimp ans)))
+           ;; If cancellation occurs and we have not exceeded the max order,
+           ;; restart from the *original* summands at order n+1.
            (if (< n *asymptotic-max-order*)
                (asymptotic-rewrite (fapply 'mplus e) x pt (1+ n))
-			         (fapply 'mplus e)))
+               ;; Max order reached: return the original sum.
+               (fapply 'mplus e)))
+          ;; No cancellation detected: return the rewritten sum.
           (t ans))))
 
 (def-asymptotic-rewrite-handler %expintegral_ei (arg-list x pt n)
@@ -247,42 +257,48 @@ If no handler is registered for E, return NIL NIL."
 		     (alt (mul (ftake 'mexpt z (sub p 1)) (ftake '%gamma_incomplete (sub 1 p) z))))
 		   (asymptotic-rewrite alt x pt n)))
 
+(defun stirling-asymptotic-expansion (arg n)
+  ;; Return a truncated Poincaré-type (Stirling) asymptotic expansion for gamma(arg) as |arg| -> inf.
+  ;; See http://dlmf.nist.gov/5.11.E1
+  (let* (($zerobern t)  ; We want bern(even integer) = 0
+         (s (sum-by-function
+              #'(lambda (k)
+                  (let ((kk (1+ k))) ; because sum-by-function uses k = 0..n-1
+                    (div ($bern (* 2 kk))
+                         (mul (* 2 kk)
+                              (1- (* 2 kk))
+                              (ftake 'mexpt arg (1- (* 2 kk)))))))
+              n)))
+    (mul (ftake 'mexpt '$%e s)
+         (ftake 'mexpt (mul 2 '$%pi) (div 1 2))
+         (ftake 'mexpt arg (add arg (div -1 2)))
+         (ftake 'mexpt '$%e (mul -1 arg)))))
+
+(defun gamma-reflection (z)
+  ;; Apply Euler's reflection formula:  gamma(z) = pi / (sin(pi*z) * gamma(1 - z))
+  ;; see http://dlmf.nist.gov/5.5.ii 
+  (div '$%pi
+       (mul (ftake '%sin (mul '$%pi z)) (ftake '%gamma (sub 1 z)))))
+      
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
 (defvar *yep* 0)
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
-  ;;;(setq n (max 1 n))
-	(let* ((s 0) 
-	       ($zerobern t) ; We want bern(even integer) = 0
-	       (ds) (k 1)
-		   (arg (car e))
-		   (lim (limit-at arg x pt)))
-		(when (eql lim 0)
-			(setq lim (zero-fixup arg x pt)))
-		;; Need to check if this is OK for infinity & minf
+  ;; negative infinity via reflection, large positive via Stirling, small via Taylor, else noun
+	(let* ((arg (car e))
+		     (lim (limit-at arg x pt)))
 	    (cond 
         ((eq '$minf lim)
           (incf *yep* 1)
-          (asymptotic-rewrite (div '$%pi
-                                   (mul (ftake '%sin (mul '$%pi arg))
-                                        (ftake '%gamma (sub 1 arg)))) x pt n))
+          (asymptotic-rewrite (gamma-reflection arg) x pt n))
       
         ((or (eq '$inf lim) (and (eq '$infinity lim) (off-negative-real-axisp arg))) 
-			    (while (<= k n)
-			        (setq ds (div ($bern (mul 2 k))
-		                       (mul (* 2 k) (- (* 2 k) 1)
-							   (ftake 'mexpt arg (- (* 2 k) 1)))))
-		            (setq k (+ 1 k))					   
-		            (setq s (add s ds)))
-	            (mul 
-				    (ftake 'mexpt '$%e s)
-				   	(ftake 'mexpt (mul 2 '$%pi) (div 1 2))
-	                (ftake 'mexpt arg (add arg (div -1 2)))
-		            (ftake 'mexpt '$%e (mul -1 arg))))
+          (stirling-asymptotic-expansion arg n))
 
-                ((or (eq lim '$zeroa) (zerop2 lim))
-		         (setq arg (ftake '%gamma arg))
-		 	     (resimplify ($ratdisrep (tlimit-taylor arg x (ridofab pt) n))))
+        ((or (eq lim '$zeroa) (zerop2 lim))
+           (let ((g (ftake '%gamma arg)))
+              (resimplify ($ratdisrep (tlimit-taylor g x (ridofab pt) n)))))
+
 			  (t (ftake '%gamma arg))))) ;give up		
 
 (def-asymptotic-rewrite-handler mfactorial (e x pt n)

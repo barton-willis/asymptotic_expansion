@@ -914,3 +914,45 @@ exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
 			  (mapcar #'extra-simp (subfunsubs e)) 
 			  (mapcar #'extra-simp (subfunargs e))))
 		 (t (fapply (caar e) (mapcar #'extra-simp (cdr e)))))))
+
+
+#|
+Error summary:
+Error(s) found:
+  rtest_limit.mac problem:  (278)
+  rtest_limit_gruntz.mac problem: (84)
+Tests that were expected to fail but passed:
+  rtest_limit_gruntz.mac problems:  (25 28 39 86)
+2 tests failed out of 14,955 total tests.
+Evaluation took:
+  61.762 seconds of real time
+  61.453125 seconds of total run time (56.125000 user, 5.328125 system)
+  [ Real times consist of 2.595 seconds GC time, and 59.167 seconds non-GC time. ]
+  [ Run times consist of 2.531 seconds GC time, and 58.923 seconds non-GC time. ]
+  99.50% CPU
+  11,089 forms interpreted
+  17,371 lambdas converted
+  123,290,177,547 processor cycles
+  33,465,843,440 bytes consed
+
+(%o0)                                done
+(%i1) used();
+
+Used operator summary:
+  %GAMMA-ASYMPTOTIC : 462
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
+  %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
+  PSI-ASYMPTOTIC-REWRITE : 50
+  %ERF-ASYMPTOTIC : 32
+  %EXPINTEGRAL_EI-ASYMPTOTIC : 23
+  %ZETA-ASYMPTOTIC : 13
+  MFACTORIAL-ASYMPTOTIC : 11
+  %BESSEL_J-ASYMPTOTIC : 2
+  %BESSEL_K-ASYMPTOTIC : 1
+(%o1)                                false
+(%i2) :lisp(print *yep*)
+
+0
+0
+
+ |#

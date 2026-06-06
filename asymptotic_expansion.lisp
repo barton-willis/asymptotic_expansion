@@ -7,11 +7,7 @@
 ;;; an identity. Possibly asymptotic-rewrite could be promoted to a user level 
 ;;; function, but for now it isn't intended to be a user level function.
 
-;;; Copyright (C) 2022, 2023 Barton Willis
-;;; Department of Mathematics 
-;;; University of Nebraska at Kearney
-;;; Kearney NE 68847
-;;; willisb@unk.edu
+;;; Copyright (C) 2022, 2023, 2026 Barton Willis
 
 ;;; This source code is licensed under the terms of the Lisp Lesser 
 ;;; GNU Public License (LLGPL). The LLGPL consists of a preamble, published
@@ -36,8 +32,7 @@
 (declare-top (special *preserve-direction* *large-positive-number* var val lhp?))
 
 (defun limit-at (arg x pt)
-"Normalize directional limit points and call $limit. PT may be an ordinary limit point or one of 
- the directional markers $zerob or $zeroa." 
+"Normalize directional limit points and call $limit. PT may be an ordinary limit point, $zerob, or $zeroa." 
 	(cond ((eq pt '$zerob) ($limit arg x 0 '$minus))
 		  ((eq pt '$zeroa) ($limit arg x 0 '$plus))
 		  (t ($limit arg x pt))))
@@ -46,27 +41,19 @@
 
 ;; We provide three summation helpers, each serving a different purpose:
 ;;
-;;   (1) sum-by-function:
-;;         Computes f(0) + f(1) + ... + f(n-1).
-;;         Used when the natural summation index begins at 0 and the
-;;         number of terms is known in advance.
+;;   (1) sum-by-function: Computes f(0) + f(1) + ... + f(n-1).
+;;         Useful when the natural summation index begins at 0. 
 ;;
-;;   (2) sum-by-function-range:
-;;         Computes f(k0) + f(k0+1) + ... + f(k1).
-;;         Used when the summation index has a natural lower bound
+;;   (2) sum-by-function-range: Computes f(k0) + f(k0+1) + ... + f(k1).
+;;         Useful when the summation index has a natural lower bound
 ;;         different from 0. Avoids manual index shifting.
 ;;
-;;   (3) sum-by-quotient:
-;;         Computes a(0) + a(1) + ... + a(n-1) when consecutive terms
-;;         satisfy a(k) = a(k-1) * q(k).  Useful when the quotient q(k)
-;;         has a simple form, allowing efficient accumulation of terms
-;;         without recomputing each one from scratch.
-;;
-;; These helpers keep the asymptotic code readable by matching the
-;; structure of the mathematical formulas they implement.
+;;   (3) sum-by-quotient:  Computes a(0) + a(1) + ... + a(n-1) when consecutive terms
+;;         satisfy a(k) = a(k-1) * q(k).  Useful when the quotient q(k) has a simple form.
 
-;; Utility function for finding sums when the quotient of consecutive terms has a simple form. This function
-;; is used by some (not all) asymptotic rewrite functions.
+;; For an empty sum, all three of these summation helpers return 0.
+  
+;; Utility function for finding sums when the quotient of consecutive terms has a simple form. 
 (defun sum-by-quotient (a0 f n)
   "Return a(0) + ... + a(n-1), where a(k) = a(k-1) * f(k)."
    (let ((sum 0) (k 0) (ds a0))
@@ -87,7 +74,7 @@
 ;; Sum f(k) for k = k0 .. k1 inclusive.
 (defun sum-by-function-range (f k0 k1)
   (let ((sum 0)
-        (k   k0))
+        (k k0))
     (while (<= k k1)
       (setq sum (add sum (funcall f k)))
       (setq k (1+ k)))
@@ -832,29 +819,28 @@ Used operator summary:
 (setf (get '%log 'simplim%function) 'simplimln)
 (setf (get '%plog 'simplim%function) 'simplimln)
 
-
-(defvar *gl* nil)
 (defun simplim%gamma (expr var val)
   (let* ((*preserve-direction* t) 
          (z (cadr expr))   
          (lim (limit z var val 'think)))
-
-    (push (ftake 'mlist expr lim var val) *gl*)
-    
+    ;; when lim = 0, maybe we should do more work to attempt to determine if the limit
+    ;; should really be zerob or zeroa.
     (cond ((eq lim '$zeroa) '$inf)
           ((eq lim '$zerob) '$minf)
-          ((eql lim 0) '$infinity)
+          ((eql lim 0) '$infinity) 
           ((eq lim '$minf) '$und)
           ((eq lim '$inf) '$inf)
           ((eq lim '$und) (throw 'limit nil))
           ((eq lim '$infinity) '$infinity)
           ((eq lim '$ind)
              (if (eq t (mgrp z 0))
-                  '$ind
-                  (throw 'limit nil)))
+                  '$ind 
+                  '$und))
           ((and (integerp lim) (<= lim 0))
-           (limit ($ratdisrep ($taylor expr var lim 0)) var val 'think))
-		  ((successful-limit-result-p lim) (ftake '%gamma lim))
+            ;; g = (-1)^lim / ((-lim)! (z - lim))
+            (let ((g (div (mul (ftake 'mexpt -1 lim)) (mul (ftake 'mfactorial (- lim)) (sub z lim)))))
+              (limit g var val 'think)))
+		      ((successful-limit-result-p lim) (ftake '%gamma lim))
           (t  (throw 'limit nil)))))
 (setf (get '%gamma 'simplim%function) 'simplim%gamma)
 
@@ -917,6 +903,8 @@ exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
 		   (sin-sq-cos-sq-sub (fapply 'mplus (mapcar #'extra-simp (cdr e))) var))
          ;; Convert gamma functions to factorials. Eventually, we should convert
 		 ;; factorials to gamma functions, I think (BW).
+     ((and var-present (eq 'mfactorial (caar e)))
+		   (ftake '%gamma (extra-simp (add (cadr e) 1))))
 		 ((and nil var-present (eq '%gamma (caar e)))
 		   (ftake 'mfactorial (extra-simp (sub (cadr e) 1))))
          ;; Exponentialize the hyperbolic functions. It might be nicer to not do 
@@ -962,42 +950,37 @@ exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
 
 
 #|
+
 Error summary:
 Error(s) found:
   rtest_limit.mac problem:  (278)
-  rtest_limit_gruntz.mac problem: (84)
+  rtest_limit_gruntz.mac problem:  (84)
+  rtest_stats.mac problem:   (10)
 Tests that were expected to fail but passed:
   rtest_limit_gruntz.mac problems:  (25 28 39 86)
-2 tests failed out of 14,955 total tests.
+3 tests failed out of 19,963 total tests.
 Evaluation took:
-  61.762 seconds of real time
-  61.453125 seconds of total run time (56.125000 user, 5.328125 system)
-  [ Real times consist of 2.595 seconds GC time, and 59.167 seconds non-GC time. ]
-  [ Run times consist of 2.531 seconds GC time, and 58.923 seconds non-GC time. ]
-  99.50% CPU
-  11,089 forms interpreted
-  17,371 lambdas converted
-  123,290,177,547 processor cycles
-  33,465,843,440 bytes consed
+  447.788 seconds of real time
+  441.921875 seconds of total run time (401.890625 user, 40.031250 system)
+  [ Real times consist of 17.973 seconds GC time, and 429.815 seconds non-GC time. ]
+  [ Run times consist of 17.515 seconds GC time, and 424.407 seconds non-GC time. ]
+  98.69% CPU
+  372,463 forms interpreted
+  695,484 lambdas converted
+  893,873,161,016 processor cycles
+  99,096,565,184 bytes consed
 
-(%o0)                                done
 (%i1) used();
 
 Used operator summary:
-  %GAMMA-ASYMPTOTIC : 462
-  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
+  %GAMMA-ASYMPTOTIC : 473
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 195
   %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
   PSI-ASYMPTOTIC-REWRITE : 50
   %ERF-ASYMPTOTIC : 32
   %EXPINTEGRAL_EI-ASYMPTOTIC : 23
   %ZETA-ASYMPTOTIC : 13
-  MFACTORIAL-ASYMPTOTIC : 11
   %BESSEL_J-ASYMPTOTIC : 2
   %BESSEL_K-ASYMPTOTIC : 1
-(%o1)                                false
-(%i2) :lisp(print *yep*)
-
-0
-0
 
  |#

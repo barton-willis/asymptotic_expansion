@@ -709,27 +709,30 @@ If no handler is registered for E, return NIL NIL."
     (asymptotic-rewrite expr x pt n)))
 
 #|
-
+Error(s) found:
+  rtest_limit.mac problem:  (278)
+  rtest_limit_gruntz.mac problem:   (84)
+  rtest_stats.mac problem:  (10)
 Tests that were expected to fail but passed:
   rtest_limit_gruntz.mac problems:  (25 28 39 86)
-1 test failed out of 14,951 total tests.
+3 tests failed out of 19,963 total tests.
 Evaluation took:
-  66.671 seconds of real time
-  66.234375 seconds of total run time (60.093750 user, 6.140625 system)
-  [ Real times consist of 2.792 seconds GC time, and 63.879 seconds non-GC time. ]
-  [ Run times consist of 2.984 seconds GC time, and 63.251 seconds non-GC time. ]
-  99.34% CPU
-  11,089 forms interpreted
-  17,371 lambdas converted
-  133,088,696,020 processor cycles
-  33,260,418,384 bytes consed
+  430.647 seconds of real time
+  424.765625 seconds of total run time (387.453125 user, 37.312500 system)
+  [ Real times consist of 18.055 seconds GC time, and 412.592 seconds non-GC time. ]
+  [ Run times consist of 17.500 seconds GC time, and 407.266 seconds non-GC time. ]
+  98.63% CPU
+  372,463 forms interpreted
+  695,484 lambdas converted
+  859,657,016,057 processor cycles
+  99,099,983,648 bytes consed
 
 (%o0)                                done
 (%i1) used();
 
 Used operator summary:
-  MFACTORIAL-ASYMPTOTIC : 464
-  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 166
+  %GAMMA-ASYMPTOTIC : 473
+  POLYLOGARITHM-ASYMPTOTIC-REWRITE : 195
   %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
   PSI-ASYMPTOTIC-REWRITE : 50
   %ERF-ASYMPTOTIC : 32
@@ -737,6 +740,7 @@ Used operator summary:
   %ZETA-ASYMPTOTIC : 13
   %BESSEL_J-ASYMPTOTIC : 2
   %BESSEL_K-ASYMPTOTIC : 1
+(%o1)                                false
 
  |#
 
@@ -823,7 +827,7 @@ Used operator summary:
   (let* ((*preserve-direction* t) 
          (z (cadr expr))   
          (lim (limit z var val 'think)))
-    ;; when lim = 0, maybe we should do more work to attempt to determine if the limit
+    ;; When lim is explicitly 0, maybe we should do more work to attempt to determine if the limit
     ;; should really be zerob or zeroa.
     (cond ((eq lim '$zeroa) '$inf)
           ((eq lim '$zerob) '$minf)
@@ -836,10 +840,18 @@ Used operator summary:
              (if (eq t (mgrp z 0))
                   '$ind 
                   '$und))
-          ((and (integerp lim) (<= lim 0))
-            ;; g = (-1)^lim / ((-lim)! (z - lim))
-            (let ((g (div (mul (ftake 'mexpt -1 lim)) (mul (ftake 'mfactorial (- lim)) (sub z lim)))))
-              (limit g var val 'think)))
+
+          ((and (eq '$yes ($askinteger lim)) 
+                (or (member ($asksign lim) '($neg $zero)))) ;; lim <= 0
+
+              (let* ((g (limit (sub z lim) var val 'think))
+                     (sgn (if (eq '$yes (ask-integer lim '$even))
+                                    1
+                                    -1)))
+                          (cond ((eq g '$zerob) (infsimp (mul sgn '$minf)))
+                                ((eq g '$zeroa) (infsimp (mul sgn '$inf)))
+                                (t (throw 'limit nil)))))
+
 		      ((successful-limit-result-p lim) (ftake '%gamma lim))
           (t  (throw 'limit nil)))))
 (setf (get '%gamma 'simplim%function) 'simplim%gamma)

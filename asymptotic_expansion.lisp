@@ -108,7 +108,7 @@
 ;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
 (defmfun $asymptotic_rewrite (e x pt n)
     (let ((LHP? nil)) ;not sure about this.
-	    (asymptotic-rewrite e x pt n)))
+	    (asymptotic-rewrite-top-level e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through

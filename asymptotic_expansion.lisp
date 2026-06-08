@@ -607,19 +607,19 @@ If no handler is registered for E, return NIL NIL."
       ;; ------------------------------------------------------------
       (t (ftake '%bessel_i v x)))))
 
+(defun asymptotic-rewrite-top-level (e x pt n)
+   (let* ((*asymptotic-max-order* 64))
+          (cond ((zerop2 e) e)
+                (t
+                  (let ((ans (asymptotic-rewrite e x pt n)))
+                     (if (and (< n *asymptotic-max-order*) (zerop2 ($expand ans)))
+                         (asymptotic-rewrite-top-level e x pt (+ n 1))
+                         ans))))))
 
 ; Redefine the function stirling0. The function stirling0 does more than its
-;; name implies, so we will effectively rename it to asymptotic-rewrite.
-(defun stirling0 (e &optional (n 0))
-  (let* (($numer nil) 
-         ($float nil) 
-         (*asymptotic-max-order* 64))
-         (cond ((zerop2 e) e)
-               (t
-                  (let ((ans (asymptotic-rewrite e var val n)))
-                     (if (and (< n *asymptotic-max-order*) (zerop2 ($expand ans)))
-                         (stirling0 e (incf n))
-                         ans))))))
+;; name implies, so we will effectively rename it to asymptotic-rewrite-top-level.
+(defun stirling0 (e)
+  (asymptotic-rewrite-top-level e var val 1))
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
   ;; Asymptotic regimes for zeta(s):

@@ -74,11 +74,12 @@
     (dotimes (k n sum)
       (setq sum (add sum (funcall f k))))))
 
-;; Sum f(k) for k = k0 .. k1 inclusive.
+;; Returns f(k0) + f(k0+1) + ... + f(k0+k-1)
+;; (sum-by-function-range f 0 n) = (sum-by-function f n) is supposed to be an identity.
 (defun sum-by-function-range (f k0 k1)
   (let ((sum 0)
         (k k0))
-    (while (<= k k1)
+    (while (< k k1)
       (setq sum (add sum (funcall f k)))
       (setq k (1+ k)))
     sum))
@@ -107,7 +108,7 @@
 
 ;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
 (defmfun $asymptotic_rewrite (e x pt n)
-    (let ((LHP? nil)) ;not sure about this.
+    (let ((LHP? nil)) ;not sure about the value of LHP?
 	    (asymptotic-rewrite-top-level e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
@@ -405,7 +406,7 @@ If no handler is registered for E, return NIL NIL."
 			  	;; log(arg) - sum(bern(k)/(k*arg^k),k,1,n), where bern(1)=1/2.
           ;; Maxima uses the standard bern(1)=-1/2, not bern(1) as required
 				  ;; by this expansion, so we'll peel off the first term of the sum.
-        (let* ((maxk (max n 2))
+        (let* ((maxk (max n 3))
                (s0 (div 1 (mul 2 arg)))
                 (summand  (lambda (k) (div ($bern k) (mul k (ftake 'mexpt arg k)))))
                 (s (add s0 (sum-by-function-range summand 2 maxk))))

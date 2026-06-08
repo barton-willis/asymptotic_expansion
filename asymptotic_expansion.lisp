@@ -51,6 +51,9 @@
 ;;   (3) sum-by-quotient:  Computes a(0) + a(1) + ... + a(n-1) when consecutive terms
 ;;         satisfy a(k) = a(k-1) * q(k).  Useful when the quotient q(k) has a simple form.
 
+;; Method (1) could be eliminated and replaced by Method (2), but Method (1) is slightly
+;; more efficient than is Method (2).
+
 ;; For an empty sum, all three of these summation helpers return 0.
   
 ;; Utility function for finding sums when the quotient of consecutive terms has a simple form. 
@@ -79,7 +82,6 @@
       (setq sum (add sum (funcall f k)))
       (setq k (1+ k)))
     sum))
-
 
 ;; Hash table: key is a function name (for example, %gamma) with the 
 ;; corresponding value a CL function that produces an asymptotic 
@@ -286,7 +288,7 @@ If no handler is registered for E, return NIL NIL."
                          (mul (* 2 kk)
                               (1- (* 2 kk))
                               (ftake 'mexpt arg (1- (* 2 kk)))))))
-              n)))
+              (- n 1))))
     (mul (ftake 'mexpt '$%e s)
          (ftake 'mexpt (mul 2 '$%pi) (div 1 2))
          (ftake 'mexpt arg (add arg (div -1 2)))

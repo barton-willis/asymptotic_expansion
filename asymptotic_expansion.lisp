@@ -973,29 +973,25 @@ exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
 
 #|
 
-Error summary:
-Error(s) found:
-  rtest_limit.mac problem:  (278)
-  rtest_limit_gruntz.mac problem:  (84)
-  rtest_stats.mac problem:   (10)
+rtest_limit.mac problem:  (278)
+rtest_limit_gruntz.mac problem:  (84)
+rtest_stats.mac problem:   (10)
 Tests that were expected to fail but passed:
   rtest_limit_gruntz.mac problems:  (25 28 39 86)
 3 tests failed out of 19,963 total tests.
 Evaluation took:
-  447.788 seconds of real time
-  441.921875 seconds of total run time (401.890625 user, 40.031250 system)
-  [ Real times consist of 17.973 seconds GC time, and 429.815 seconds non-GC time. ]
-  [ Run times consist of 17.515 seconds GC time, and 424.407 seconds non-GC time. ]
-  98.69% CPU
+  215.792 seconds of real time
+  209.656250 seconds of total run time (190.578125 user, 19.078125 system)
+  [ Real times consist of 9.855 seconds GC time, and 205.937 seconds non-GC time. ]
+  [ Run times consist of 9.468 seconds GC time, and 200.189 seconds non-GC time. ]
+  97.16% CPU
   372,463 forms interpreted
   695,484 lambdas converted
-  893,873,161,016 processor cycles
-  99,096,565,184 bytes consed
+  430,765,119,674 processor cycles
+  99,234,418,384 bytes consed
 
-(%i1) used();
-
-Used operator summary:
-  %GAMMA-ASYMPTOTIC : 473
+  Used operator summary:
+  %GAMMA-ASYMPTOTIC : 477
   POLYLOGARITHM-ASYMPTOTIC-REWRITE : 195
   %GAMMA_INCOMPLETE-ASYMPTOTIC : 65
   PSI-ASYMPTOTIC-REWRITE : 50
@@ -1004,5 +1000,4 @@ Used operator summary:
   %ZETA-ASYMPTOTIC : 13
   %BESSEL_J-ASYMPTOTIC : 2
   %BESSEL_K-ASYMPTOTIC : 1
-
  |#

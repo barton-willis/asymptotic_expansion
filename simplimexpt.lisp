@@ -1,29 +1,38 @@
 ;; This is a re-implementation of the function simplimexpt. The intent is for this 
 ;; code to be more easily fixed or extended, possibly more efficient, and more 
-;; comphrensive than the standard function.
+;; comprehensive than the standard function.
 
 ;; Differences: The standard simplimexpt has a reference to the special variable 
-;; loginprod?, but; this code doesn't. Also, the standard simplimexpt has several 
+;; loginprod?, but this code doesn't. Also, the standard simplimexpt has several 
 ;; calls to ask-integer that this code doesn't. In part, I get by with fewer
 ;; such questions by using zerob^b --> (-1)^b zeroa^b
 
 ;; Standard simplimexpt is about 110 lines of code, but this is about three times 
 ;; longer. Maybe I didn't leverage some other code that would make my code shorter.
 
+#|
+Error summary:
+Error(s) found:
+  rtestint.mac problem:  (237)
+  rtest_power.mac problems:  (29 62)
+  rtest_limit_gruntz.mac problem:   (36)
+Tests that were expected to fail but passed:
+  rtest_limit_extra.mac problems:   (224 262)
+4 tests failed out of 15,057 total tests.
+Evaluation took:
+  59.758 seconds of real time
+  59.531250 seconds of total run time (54.109375 user, 5.421875 system)
+  [ Real times consist of 2.394 seconds GC time, and 57.364 seconds non-GC time. ]
+  [ Run times consist of 2.281 seconds GC time, and 57.251 seconds non-GC time. ]
+  99.62% CPU
+  11,991 forms interpreted
+  17,371 lambdas converted
+  119,288,932,631 processor cycles
+  32,348,397,200 bytes consed
+ |#
 (in-package :maxima)
 	
-(declare-top (special limit-assumptions var val lhcount lhp? *behavior-count-now*))
-
-;; When limit(e,x,pt) = 0, we dispatch behavior to attempt to decide
-;; if the limit is zerob, zeroa, or 0. The function behavior misses 
-;; some cases that it might. At one time this code caught a few more
-;; cases by dispatching taylor, but if that is a good idea, it should
-;; be blended into behavior, not this code.
-(defun zero-fixup (e x pt)
-   (let ((*behavior-count-now* 0) (dir (behavior e x pt)))
-	(cond ((eql dir -1) '$zerob)
-		  ((eql dir 1) '$zeroa)
-		  (t 0))))
+(declare-top (special *preserve-direction* limit-assumptions var val lhcount lhp? *behavior-count-now*))
 
 ;; Return true iff a^b is 0^0, inf^0, or 1^inf, where by zero
 ;; we mean either zerob, 0, or zeroa; and by inf, we mean either
@@ -179,18 +188,7 @@
 (defun simplim%mexpt (e x pt &optional (al nil) (bl nil))
 	(let* ((a (cadr e))
 		   (b (caddr e)) ;e = a^b
-		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (preserve-direction t))
-
-        ;(setq a (extra-simp a))
-		;(setq b (extra-simp b))
-
-		;; When both a & b depend on x, use a^b = exp(b log(a)).
-		;; We also re-do the limits of a & b.
-	    (when (and (among x a) (among x b))
-			(setq b (mul b (ftake '%log a))
-			      a '$%e)
-			(setq al '$%e
-			      bl (limit b x pt 'think)))
+		   (bb nil) (re nil) (im nil) (bre nil) (bim nil) (*preserve-direction* t))
 
        ;; When either al or bl are nil, evaluate their limits. This
 	   ;; can happen when simplim%mexpt is called directly (not from
@@ -209,23 +207,26 @@
 		  (setq bre (limit (car bb) x pt 'think)) ;real part of limit of b
 		  (setq bim (limit (cdr bb) x pt 'think))) ;imaginary part of limit of b
 
-		;; When dispatch zero-fixup on limits that are zero. This is an effort to 
-		;; decide if the limit could be either zerob or zeroa instead of 0. 
-		;; This conversion causes several minor semantic testsuite failures.
-		;; If the check is only done when bl < 0, these failures don't happen.
-		(when (eql al 0) ;(eq t (mgrp 0 bl)))
-			(setq al (zero-fixup a x pt)))
-		(when (eql bl 0)
-			(setq bl (zero-fixup b x pt)))
-
-		(when (eql al 0)
-		  (push (ftake 'mlist bl (mgrp 0 bl)) *zzz*))
-
+      ;;; (mtell "a = ~M ; al = ~M ; b = ~M ; bl = ~M ~%" a al b bl)
 		(cond 
+		    ;; When unable to determine the limits of a and b, throw to 'limit
+		    ((or (not (successful-limit-result-p al)) (not (successful-limit-result-p bl)))
+			  (throw 'limit nil))
+     
+	        ;; When both a & b are extended reals, look up the value in the hashtable. 
+			;; When the hashtable entry is missing, return und.
+			((and 
+			  (extended-real-p a)
+			  (extended-real-p b)
+			  (gethash (list a b) *extended-real-mexpt-table* '$und)))
+
 		    ;; Hashtable look up for the limit. This handles the determinate 
 			;; cases for extended^extended, but it does _not_ handle the 
 			;; indeterminate cases 0^0, 1^inf, or inf^0.
-			((gethash (list al bl) *extended-real-mexpt-table* nil))
+			((and 
+			   (extended-real-p al)
+			   (extended-real-p bl)				
+			   (gethash (list al bl) *extended-real-mexpt-table* nil)))
 
 	        ;; Special case 0^(negative real). We've made sure that 
 			;; Maxima is unable to determine that al could be either zerob or 

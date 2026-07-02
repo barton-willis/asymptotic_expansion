@@ -28,9 +28,13 @@
 
 (in-package :maxima)
 
+
 ;; What special variables did I miss?
 (declare-top (special *preserve-direction* *large-positive-number* var val lhp?))
 
+
+(defmfun $asy (e x pt n)
+  (asymptotic-rewrite e x pt n))
 (defun limit-at (arg x pt)
 "Normalize directional limit points and call $limit. PT may be an ordinary limit point, $zerob, or $zeroa." 
 	(cond ((eq pt '$zerob) ($limit arg x 0 '$minus))
@@ -303,14 +307,12 @@ If no handler is registered for E, return NIL NIL."
       
 ;; Return a truncated Poincaré-Type expansion (Stirling approximation) 
 ;; for gamma(e). Reference: http://dlmf.nist.gov/5.11.E1. 
-(defvar *yep* 0)
 (def-asymptotic-rewrite-handler %gamma (e x pt n)
   ;; negative infinity via reflection, large positive via Stirling, small via Taylor, else noun
 	(let* ((arg (car e))
 		     (lim (limit-at arg x pt)))
 	    (cond 
         ((eq '$minf lim)
-          (incf *yep* 1)
           (asymptotic-rewrite (gamma-reflection arg) x pt n))
       
         ((or (eq '$inf lim) (and (eq '$infinity lim) (off-negative-real-axisp arg))) 
@@ -431,11 +433,11 @@ If no handler is registered for E, return NIL NIL."
          (lim (limit-at z x pt)))
 
     (cond
-      ;; z → +∞
+      ;; z -> inf
       ((eq '$inf lim)
        (erfc-asymptotic-positive z n))
 
-      ;; z → −∞
+      ;; z -> minf
       ((eq '$minf lim)
        ;; erfc(z) = 2 − erfc(−z)
        (sub 2 (erfc-asymptotic-positive (neg z) n)))
@@ -486,7 +488,7 @@ If no handler is registered for E, return NIL NIL."
        ;; Case 2: Asymptotic expansion when z -> 0, p integer, and p <= 0
 		   ;; For the series, see http://dlmf.nist.gov/8.4.E15
 		   ((and (zerop2 lim) (integerp p) (>= 0 p))
-		      (gamma-incomplete-series-at-zero p z n))
+		      (gamma-incomplete-series-at-zero p z (+ 2 n)))
 	     ;; Case 3: fall back			
        (t (ftake '%gamma_incomplete p z)))))
 
@@ -622,7 +624,7 @@ If no handler is registered for E, return NIL NIL."
 ; Redefine the function stirling0. The function stirling0 does more than its
 ;; name implies, so we will effectively rename it to asymptotic-rewrite-top-level.
 (defun stirling0 (e)
-  (asymptotic-rewrite-top-level e var val 1))
+  (asymptotic-rewrite e var val 0))
 
 (def-asymptotic-rewrite-handler %zeta (e x pt n)
   ;; Asymptotic regimes for zeta(s):
@@ -905,7 +907,7 @@ exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
 
 |#
 
-(defun extra-simp (e)
+(defun extra-simp-xxx (e)
   (declare (special var))
    (let ((var-present (not (freeof var e))))
    (cond ((extended-real-p e) e) ;we don't want to call sign on ind, so catch this

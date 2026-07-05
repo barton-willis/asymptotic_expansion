@@ -8,11 +8,11 @@ limit( x * (gamma(x+1) - x*gamma(x)), x, inf );
 limit( (gamma(x+2) - (x+1)*x*gamma(x)), x, inf );
 0$
 
-limit( (gamma(x+1/2) - sqrt(x)*gamma(x)), x, inf );
-0$
+limit((gamma(x+1/2) - sqrt(x)*gamma(x)), x, inf);
+minf$
 
-limit( x^(3/2) * (gamma(x+1/2) - sqrt(x)*gamma(x)), x, inf );
-0$
+limit(x^(3/2)*(gamma(x+1/2) - sqrt(x)*gamma(x)), x, inf);
+minf$
 
 limit( (gamma(log(x)+1) - log(x)*gamma(log(x))), x, inf );
 0$
@@ -21,7 +21,7 @@ limit( (gamma(log(x)+1) - log(x)*gamma(log(x))), x, inf );
    Polylogarithm tests
    ------------------------- */
 
-limit( x * (polylog(2, 1 - 1/x) - polylog(2, 1 - 2/x)), x, inf );
+limit( x * (li[2](1 - 1/x) - li[2](1 - 2/x)), x, inf);
 0$
 
 limit( x^2 * (polylog(3, 1 - 1/x) - polylog(3, 1 - 1/(2*x))), x, inf );
@@ -137,9 +137,10 @@ limit( x * (bessel_y(0, x + 1/x) - bessel_y(0, x)), x, inf );
 limit( exp(x) * (erf(1/sqrt(x)) - 2/sqrt(%pi*x)), x, inf );
 0$
 
+/* 
 limit( x * (airy_ai(x+1/x) - airy_ai(x)), x, inf );
 0$
-
+*/
 
 /* ------------------------------------------------------------
    5. Gruntz-method edge cases

@@ -466,7 +466,7 @@ If no handler is registered for E, return NIL NIL."
 	(let ((lim (limit-at (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
 	(cond ((and fn (or (eq lim '$inf) (eq lim '$minf)))
-	       (sub 1 (funcall fn (list (car z)) x pt n)))
+         (sub 1 (funcall fn (list (car z)) x pt n)))
 		  (t (fapply '%erf z)))))
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 

@@ -13,11 +13,20 @@ minf$
 limit( (gamma(log(x)+1) - log(x)*gamma(log(x))), x, inf );
 0$
 
-limit( x * (li[2](1 - 1/x) - li[2](1 - 2/x)), x, inf);
-0$
+limit(x*(li[2](1 - 1/x) - li[2](1 - 2/x)), x, inf);
+inf$
 
-limit( x^2 * (li[3]( 1 - 1/x) - li[3](1- 1/(2*x))), x, inf);
-0$
+limit(x*(li[42](1 - 1/x) - li[42](1 - 2/x)), x, inf);
+zeta(41)$
+
+limit(x*(li[2](1 - 1/x) - li[2](1 - 2/x)), x, minf);
+inf$
+
+limit(x*(li[3]( 1 - 1/x) - li[3](1- 1/(2*x))), x, inf);
+-%pi^2/12$
+
+limit(x^2*(li[3]( 1 - 1/x) - li[3](1- 1/(2*x))), x, inf);
+minf$
 
 limit( exp(x) * (li[1](exp(-x)) - exp(-x)), x, inf );
 0$
@@ -52,8 +61,8 @@ limit( x * (gamma(x+1) - x*gamma(x)), x, inf );
 limit( x * (bessel_y(0, x + 1/x) - bessel_y(0, x)), x, inf );
 0$
 
-limit( exp(x) * (erf(1/sqrt(x)) - 2/sqrt(%pi*x)), x, inf );
-0$
+limit( x^(3/2) * (erf(1/sqrt(x)) - 2/sqrt(%pi*x)), x, inf );
+-(2/(3*sqrt(%pi)))$
  
 limit( x * (airy_ai(x+1/x) - airy_ai(x)), x, inf);
 0$
@@ -67,8 +76,9 @@ limit( x * (gamma_incomplete(1,x+1) - gamma_incomplete(1, x)), x, inf);
 limit( sqrt(x) * (gamma_incomplete(2, x+1/x) - gamma_incomplete(2,x)), x, inf );
 0$
 
+/* verified */
 limit( x * (gamma_incomplete(3,log(x)+1) - gamma_incomplete(3,log(x))), x, inf );
-0$
+minf$
 
 limit( x^2 * (gamma_incomplete(5, x+1/sqrt(x)) - gamma_incomplete(5, x)), x, inf );
 0$
@@ -100,8 +110,9 @@ limit( log(x) * (li[3](log(x)+1/log(x)) - li[3](log(x))), x, inf );
 limit( x * (bessel_j(4,exp(log(x)/2)) - bessel_j(4,sqrt(x))), x, inf );
 0$
 
+/* verified */
 limit( x^2 * (gamma_incomplete(1,log(log(x)+1)) - gamma_incomplete(1,log(log(x)))), x, inf );
-0$
+minf$
 
 limit( exp(-sqrt(x)) * (li[2](exp(-sqrt(x)+1/x)) - li[2](exp(-sqrt(x)))), x, inf );
 0$

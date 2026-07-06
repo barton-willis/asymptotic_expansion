@@ -465,8 +465,17 @@ If no handler is registered for E, return NIL NIL."
 (def-asymptotic-rewrite-handler %erf (z x pt n)
 	(let ((lim (limit-at (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
+  
+  (mtell "lim = ~M ~%" lim)
 	(cond ((and fn (or (eq lim '$inf) (eq lim '$minf)))
          (sub 1 (funcall fn (list (car z)) x pt n)))
+        
+        ((zerop2 lim)
+          (let* ((g (gensym))
+                 (ts ($ratdisrep ($taylor (ftake '%erf g) g 0 (+ n 1)))))
+          (mtell "ts = ~M ~%" ts)
+          (maxima-substitute (asymptotic-rewrite (car z) x pt n) g ts)))
+
 		  (t (fapply '%erf z)))))
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
@@ -524,6 +533,41 @@ If no handler is registered for E, return NIL NIL."
          (mul (ftake 'mexpt '$%e (mul '$%i '$%pi v))  (asymptotic-rewrite (ftake '%bessel_j v zp) x pt n))))
 
 		(t (ftake '%bessel_j v x)))))
+
+
+;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
+(def-asymptotic-rewrite-handler %bessel_y (e x pt n)
+	(let* ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0) (lim (limit-at z x pt)))
+	    (cond ((and (eq '$inf lim) (freeof x v))
+				(setq ω (add z (div (mul '$%pi v) -2) (div '$%pi -4)))
+				(setq a (sub (div 1 2) v))
+				(setq b (add (div 1 2) v))
+				(labels ((fn (k a b) ;  (1/2-v)_k (1/2+v)_k / ((-2)^k k!)
+				     (div
+		   	 		 	(mul (ftake '$pochhammer a k) 
+				 			 (ftake '$pochhammer b k))
+						(mul (ftake 'mexpt -2 k) 
+							 (ftake 'mfactorial k)))))	 
+		(while (< k n)
+			(setq cc (add cc (mul (ftake 'mexpt -1 k) 
+			                      (div (fn (* 2 k) a b) (ftake 'mexpt z (* 2 k))))))
+			(setq sc (add sc (mul (ftake 'mexpt -1 k))
+			                      (div (fn (+ 1 (* 2 k)) a b) (ftake 'mexpt z (+ 1 (* 2 k))))))
+			(incf k))
+		(mul 
+		   (ftake 'mexpt (div 2 (mul '$%pi x)) (div 1 2))
+		   (sub (mul sc (ftake '%cos ω)) (mul cc (ftake '%sin ω))))))
+
+      ;; See http://dlmf.nist.gov/10.11.E2
+      ((and (eq '$minf lim) (freeof x v))
+       (let ((zp (neg z)))
+         (add 
+            (mul (ftake 'mexpt '$%e (mul -1 '$%i '$%pi v))  
+                 (asymptotic-rewrite (ftake '%bessel_y v zp) x pt n))
+            (mul 2 '$%i (ftake '%sin (mul v '$%pi)) (ftake '%cot (mul v '$%pi))
+                 (asymptotic-rewrite (ftake '%bessel_j v zp) x pt n)))))
+
+		(t (ftake '%bessel_y v x)))))
 
 ;; See http://dlmf.nist.gov/10.40.E2. We could also do the large order case?
 (def-asymptotic-rewrite-handler %bessel_k (e x pt n)
@@ -695,14 +739,6 @@ If no handler is registered for E, return NIL NIL."
       ;; ------------------------------------------------------------
       (t (ftake '%zeta s)))))
 
-
-;; Airy–Bessel identities (DLMF 9.6.1–9.6.2):
-;;   Ai(z) = (1/3)*sqrt(z) * [ J_{-1/3}( (2/3) z^(3/2) ) - J_{ 1/3}( (2/3) z^(3/2) ) ]
-;;   Bi(z) = sqrt(z/3)     * [ J_{-1/3}( (2/3) z^(3/2) ) + J_{ 1/3}( (2/3) z^(3/2) ) ]
-;;
-;; We rewrite Ai and Bi into Bessel J and delegate all asymptotics
-;; to the existing %bessel_j handler.
-
 ;; See http://dlmf.nist.gov/9.7.E5
 (def-asymptotic-rewrite-handler %airy_ai (e x pt n)
   (let* ((z (car e)) 
@@ -716,17 +752,18 @@ If no handler is registered for E, return NIL NIL."
                                     (mul 216 (sub (mul 2 k) 1) k xi))) (+ n 1))))
                 (t (ftake '%airy_ai z)))))
       
-
+;; See http://dlmf.nist.gov/9.7.E6
 (def-asymptotic-rewrite-handler %airy_bi (e x pt n)
-  (let* ((z (car e))
-         (zz (mul (div 2 3) (ftake 'mexpt z (div 3 2))))
-         (pref (ftake 'mexpt (div z 3) (div 1 2)))
-         (jneg (ftake '%bessel_j (div -1 3) zz))
-         (jpos (ftake '%bessel_j (div  1 3) zz))
-         (expr (mul pref (add jneg jpos))))
-    (mtell "expr = ~M ~%" expr)
-    ($read)
-    (asymptotic-rewrite expr x pt n)))
+   (let* ((z (car e)) 
+          (lim (limit z x pt 'limit))
+          (xi (mul (div 2 3) (power z (div 3 2)))))
+         (cond ((eq lim '$inf)
+                 (mul (div (ftake 'mexpt '$%e xi)
+                           (mul 2 (ftake 'mexpt '$%pi (div 1 2)) (ftake 'mexpt z (div 1 4))))
+                     (sum-by-quotient 1 #'(lambda (k)
+                               (div (mul (sub (mul 6 k) 5) (sub (mul 6 k) 3) (sub (mul 6 k) 1))
+                                    (mul 216 (sub (mul 2 k) 1) k xi))) (+ n 1))))
+                (t (ftake '%airy_bi z)))))
 
 #|
 Error(s) found:

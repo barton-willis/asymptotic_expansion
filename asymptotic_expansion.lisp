@@ -495,6 +495,7 @@ If no handler is registered for E, return NIL NIL."
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (def-asymptotic-rewrite-handler %bessel_j (e x pt n)
 	(let* ((v (car e)) (z (cadr e)) (ω) (k 0) (a) (b) (sc 0) (cc 0) (lim (limit-at z x pt)))
+      (mtell "Bessel_j: lim = ~M ~% " lim)
 	    (cond ((and (eq '$inf lim) (freeof x v))
 				(setq ω (add z (div (mul '$%pi v) -2) (div '$%pi -4)))
 				(setq a (sub (div 1 2) v))
@@ -702,14 +703,19 @@ If no handler is registered for E, return NIL NIL."
 ;; We rewrite Ai and Bi into Bessel J and delegate all asymptotics
 ;; to the existing %bessel_j handler.
 
+;; See http://dlmf.nist.gov/9.7.E5
 (def-asymptotic-rewrite-handler %airy_ai (e x pt n)
-  (let* ((z (car e))
-         (zz (mul (div 2 3) (ftake 'mexpt z (div 3 2))))
-         (pref (mul (div 1 3) (ftake 'mexpt z (div 1 2))))
-         (jneg (ftake '%bessel_j (div -1 3) zz))
-         (jpos (ftake '%bessel_j (div  1 3) zz))
-         (expr (mul pref (sub jneg jpos))))
-    (asymptotic-rewrite expr x pt n)))
+  (let* ((z (car e)) 
+         (lim (limit z x pt 'limit))
+         (xi (mul (div 2 3) (power z (div 3 2)))))
+         (cond ((eq lim '$inf)
+                 (mul (div (ftake 'mexpt '$%e (neg xi))
+                           (mul 2 (ftake 'mexpt '$%pi (div 1 2)) (ftake 'mexpt z (div 1 4))))
+                     (sum-by-quotient 1 #'(lambda (k)
+                               (div (mul -1 (sub (mul 6 k) 5) (sub (mul 6 k) 3) (sub (mul 6 k) 1))
+                                    (mul 216 (sub (mul 2 k) 1) k xi))) (+ n 1))))
+                (t (ftake '%airy_ai z)))))
+      
 
 (def-asymptotic-rewrite-handler %airy_bi (e x pt n)
   (let* ((z (car e))
@@ -718,6 +724,8 @@ If no handler is registered for E, return NIL NIL."
          (jneg (ftake '%bessel_j (div -1 3) zz))
          (jpos (ftake '%bessel_j (div  1 3) zz))
          (expr (mul pref (add jneg jpos))))
+    (mtell "expr = ~M ~%" expr)
+    ($read)
     (asymptotic-rewrite expr x pt n)))
 
 #|
@@ -975,6 +983,8 @@ exit is recorded in LOG-VAR, which must be a place suitable for PUSH."
 
 #|
 
+missing:  li[s](x) for x -> 1
+          bessel_y
 rtest_limit.mac problem:  (278)
 rtest_limit_gruntz.mac problem:  (84)
 rtest_stats.mac problem:   (10)

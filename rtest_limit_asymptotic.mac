@@ -54,11 +54,12 @@ limit( x * (bessel_y(0, x + 1/x) - bessel_y(0, x)), x, inf );
 
 limit( exp(x) * (erf(1/sqrt(x)) - 2/sqrt(%pi*x)), x, inf );
 0$
-
-/* 
-limit( x * (airy_ai(x+1/x) - airy_ai(x)), x, inf );
+ 
+limit( x * (airy_ai(x+1/x) - airy_ai(x)), x, inf);
 0$
-*/
+
+limit(x^(3/2)*(2*%e^((2*x^(3/2))/3)*sqrt(%pi)*x^(1/4)*airy_ai(x)-1),x,inf);
+-5/48$
 
 limit( x * (gamma_incomplete(1,x+1) - gamma_incomplete(1, x)), x, inf);
 0$

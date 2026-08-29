@@ -1,0 +1,101 @@
+
+/* Maxima error log from tests in C:/Users/barto/OneDrive/Documents/GitHub/asymptotic_expansion/rtest_limit_asymptotic.mac */
+
+/* Problem 14 (line 40) */
+limit(x*(bessel_j(0,x+1/x)-bessel_j(0,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(0,x+1/x)-bessel_j(0,x))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 15 (line 43) */
+limit(sqrt(x)*(bessel_j(1,x+1)-bessel_j(1,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(1,x+1)-bessel_j(1,x))*sqrt(x),x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 16 (line 46) */
+limit(x*(bessel_y(0,x+1/x)-bessel_y(0,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_y(0,x+1/x)-bessel_y(0,x))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 18 (line 52) */
+limit(x*(bessel_j(1,sqrt(x)+1/sqrt(x))-bessel_j(1,sqrt(x))),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(1,sqrt(x)+1/sqrt(x))-bessel_j(1,sqrt(x)))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 19 (line 55) */
+limit(x*(bessel_j(0,x+1/x)-bessel_j(0,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(0,x+1/x)-bessel_j(0,x))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 21 (line 61) */
+limit(x*(bessel_y(0,x+1/x)-bessel_y(0,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_y(0,x+1/x)-bessel_y(0,x))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 23 (line 67) */
+limit(x*(airy_ai(x+1/x)-airy_ai(x)),x,inf);
+/* Erroneous Result?:
+'limit(x*(airy_ai(x+1/x)-airy_ai(x)),x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 24 (line 70) */
+limit(x^(3/2)*(2*%e^((2*x^(3/2))/3)*sqrt(%pi)*x^(1/4)*airy_ai(x)-1),x,inf);
+/* Erroneous Result?:
+'limit(x^(3/2)*(2*%e^((2*x^(3/2))/3)*sqrt(%pi)*x^(1/4)*airy_ai(x)-1),x,inf) */ 
+/* Expected result: */
+-5/48;
+
+/* Problem 28 (line 83) */
+limit(x^2*(gamma_incomplete(5,x+1/sqrt(x))-gamma_incomplete(5,x)),x,inf);
+/* Erroneous Result?:
+'limit((gamma_incomplete(5,x+1/sqrt(x))-gamma_incomplete(5,x))*x^2,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 30 (line 89) */
+limit(x*(bessel_j(0,x+1/x)-bessel_j(0,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(0,x+1/x)-bessel_j(0,x))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 31 (line 92) */
+limit(sqrt(x)*(bessel_j(1,x+1)-bessel_j(1,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(1,x+1)-bessel_j(1,x))*sqrt(x),x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 32 (line 95) */
+limit(x*(bessel_y(0,x+1/x)-bessel_y(0,x)),x,inf);
+/* Erroneous Result?:
+'limit((bessel_y(0,x+1/x)-bessel_y(0,x))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 34 (line 101) */
+limit(x*(bessel_j(3,sqrt(x)+1/sqrt(x))-bessel_j(3,sqrt(x))),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(3,sqrt(x)+1/sqrt(x))-bessel_j(3,sqrt(x)))*x,x,inf) */ 
+/* Expected result: */
+0;
+
+/* Problem 37 (line 110) */
+limit(x*(bessel_j(4,exp(log(x)/2))-bessel_j(4,sqrt(x))),x,inf);
+/* Erroneous Result?:
+'limit((bessel_j(4,%e^(log(x)/2))-bessel_j(4,sqrt(x)))*x,x,inf) */ 
+/* Expected result: */
+0;
+

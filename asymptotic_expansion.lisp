@@ -27,14 +27,12 @@
 ;;; Boston, MA  02110-1301, USA.
 
 (in-package :maxima)
-
-
-;; What special variables did I miss?
 (declare-top (special *preserve-direction* *large-positive-number* var val lhp?))
 
-
+;; For tesing only--not intended to be a user-level function.
 (defmfun $asy (e x pt n)
   (asymptotic-rewrite e x pt n))
+
 (defun limit-at (arg x pt)
 "Normalize directional limit points and call $limit. PT may be an ordinary limit point, $zerob, or $zeroa." 
 	(cond ((eq pt '$zerob) ($limit arg x 0 '$minus))
@@ -109,11 +107,6 @@
        (setf (gethash ',op-sym *asymptotic-rewrite-hash*)
              ',fname)
        ',fname)))
-
-;; The function asymptotic_rewrite is only for testing, it is not intended to be a user level function.
-(defmfun $asymptotic_rewrite (e x pt n)
-    (let ((LHP? nil)) ;not sure about the value of LHP?
-	    (asymptotic-rewrite-top-level e x pt n)))
 
 ;; For the expression e, replace various functions (gamma, polylogarithm, and ...)
 ;; functions with a truncated asymptotic (Poincaré) expansions. We walk through
@@ -465,17 +458,12 @@ If no handler is registered for E, return NIL NIL."
 (def-asymptotic-rewrite-handler %erf (z x pt n)
 	(let ((lim (limit-at (car z) x pt))
 	      (fn (gethash '%erfc *asymptotic-rewrite-hash*)))
-  
-  (mtell "lim = ~M ~%" lim)
 	(cond ((and fn (or (eq lim '$inf) (eq lim '$minf)))
          (sub 1 (funcall fn (list (car z)) x pt n)))
-        
         ((zerop2 lim)
           (let* ((g (gensym))
                  (ts ($ratdisrep ($taylor (ftake '%erf g) g 0 (+ n 1)))))
-          (mtell "ts = ~M ~%" ts)
           (maxima-substitute (asymptotic-rewrite (car z) x pt n) g ts)))
-
 		  (t (fapply '%erf z)))))
 
 ;; Need to include the cases: large a, fixed z, and fixed z/a cases. 
@@ -533,7 +521,6 @@ If no handler is registered for E, return NIL NIL."
          (mul (ftake 'mexpt '$%e (mul '$%i '$%pi v))  (asymptotic-rewrite (ftake '%bessel_j v zp) x pt n))))
 
 		(t (ftake '%bessel_j v x)))))
-
 
 ;; See http://dlmf.nist.gov/10.17.E3. We could also do the large order case?
 (def-asymptotic-rewrite-handler %bessel_y (e x pt n)
